@@ -1,4 +1,4 @@
-// components/GameContent.tsx
+// components/GameContent.tsx — Notblox play/test layout + fleet character select
 'use client'
 
 import { useState, useEffect } from 'react'
@@ -8,117 +8,110 @@ import { GameInfo } from '@/types'
 import gameData from '../public/gameData.json'
 import { MiniGameCard } from './GameCard'
 import Navbar from './Navbar'
+import FleetCharacterSelect from './FleetCharacterSelect'
+import type { FleetCharacter } from '@/lib/fleetCharacters'
+import { STORAGE } from '@/lib/fleetConfig'
 
 export default function GameContent({ gameInfo }: { gameInfo: GameInfo }) {
   const [isPlaying, setIsPlaying] = useState(false)
   const [playerName, setPlayerName] = useState<string>('')
+  const [character, setCharacter] = useState<FleetCharacter | null>(null)
 
-  // Load player name from localStorage on component mount
   useEffect(() => {
-    const savedName = localStorage.getItem('playerName')
-    if (savedName) {
-      setPlayerName(savedName)
+    try {
+      const saved =
+        localStorage.getItem(STORAGE.playerName) || localStorage.getItem('playerName')
+      if (saved) setPlayerName(saved)
+    } catch {
+      /* private */
     }
   }, [])
 
   const handlePlayClick = () => {
-    // Save player name to localStorage
-    if (playerName.trim()) {
-      localStorage.setItem('playerName', playerName.trim())
+    const name = (playerName || character?.name || 'Player').trim()
+    try {
+      localStorage.setItem(STORAGE.playerName, name)
+      localStorage.setItem('playerName', name)
+      if (character?.id) {
+        localStorage.setItem(STORAGE.characterId, character.id)
+      }
+    } catch {
+      /* private */
     }
+    setPlayerName(name)
     setIsPlaying(true)
   }
 
   return (
     <>
       {isPlaying ? (
-        <GamePlayer {...gameInfo} playerName={playerName} />
+        <GamePlayer
+          {...gameInfo}
+          playerName={playerName}
+          character={character}
+        />
       ) : (
-        <div className="px-4 container mx-auto">
-          <Navbar />
-          <div className="flex flex-col lg:flex-row gap-8 mb-12">
-            {/* Image Section - Larger and Clickable */}
-            <div className="lg:w-2/3 cursor-pointer" onClick={handlePlayClick}>
-              <div className="relative group rounded-2xl overflow-hidden shadow-xl hover:shadow-2xl transition-shadow duration-300  ">
-                <img
-                  src={gameInfo.imageUrl}
-                  alt={`${gameInfo.title} cover`}
-                  className="w-full h-64 md:h-[400px] object-cover transform transition-transform duration-300 group-hover:scale-105"
-                />
-
-                {/* Online Badge */}
-                <div className="absolute top-4 left-4 bg-white/90 backdrop-blur-sm rounded-xl px-3 py-1.5 flex items-center space-x-2 shadow-sm">
-                  <div className="w-2 h-2 bg-green-500 rounded-full"></div> {/* Green dot */}
-                  <span className="text-sm font-medium text-gray-800">Online</span>
-                </div>
-                {/* Gradient Overlay */}
-                <div className="absolute inset-0 bg-gradient-to-t from-black/10 via-transparent" />
-                {/* Play Icon Overlay */}
-                <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-                  <div className="bg-black/10 rounded-full p-4 backdrop-blur-sm">
-                    <svg
-                      xmlns="http://www.w3.org/2000/svg"
-                      className="h-12 w-12 text-white"
-                      fill="none"
-                      viewBox="0 0 24 24"
-                      stroke="currentColor"
-                      strokeWidth={2}
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"
-                      />
-                    </svg>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Content Section - Smaller */}
-            <div className="lg:w-1/3 flex flex-col justify-center space-y-6">
-              <h1 className="text-4xl lg:text-5xl font-bold text-gray-900">{gameInfo.title}</h1>
-              <p className="text-gray-600 text-lg leading-relaxed">{gameInfo.metaDescription}</p>
-              <div className="flex flex-col space-y-4">
-                {/* Player Name Input */}
-                <div className="flex flex-col space-y-2">
-                  <label htmlFor="playerName" className="text-sm font-medium text-gray-700">
-                    Your Player Name
-                  </label>
-                  <input
-                    type="text"
-                    id="playerName"
-                    value={playerName}
-                    onChange={(e) => setPlayerName(e.target.value)}
-                    placeholder="Enter your name"
-                    maxLength={20}
-                    className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+        <div className="min-h-screen bg-gradient-to-b from-[#0c0a08] via-[#12100e] to-[#0a0a0c] text-stone-100 px-4">
+          <div className="container mx-auto">
+            <Navbar />
+            <div className="flex flex-col lg:flex-row gap-8 mb-12 mt-4">
+              {/* Cover — Notblox /play/test style */}
+              <div className="lg:w-2/3 cursor-pointer" onClick={handlePlayClick}>
+                <div className="relative group rounded-2xl overflow-hidden shadow-xl border border-amber-900/30">
+                  <img
+                    src={gameInfo.imageUrl}
+                    alt={`${gameInfo.title} cover`}
+                    className="w-full h-64 md:h-[400px] object-cover transform transition-transform duration-300 group-hover:scale-105"
                   />
+                  <div className="absolute top-4 left-4 bg-black/70 backdrop-blur-sm rounded-xl px-3 py-1.5 flex items-center space-x-2 border border-emerald-700/40">
+                    <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
+                    <span className="text-sm font-medium text-emerald-100">Online · Metaverse</span>
+                  </div>
+                  <div className="absolute bottom-4 left-4 right-4 flex flex-wrap gap-2">
+                    <span className="text-[10px] uppercase tracking-wider px-2 py-1 rounded bg-black/60 border border-amber-800/40 text-amber-200/90">
+                      {gameInfo.era || 'voxel'}
+                    </span>
+                    {gameInfo.combatEnabled !== false && (
+                      <span className="text-[10px] uppercase tracking-wider px-2 py-1 rounded bg-black/60 border border-red-800/40 text-red-200/90">
+                        weapon skills
+                      </span>
+                    )}
+                  </div>
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent" />
                 </div>
-                <button
-                  onClick={handlePlayClick}
-                  className="bg-blue-600 hover:bg-blue-500 text-white px-8 py-3 rounded-xl font-bold text-lg transition-all duration-300 transform hover:scale-105 inline-block text-center shadow-lg hover:shadow-xl"
-                >
-                  Play Now →
-                </button>
+              </div>
+
+              <div className="lg:w-1/3 flex flex-col justify-center space-y-4">
+                <h1 className="text-3xl lg:text-4xl font-bold text-amber-50 font-serif tracking-wide">
+                  {gameInfo.title}
+                </h1>
+                <p className="text-stone-400 text-base leading-relaxed">{gameInfo.metaDescription}</p>
+                <FleetCharacterSelect
+                  playerName={playerName}
+                  onPlayerNameChange={setPlayerName}
+                  selected={character}
+                  onSelect={setCharacter}
+                  onPlay={handlePlayClick}
+                  gameTitle={gameInfo.title}
+                />
               </div>
             </div>
+
+            <section className="w-full mb-10">
+              <h2 className="text-xl font-bold text-amber-100/90 mb-4">More worlds</h2>
+              <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
+                {gameData.map((game) => (
+                  <MiniGameCard {...game} key={game.slug} />
+                ))}
+              </div>
+            </section>
+
+            <section className="w-full mb-12 bg-black/40 p-4 md:p-8 rounded-2xl border border-amber-900/25">
+              <div className="prose prose-invert max-w-none prose-headings:text-amber-100 prose-a:text-amber-400">
+                <ReactMarkdown>{gameInfo.markdown}</ReactMarkdown>
+              </div>
+            </section>
           </div>
-          {/* Related Games */}
-          <section className="w-full">
-            <h2 className="text-2xl font-bold text-gray-900 mb-6 px-4 sm:px-0">More Games</h2>
-            <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
-              {gameData.map((game) => (
-                <MiniGameCard {...game} key={game.slug} />
-              ))}
-            </div>
-          </section>
-          {/* Markdown Content */}
-          <section className="w-full mt-12 bg-white p-4 md:p-8 rounded-2xl drop-shadow-sm border border-gray-200">
-            <div className="prose max-w-none">
-              <ReactMarkdown>{gameInfo.markdown}</ReactMarkdown>
-            </div>
-          </section>
         </div>
       )}
     </>

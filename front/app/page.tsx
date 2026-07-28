@@ -8,20 +8,21 @@ import { Metadata } from 'next'
 
 export async function generateMetadata(): Promise<Metadata> {
   return {
-    title: 'NotBlox - Play multiplayer games in your browser',
+    title: 'GrudgeBlox · Metaverse multiplayer · blox.grudge-studio.com',
     description:
-      'Play multiplayer games in your browser. Create your own games and share them with your friends.',
+      'Fleet character select, grudge6 avatars, weapon skills. Voxel + GRUDOX worlds on Grudge Studio DNS.',
     openGraph: {
-      title: 'NotBlox - Play multiplayer games in your browser',
+      title: 'GrudgeBlox · Grudge Studio Metaverse',
       description:
-        'Play multiplayer games in your browser. Create your own games and share them with your friends.',
+        'Notblox-style play lobby with Mine-Loader character roster and weapon skill combat.',
       images: ['/PreviewTestGame.webp'],
-      siteName: 'NotBlox Online',
+      siteName: 'GrudgeBlox',
     },
     twitter: {
       card: 'summary_large_image',
-      site: '@iercan_',
-      creator: '@iercan_',
+    },
+    alternates: {
+      canonical: 'https://blox.grudge-studio.com/',
     },
   }
 }

@@ -28,21 +28,19 @@ export async function generateMetadata({ params }: { params: Params }): Promise<
   const gameInfo = getGamesBySlug(slug)
 
   return {
-    title: `Play ${gameInfo.title} - NotBlox`,
+    title: `Play ${gameInfo.title} · GrudgeBlox`,
     description: gameInfo.metaDescription,
     openGraph: {
-      title: `Play ${gameInfo.title} - NotBlox`,
+      title: `Play ${gameInfo.title} · GrudgeBlox`,
       description: gameInfo.metaDescription,
       images: gameInfo.images ?? [],
-      siteName: 'NotBlox Online',
+      siteName: 'GrudgeBlox Metaverse',
     },
     twitter: {
       card: 'summary_large_image',
-      site: '@iercan_',
-      creator: '@iercan_',
     },
     alternates: {
-      canonical: `https://www.notblox.online/play/${gameInfo.slug}`,
+      canonical: `https://blox.grudge-studio.com/play/${gameInfo.slug}`,
     },
   }
 }

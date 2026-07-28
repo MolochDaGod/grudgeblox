@@ -20,9 +20,12 @@ export class WebSocketManager {
 
   timeSinceLastServerUpdate: number = 0
   constructor(game: Game, port: number = 8001) {
-    // Set the serverUrl based on the environment
-    const baseUrl = process.env.NEXT_PUBLIC_SERVER_URL ?? 'ws://localhost'
-    this.serverUrl = `${baseUrl}:${port}`
+    // Production: NEXT_PUBLIC_SERVER_URL=wss://blox-game.grudge-studio.com (port appended)
+    // Or full URL with port already: wss://host:8001
+    // Local: ws://localhost
+    const baseUrl = (process.env.NEXT_PUBLIC_SERVER_URL ?? 'ws://localhost').replace(/\/$/, '')
+    const hasPort = /:\d+$/.test(baseUrl.replace(/^wss?:\/\//, ''))
+    this.serverUrl = hasPort ? baseUrl : `${baseUrl}:${port}`
 
     this.addMessageHandler(ServerMessageType.FIRST_CONNECTION, (message) => {
       const connectionMessage = message as ConnectionMessage

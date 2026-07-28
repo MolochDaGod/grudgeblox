@@ -7,7 +7,7 @@ on:
 
 env:
   REGISTRY: ghcr.io
-  IMAGE_NAME: iercann/notblox-game-server
+  IMAGE_NAME: molochdagod/grudgeblox-game-server
 
 jobs:
   build-push:

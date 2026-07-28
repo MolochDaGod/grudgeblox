@@ -107,6 +107,18 @@ export class Game {
     this.websocketManager.send(message)
   }
 
+  /** Fleet character id/race for avatar systems (client visual) */
+  fleetCharacter: { id: string; name: string; raceId?: string; classId?: string } | null = null
+
+  setFleetCharacter(character: {
+    id: string
+    name: string
+    raceId?: string
+    classId?: string
+  }) {
+    this.fleetCharacter = character
+  }
+
   private loadingPromise: Promise<void> | null = null
 
   private async loop() {
