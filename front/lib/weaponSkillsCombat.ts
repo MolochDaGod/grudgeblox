@@ -22,79 +22,10 @@ export interface WeaponSkillDef {
   color: string
 }
 
-/** Default sword_shield + magic pack for metaverse combat sandbox */
-export const BLOX_WEAPON_SKILLS: WeaponSkillDef[] = [
-  {
-    id: 'slash',
-    key: '1',
-    label: 'Slash',
-    style: 'melee',
-    windup: 0.2,
-    active: 0.26,
-    recovery: 0.32,
-    cd: 0.5,
-    range: 2.4,
-    projectile: false,
-    projectileSpeed: 0,
-    color: '#e0553a',
-  },
-  {
-    id: 'guard',
-    key: '2',
-    label: 'Guard',
-    style: 'defense',
-    windup: 0.08,
-    active: 0.4,
-    recovery: 0.2,
-    cd: 1.2,
-    range: 0,
-    projectile: false,
-    projectileSpeed: 0,
-    color: '#5eb6e8',
-  },
-  {
-    id: 'bolt',
-    key: '3',
-    label: 'Bolt',
-    style: 'magic',
-    windup: 0.28,
-    active: 0.15,
-    recovery: 0.35,
-    cd: 1.0,
-    range: 18,
-    projectile: true,
-    projectileSpeed: 30,
-    color: '#a78bfa',
-  },
-  {
-    id: 'shot',
-    key: '4',
-    label: 'Shot',
-    style: 'ranged',
-    windup: 0.18,
-    active: 0.12,
-    recovery: 0.3,
-    cd: 0.7,
-    range: 22,
-    projectile: true,
-    projectileSpeed: 40,
-    color: '#6dce5a',
-  },
-  {
-    id: 'smash',
-    key: '5',
-    label: 'Smash',
-    style: 'melee',
-    windup: 0.35,
-    active: 0.3,
-    recovery: 0.5,
-    cd: 2.0,
-    range: 2.8,
-    projectile: false,
-    projectileSpeed: 0,
-    color: '#e8c46a',
-  },
-]
+import { DANGER_ROOM_METAVERSE_SKILLS } from './dangerRoomSkills'
+
+/** Danger Room + sword pack for metaverse combat (three-player-controller timing bar) */
+export const BLOX_WEAPON_SKILLS: WeaponSkillDef[] = DANGER_ROOM_METAVERSE_SKILLS
 
 export type SkillCastPhase = 'idle' | 'windup' | 'active' | 'recovery'
 

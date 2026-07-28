@@ -8,6 +8,12 @@ import { DRACOLoader } from 'three/examples/jsm/loaders/DRACOLoader.js'
 // three@0.183: examples/jsm path is supported via package exports
 import { raceCdnUrl, FLEET } from './fleetConfig'
 import type { FleetCharacter } from './fleetCharacters'
+import {
+  attachAvatarHitboxes,
+  attachWeaponColliderToHand,
+  createWeaponCollider,
+} from './avatarCombat'
+import { FootIkLite } from './footIkLite'
 
 const TARGET_HEIGHT_M = 1.8
 
@@ -39,10 +45,17 @@ function resolveUrl(character: FleetCharacter): string {
   return raceCdnUrl(character.raceId)
 }
 
+export type LoadedAvatar = {
+  root: THREE.Group
+  weaponCollider: THREE.Mesh
+  footIk: FootIkLite
+  hitboxCount: number
+}
+
 /**
- * Load avatar root group (feet on origin).
+ * Load avatar root group (feet on origin) + hitboxes + weapon collider + foot IK.
  */
-export async function loadGrudgeAvatar(character: FleetCharacter): Promise<THREE.Group> {
+export async function loadGrudgeAvatar(character: FleetCharacter): Promise<LoadedAvatar> {
   const url = resolveUrl(character)
   const loader = makeLoader()
   const gltf = await loader.loadAsync(url)
@@ -60,7 +73,18 @@ export async function loadGrudgeAvatar(character: FleetCharacter): Promise<THREE
       o.receiveShadow = true
     }
   })
-  return root
+
+  // multiplayer-gltf: per-bone hitboxes for PvP / weapon rays
+  const boxes = attachAvatarHitboxes(root, { playerId: character.id, debug: false })
+  const weaponCollider = createWeaponCollider(0.3)
+  attachWeaponColliderToHand(root, weaponCollider)
+  const footIk = new FootIkLite(root, { weight: 0.85, maxStep: 0.32 })
+
+  root.userData.hitboxCount = boxes.length
+  root.userData.weaponCollider = weaponCollider
+  root.userData.footIk = footIk
+
+  return { root, weaponCollider, footIk, hitboxCount: boxes.length }
 }
 
 /**
@@ -69,9 +93,9 @@ export async function loadGrudgeAvatar(character: FleetCharacter): Promise<THREE
 export async function applyAvatarToMesh(
   meshRoot: THREE.Object3D,
   character: FleetCharacter,
-): Promise<boolean> {
+): Promise<LoadedAvatar | null> {
   try {
-    const avatar = await loadGrudgeAvatar(character)
+    const loaded = await loadGrudgeAvatar(character)
     // Clear children except helpers
     const keep: THREE.Object3D[] = []
     meshRoot.children.forEach((c) => {
@@ -79,12 +103,14 @@ export async function applyAvatarToMesh(
       else meshRoot.remove(c)
     })
     keep.forEach((c) => meshRoot.add(c))
-    meshRoot.add(avatar)
+    meshRoot.add(loaded.root)
     meshRoot.userData.grudgeAvatar = true
     meshRoot.userData.characterId = character.id
-    return true
+    meshRoot.userData.weaponCollider = loaded.weaponCollider
+    meshRoot.userData.footIk = loaded.footIk
+    return loaded
   } catch (e) {
     console.warn('[grudgeAvatar] load failed', e)
-    return false
+    return null
   }
 }
