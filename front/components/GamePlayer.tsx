@@ -36,7 +36,7 @@ export default function GamePlayer({
   const [messages, setMessages] = useState<MessageComponent[]>([])
   const [gameInstance, setGameInstance] = useState<Game | null>(null)
   const [avatarReady, setAvatarReady] = useState(false)
-  const [hp, setHp] = useState(100)
+  const [hp] = useState(100)
   const [kills, setKills] = useState(0)
   const [killFeed, setKillFeed] = useState<Array<{ id: number; text: string }>>([])
   const [softAim, setSoftAim] = useState(false)
@@ -237,15 +237,14 @@ export default function GamePlayer({
           const from = new THREE.Vector3()
           meshRoot.getWorldPosition(from)
           from.y += 1.35
-          let dir = new THREE.Vector3(0, 0, 1).applyQuaternion(meshRoot.quaternion)
+          const dir = new THREE.Vector3(0, 0, 1).applyQuaternion(meshRoot.quaternion)
           // Soft aim: pull toward camera forward (three-player soft aim)
           if (softAim && gameInstance.renderer?.camera) {
             const camDir = new THREE.Vector3()
             gameInstance.renderer.camera.getWorldDirection(camDir)
             dir.lerp(camDir, 0.85).normalize()
-          }
-          // Aim cone tighten when soft aiming
-          if (!softAim) {
+          } else {
+            // Aim cone when not soft aiming
             const spread = 0.04
             dir.x += (Math.random() - 0.5) * spread
             dir.y += (Math.random() - 0.5) * spread * 0.5
