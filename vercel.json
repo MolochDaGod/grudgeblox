@@ -1,8 +1,9 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "framework": "nextjs",
-  "installCommand": "cd .. && corepack enable && pnpm install",
-  "buildCommand": "cd .. && pnpm run build:shared && pnpm --filter @notblox/front exec next build",
+  "installCommand": "pnpm install",
+  "buildCommand": "pnpm run build:shared && pnpm --filter @notblox/front run build",
+  "outputDirectory": "front/.next",
   "rewrites": [
     {
       "source": "/api/characters",
