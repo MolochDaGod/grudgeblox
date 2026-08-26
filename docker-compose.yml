@@ -3,22 +3,9 @@ services:
     image: 'jc21/nginx-proxy-manager:latest'
     restart: unless-stopped
     ports:
-      # These ports are in format <host-port>:<container-port>
-      - '80:80' # Public HTTP Port
-      - '443:443' # Public HTTPS Port
-      - '81:81' # Admin Web Port
-      # Add any other Stream port you want to expose
-      # - '21:21' # FTP
-
-    # Uncomment the next line if you uncomment anything in the section
-    # environment:
-    # Uncomment this if you want to change the location of
-    # the SQLite DB file within the container
-    # DB_SQLITE_FILE: "/data/database.sqlite"
-
-    # Uncomment this if IPv6 is not enabled on your host
-    # DISABLE_IPV6: 'true'
-
+      - '80:80'
+      - '443:443'
+      - '81:81'
     volumes:
       - ./data:/data
       - /etc/letsencrypt:/etc/letsencrypt
@@ -34,9 +21,9 @@ services:
       - /var/run/docker.sock:/var/run/docker.sock
     environment:
       - DOCKER_API_VERSION=1.52
-      - WATCHTOWER_POLL_INTERVAL=300 # Check for updates every 5 minutes
-      - WATCHTOWER_CLEANUP=true # Remove old images after update
-      - WATCHTOWER_LABEL_ENABLE=true # Only watch services with a specific label
+      - WATCHTOWER_POLL_INTERVAL=300
+      - WATCHTOWER_CLEANUP=true
+      - WATCHTOWER_LABEL_ENABLE=true
     restart: unless-stopped
 
   game_test_server:
@@ -45,7 +32,7 @@ services:
       - com.centurylinklabs.watchtower.enable=true
     environment:
       - GAME_SCRIPT=defaultScript.ts
-      - GAME_TICKRATE=40 # Higher tickrate for vehicles
+      - GAME_TICKRATE=40
       - NODE_ENV=production
       - FRONTEND_URL=https://www.notblox.online
     ports:
@@ -65,7 +52,7 @@ services:
       - com.centurylinklabs.watchtower.enable=true
     environment:
       - GAME_SCRIPT=parkourScript.ts
-      - GAME_TICKRATE=20 # Default tickrate
+      - GAME_TICKRATE=20
       - NODE_ENV=production
       - FRONTEND_URL=https://www.notblox.online
     ports:
@@ -110,6 +97,26 @@ services:
       - FRONTEND_URL=https://www.notblox.online
     ports:
       - '8004:8001'
+    volumes:
+      - /etc/letsencrypt:/etc/letsencrypt
+    restart: unless-stopped
+    logging:
+      driver: 'json-file'
+      options:
+        max-size: '10m'
+        max-file: '3'
+
+  game_dopebudz_streets:
+    build: .
+    labels:
+      - com.centurylinklabs.watchtower.enable=true
+    environment:
+      - GAME_SCRIPT=dopebudzStreets.ts
+      - GAME_TICKRATE=20
+      - NODE_ENV=production
+      - FRONTEND_URL=https://blox.grudge-studio.com
+    ports:
+      - '8005:8001'
     volumes:
       - /etc/letsencrypt:/etc/letsencrypt
     restart: unless-stopped

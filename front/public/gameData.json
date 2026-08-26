@@ -15,8 +15,8 @@
     "websocketPort": 8001,
     "era": "voxel",
     "combatEnabled": true,
-    "metaDescription": "Metaverse test world — fleet character select, grudge6 avatar mesh, weapon skills 1–5. Host: blox.grudge-studio.com",
-    "markdown": "## GrudgeBlox Test World\n\nProduction sandbox for **voxel / GRUDOX-style** lobby + character select (Notblox `/play/test` flow) with **fleet Railway heroes** and **weapon skill combat timing**.\n\n### Stack\n- Lobby: name + fleet roster (Mine-Loader multi-era pattern)\n- Avatar: assets.grudge-studio.com grudge6 race kits\n- Skills: windup → active hit / projectile impact\n- DNS: blox.grudge-studio.com · mine.grudge-studio.com · grudox.grudge-studio.com\n\n### Controls\n- WASD move · Space jump · E interact · 1–5 skills · Mouse look\n"
+    "metaDescription": "Metaverse test world \u2014 fleet character select, grudge6 avatar mesh, weapon skills 1\u20135. Host: blox.grudge-studio.com",
+    "markdown": "## GrudgeBlox Test World\n\nProduction sandbox for **voxel / GRUDOX-style** lobby + character select (Notblox `/play/test` flow) with **fleet Railway heroes** and **weapon skill combat timing**.\n\n### Stack\n- Lobby: name + fleet roster (Mine-Loader multi-era pattern)\n- Avatar: assets.grudge-studio.com grudge6 race kits\n- Skills: windup \u2192 active hit / projectile impact\n- DNS: blox.grudge-studio.com \u00b7 mine.grudge-studio.com \u00b7 grudox.grudge-studio.com\n\n### Controls\n- WASD move \u00b7 Space jump \u00b7 E interact \u00b7 1\u20135 skills \u00b7 Mouse look\n"
   },
   {
     "title": "Combat Arena",
@@ -34,7 +34,7 @@
     "websocketPort": 8002,
     "era": "warlords",
     "combatEnabled": true,
-    "metaDescription": "Weapon skill fighting sandbox — slash, bolt, shot with production cast timing.",
+    "metaDescription": "Weapon skill fighting sandbox \u2014 slash, bolt, shot with production cast timing.",
     "markdown": "## Combat Arena\n\nPractice fleet weapon skills with correct **windup / active / recovery** and projectile impact timing.\n"
   },
   {
@@ -53,7 +53,7 @@
     "websocketPort": 8003,
     "era": "voxel",
     "combatEnabled": false,
-    "metaDescription": "Bridge room toward Mine-Loader lobby and GRUDOX hubs — character handoff test.",
+    "metaDescription": "Bridge room toward Mine-Loader lobby and GRUDOX hubs \u2014 character handoff test.",
     "markdown": "## Voxel Lobby Bridge\n\nUse fleet character select, then jump to [Mine-Loader lobby](https://mine.grudge-studio.com/#/lobby) or [GRUDOX](https://grudox.grudge-studio.com).\n"
   },
   {
@@ -74,5 +74,24 @@
     "combatEnabled": true,
     "metaDescription": "Nexus / GRUDOX-era multiplayer sandbox with fleet avatars.",
     "markdown": "## GRUDOX Sandbox\n\nNexus-era play with interim voxel/grudge6 avatars until toon pipeline is full-time.\n"
+  },
+  {
+    "title": "Dope Budz Streets",
+    "imageUrl": "/PreviewTestGame.webp",
+    "slug": "streets",
+    "images": [
+      {
+        "url": "/PreviewTestGame.webp",
+        "width": 1920,
+        "height": 1080,
+        "alt": "Dope Budz Streets",
+        "type": "image/webp"
+      }
+    ],
+    "websocketPort": 8005,
+    "era": "voxel",
+    "combatEnabled": true,
+    "metaDescription": "GTA-like Dope Budz open world \u2014 six cities, 18 BUDZ/SOL lots, growhouses, street missions. GAME_SCRIPT=dopebudzStreets.ts",
+    "markdown": "## Dope Budz Streets\n\nThird-person shooting and driving on the GrudgeBlox live server.\n\n- Grove, Harbor, Neon, Mesa, Fogtown, Little Beach\n- 18 land deeds (BUDZ or SOL)\n- Grow benches, street / sales / robbery terminals\n- Motor Row cars, kits 1\u20134\n\n### Controls\nWASD move \u00b7 F drive (A left / D right) \u00b7 E interact \u00b7 1\u20134 kits \u00b7 mouse look\n"
   }
 ]

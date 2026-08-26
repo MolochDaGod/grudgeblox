@@ -1,6 +1,15 @@
 /**
  * Dope Budz Streets live server — GrudgeBlox-style 20Hz authoritative tick.
  * Deploy on Railway. Clients connect with WebSocket and send pose / shot / plot.
+ *
+ * Protocol (JSON):
+ *   client { t: 'hello', name }
+ *   client { t: 'pose', x, y, z, yaw, weapon, driving, hp, city }
+ *   client { t: 'shot', x, y, z, tx, ty, tz }
+ *   client { t: 'plot', idx }
+ *   server { t: 'welcome', id, tick }
+ *   server { t: 'snapshot', players, plots }
+ *   server { t: 'shot', ... }
  */
 import http from "node:http";
 import { WebSocketServer } from "ws";
@@ -8,15 +17,16 @@ import { WebSocketServer } from "ws";
 const PORT = Number(process.env.PORT || 8001);
 const TICK = Number(process.env.GAME_TICKRATE || 20);
 const DT = 1000 / TICK;
+const LOTS = 18;
 
-const plots = Array.from({ length: 16 }, (_, i) => ({ idx: i, owner: null }));
+const plots = Array.from({ length: LOTS }, (_, i) => ({ idx: i, owner: null }));
 const players = new Map();
 let ids = 1;
 
 const server = http.createServer((req, res) => {
   if (req.url === "/health" || req.url === "/") {
     res.writeHead(200, { "content-type": "application/json" });
-    res.end(JSON.stringify({ ok: true, service: "dopebudz-live", players: players.size, tick: TICK }));
+    res.end(JSON.stringify({ ok: true, service: "dopebudz-live", players: players.size, tick: TICK, lots: LOTS }));
     return;
   }
   res.writeHead(404);
@@ -59,7 +69,7 @@ wss.on("connection", (ws) => {
         if (p.id !== id) send(p.ws, payload);
       }
     }
-    if (msg.t === "plot" && Number.isInteger(msg.idx) && msg.idx >= 0 && msg.idx < 16) {
+    if (msg.t === "plot" && Number.isInteger(msg.idx) && msg.idx >= 0 && msg.idx < LOTS) {
       const plot = plots[msg.idx];
       if (plot && !plot.owner) {
         plot.owner = rec.name;
