@@ -477,7 +477,7 @@ The game loop (`back/src/index.ts`) runs all systems every tick (50ms at 20Hz).
 ## Related Repositories & Services
 
 - **grudge-api** (Railway Postgres + Express): Character roster, account data, GBuX credit balances
-- **id.grudge-studio.com**: GrudgeID SSO (Hitch owns)
+- **id.grudge-studio.com**: GrudgeID SSO (Keel owns)
 - **assets.grudge-studio.com**: CDN for GLB models, textures (Grudge6 races, voxel kits)
 - **Mine-Loader** (mine.grudge-studio.com): Voxel Realms lobby (separate product, shares character storage keys)
 - **GRUDOX** (grudox.grudge-studio.com): Nexus multiplayer hub (separate product)
