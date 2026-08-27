@@ -164,22 +164,23 @@ GAME_SCRIPT=gtaLobbyScript.ts pnpm run dev
 
 **Backend (`back/.env`):**
 ```bash
-NODE_ENV=development           # REQUIRED for Railway (see warnings below)
+NODE_ENV=development           # or production (auto-detects Railway)
 GAME_SCRIPT=gtaLobbyScript.ts  # Which game to run
 GAME_TICKRATE=20               # Server tick rate (Hz)
-PORT=8001                      # Railway workaround (code bug, see below)
+PORT=8001                      # Local dev port (Railway injects its own PORT)
 FRONTEND_URL=                  # CORS origin (optional, dev allows all)
 ```
 
-**⚠️ Railway Deployment Requirements**:
-1. **Always use `NODE_ENV=development`** — Railway provides TLS at proxy, DO NOT use `SSLApp`
-2. **Set `PORT=8001`** — Code hardcodes port 8001 instead of reading `process.env.PORT` (bug)
-3. **Fix needed**: `WebsocketSystem.ts` line 47 should be `Number(process.env.PORT) || 8001`
+**🚂 Railway Auto-Detection**:
+- Code automatically detects Railway via `RAILWAY_ENVIRONMENT` or `RAILWAY_STATIC_URL`
+- On Railway: Always uses plain HTTP `App()` (Railway proxy handles TLS)
+- Listens on `process.env.PORT` (Railway-injected) or falls back to 8001 (local/VPS)
+- **You can use any `NODE_ENV` on Railway** — SSL is disabled when Railway is detected
 
-**⚠️ NODE_ENV=production**:
-- Enables `SSLApp` with Let's Encrypt paths (`/etc/letsencrypt/live/npm-3/`)
-- **DO NOT use on Railway** (certs not mounted, proxy handles TLS)
-- Only for self-hosted VPS with nginx/Caddy + mounted certificates
+**⚠️ NODE_ENV=production (VPS Only)**:
+- Enables `SSLApp` with Let's Encrypt certificates (VPS with mounted certs only)
+- Requires `SSL_KEY_FILE` and `SSL_CERT_FILE` env vars or defaults to `/etc/letsencrypt/live/npm-3/`
+- **Railway automatically bypasses SSLApp** even if `NODE_ENV=production`
 
 **Frontend (`front/.env.local`):**
 ```bash
@@ -224,26 +225,20 @@ Returns:
    ```
    GAME_SCRIPT=gtaLobbyScript.ts
    GAME_TICKRATE=20
-   NODE_ENV=development
-   PORT=8001
+   NODE_ENV=production               # Safe on Railway (auto-detects)
    FRONTEND_URL=https://your-vercel-client.com
    ```
+   **Note**: Railway automatically injects `PORT` — do not set it manually.
 
-4. **⚠️ PORT BINDING BUG**: 
-   - **Railway requires `process.env.PORT`** but the code **hardcodes 8001** in `WebsocketSystem.ts` (line 47)
-   - **Workaround**: Set `PORT=8001` in Railway until the code is fixed to read `process.env.PORT || 8001`
-   - **Fix needed**: Change line 47 to `private port: number = Number(process.env.PORT) || 8001`
+4. **🚂 Railway Auto-Detection**:
+   - Code detects Railway via `RAILWAY_ENVIRONMENT` or `RAILWAY_STATIC_URL`
+   - Automatically uses plain HTTP `App()` on Railway (proxy handles TLS)
+   - Listens on Railway-injected `PORT` automatically
+   - **NODE_ENV=production is safe on Railway** (SSL bypassed when Railway detected)
 
-5. **⚠️ TLS / NODE_ENV WARNING**:
-   - **Railway provides TLS at the proxy layer** — your Railway URL is already `https://`
-   - **DO NOT use `NODE_ENV=production` on Railway** — it enables `SSLApp` which requires mounted certs
-   - `SSLApp` defaults to `/etc/letsencrypt/live/npm-3/*.pem` (not mounted on Railway)
-   - **Always use `NODE_ENV=development` on Railway** (uses plain HTTP `App()` behind Railway's TLS proxy)
-   - `NODE_ENV=production` is ONLY for self-hosted VPS with nginx/Caddy + Let's Encrypt
+5. **Health check**: Railway reads `/health` endpoint (configure in Railway dashboard or `railway.toml`)
 
-6. **Health check**: Railway reads `/health` endpoint (configure in Railway dashboard or `railway.toml`)
-
-7. **Multiple rooms**: Deploy separate Railway services or use `docker-compose.yml` for multi-instance VPS
+6. **Multiple rooms**: Deploy separate Railway services or use `docker-compose.yml` for multi-instance VPS
 
 #### Dockerfile Deployment
 
@@ -273,7 +268,7 @@ This starts:
 
 Each service listens on `http://localhost:PORT`. Put nginx/Caddy in front for TLS termination.
 
-**Note**: Ports 8001-8005 are hardcoded in `docker-compose.yml` and the code. For Railway, see deployment section above.
+**Note**: Ports 8001-8005 are hardcoded in `docker-compose.yml`. For Railway, the platform injects `PORT` dynamically.
 
 ### Web Client (Vercel)
 
@@ -453,7 +448,7 @@ The game loop (`back/src/index.ts`) runs all systems every tick (50ms at 20Hz).
 
 - Ensure game server is running: `pnpm run dev:back`
 - Check port in `.env.local`: `NEXT_PUBLIC_SERVER_URL=ws://localhost:8001`
-- Port 8001 is hardcoded in `WebsocketSystem.ts` (local dev only)
+- Default port is 8001 (override with `PORT` env var)
 
 ### Physics objects falling through the map
 
@@ -554,6 +549,13 @@ Poker is out of scope for GrudgeBlox. It's a separate product with its own codeb
 ### How do I add a new race (Grudge6)?
 
 Add the GLB to `assets.grudge-studio.com`, then update `front/lib/fleetConfig.ts` `GRUDGE6_CDN` map. GrudgeBlox doesn't host assets; it only references CDN URLs.
+
+### How does Railway deployment work?
+
+- Code auto-detects Railway via `RAILWAY_ENVIRONMENT` or `RAILWAY_STATIC_URL` env vars
+- On Railway: uses plain HTTP `App()` behind Railway's TLS proxy (even if `NODE_ENV=production`)
+- Listens on Railway's injected `PORT` automatically
+- See `back/src/ecs/system/network/WebsocketSystem.ts` for detection logic
 
 ### Can I use a different physics engine?
 
