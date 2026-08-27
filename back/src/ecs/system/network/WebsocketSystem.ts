@@ -71,8 +71,12 @@ export class WebsocketSystem {
     const isProduction = process.env.NODE_ENV === 'production'
     const acceptedOrigin: string | undefined = process.env.FRONTEND_URL
     
-    // Detect Railway: Railway injects RAILWAY_ENVIRONMENT and PORT
-    const isRailway = Boolean(process.env.RAILWAY_ENVIRONMENT || process.env.RAILWAY_STATIC_URL)
+    // Detect Railway: Railway always injects RAILWAY_ENVIRONMENT_NAME, RAILWAY_ENVIRONMENT_ID, and RAILWAY_SERVICE_ID
+    const isRailway = Boolean(
+      process.env.RAILWAY_ENVIRONMENT_NAME ||
+      process.env.RAILWAY_ENVIRONMENT_ID ||
+      process.env.RAILWAY_SERVICE_ID
+    )
     
     // SSL/TLS decision:
     // - Railway: ALWAYS use plain HTTP App() (Railway proxy handles TLS)

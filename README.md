@@ -172,7 +172,7 @@ FRONTEND_URL=                  # CORS origin (optional, dev allows all)
 ```
 
 **🚂 Railway Auto-Detection**:
-- Code automatically detects Railway via `RAILWAY_ENVIRONMENT` or `RAILWAY_STATIC_URL`
+- Code automatically detects Railway via `RAILWAY_ENVIRONMENT_NAME`, `RAILWAY_ENVIRONMENT_ID`, or `RAILWAY_SERVICE_ID`
 - On Railway: Always uses plain HTTP `App()` (Railway proxy handles TLS)
 - Listens on `process.env.PORT` (Railway-injected) or falls back to 8001 (local/VPS)
 - **You can use any `NODE_ENV` on Railway** — SSL is disabled when Railway is detected
@@ -231,7 +231,7 @@ Returns:
    **Note**: Railway automatically injects `PORT` — do not set it manually.
 
 4. **🚂 Railway Auto-Detection**:
-   - Code detects Railway via `RAILWAY_ENVIRONMENT` or `RAILWAY_STATIC_URL`
+   - Code detects Railway via `RAILWAY_ENVIRONMENT_NAME`, `RAILWAY_ENVIRONMENT_ID`, or `RAILWAY_SERVICE_ID`
    - Automatically uses plain HTTP `App()` on Railway (proxy handles TLS)
    - Listens on Railway-injected `PORT` automatically
    - **NODE_ENV=production is safe on Railway** (SSL bypassed when Railway detected)
@@ -552,7 +552,8 @@ Add the GLB to `assets.grudge-studio.com`, then update `front/lib/fleetConfig.ts
 
 ### How does Railway deployment work?
 
-- Code auto-detects Railway via `RAILWAY_ENVIRONMENT` or `RAILWAY_STATIC_URL` env vars
+- Code auto-detects Railway via `RAILWAY_ENVIRONMENT_NAME`, `RAILWAY_ENVIRONMENT_ID`, or `RAILWAY_SERVICE_ID` env vars
+- Railway always injects these variables (plus `RAILWAY_PUBLIC_DOMAIN` and `PORT`)
 - On Railway: uses plain HTTP `App()` behind Railway's TLS proxy (even if `NODE_ENV=production`)
 - Listens on Railway's injected `PORT` automatically
 - See `back/src/ecs/system/network/WebsocketSystem.ts` for detection logic
