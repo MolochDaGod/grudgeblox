@@ -1,5 +1,6 @@
 {
   "name": "notblox-mono",
+  "description": "GrudgeBlox: Modular WebSocket game-server kit for Grudge Studio multiplayer games",
   "private": true,
   "workspaces": [
     "shared",
