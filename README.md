@@ -164,11 +164,22 @@ GAME_SCRIPT=gtaLobbyScript.ts pnpm run dev
 
 **Backend (`back/.env`):**
 ```bash
-NODE_ENV=development           # or production
+NODE_ENV=development           # REQUIRED for Railway (see warnings below)
 GAME_SCRIPT=gtaLobbyScript.ts  # Which game to run
 GAME_TICKRATE=20               # Server tick rate (Hz)
+PORT=8001                      # Railway workaround (code bug, see below)
 FRONTEND_URL=                  # CORS origin (optional, dev allows all)
 ```
+
+**⚠️ Railway Deployment Requirements**:
+1. **Always use `NODE_ENV=development`** — Railway provides TLS at proxy, DO NOT use `SSLApp`
+2. **Set `PORT=8001`** — Code hardcodes port 8001 instead of reading `process.env.PORT` (bug)
+3. **Fix needed**: `WebsocketSystem.ts` line 47 should be `Number(process.env.PORT) || 8001`
+
+**⚠️ NODE_ENV=production**:
+- Enables `SSLApp` with Let's Encrypt paths (`/etc/letsencrypt/live/npm-3/`)
+- **DO NOT use on Railway** (certs not mounted, proxy handles TLS)
+- Only for self-hosted VPS with nginx/Caddy + mounted certificates
 
 **Frontend (`front/.env.local`):**
 ```bash
@@ -213,12 +224,26 @@ Returns:
    ```
    GAME_SCRIPT=gtaLobbyScript.ts
    GAME_TICKRATE=20
-   NODE_ENV=production
-   FRONTEND_URL=https://blox.grudge-studio.com
+   NODE_ENV=development
+   PORT=8001
+   FRONTEND_URL=https://your-vercel-client.com
    ```
-4. **Port**: Railway auto-assigns, server binds to `8001` (exposed via Railway URL)
-5. **Health check**: Railway reads `/health` endpoint
-6. **Multiple rooms**: Deploy separate Railway services or use `docker-compose.yml` for multi-instance VPS
+
+4. **⚠️ PORT BINDING BUG**: 
+   - **Railway requires `process.env.PORT`** but the code **hardcodes 8001** in `WebsocketSystem.ts` (line 47)
+   - **Workaround**: Set `PORT=8001` in Railway until the code is fixed to read `process.env.PORT || 8001`
+   - **Fix needed**: Change line 47 to `private port: number = Number(process.env.PORT) || 8001`
+
+5. **⚠️ TLS / NODE_ENV WARNING**:
+   - **Railway provides TLS at the proxy layer** — your Railway URL is already `https://`
+   - **DO NOT use `NODE_ENV=production` on Railway** — it enables `SSLApp` which requires mounted certs
+   - `SSLApp` defaults to `/etc/letsencrypt/live/npm-3/*.pem` (not mounted on Railway)
+   - **Always use `NODE_ENV=development` on Railway** (uses plain HTTP `App()` behind Railway's TLS proxy)
+   - `NODE_ENV=production` is ONLY for self-hosted VPS with nginx/Caddy + Let's Encrypt
+
+6. **Health check**: Railway reads `/health` endpoint (configure in Railway dashboard or `railway.toml`)
+
+7. **Multiple rooms**: Deploy separate Railway services or use `docker-compose.yml` for multi-instance VPS
 
 #### Dockerfile Deployment
 
@@ -231,9 +256,9 @@ docker run -p 8001:8001 -e GAME_SCRIPT=gtaLobbyScript.ts grudgeblox-server
 
 Railway will auto-detect the Dockerfile.
 
-#### Docker Compose (Multi-Instance)
+#### Docker Compose (Multi-Instance VPS Only)
 
-For running multiple game servers on one VPS:
+For running multiple game servers on one VPS with nginx/Caddy TLS termination:
 
 ```bash
 docker-compose up -d
@@ -246,7 +271,9 @@ This starts:
 - `game_pet_simulator` (port 8004, `petSimulatorScript.ts`)
 - `game_dopebudz_streets` (port 8005, `dopebudzStreets.ts`)
 
-Each service can be accessed at `http://your-vps-ip:PORT`.
+Each service listens on `http://localhost:PORT`. Put nginx/Caddy in front for TLS termination.
+
+**Note**: Ports 8001-8005 are hardcoded in `docker-compose.yml` and the code. For Railway, see deployment section above.
 
 ### Web Client (Vercel)
 
@@ -426,6 +453,7 @@ The game loop (`back/src/index.ts`) runs all systems every tick (50ms at 20Hz).
 
 - Ensure game server is running: `pnpm run dev:back`
 - Check port in `.env.local`: `NEXT_PUBLIC_SERVER_URL=ws://localhost:8001`
+- Port 8001 is hardcoded in `WebsocketSystem.ts` (local dev only)
 
 ### Physics objects falling through the map
 
@@ -491,11 +519,11 @@ MIT (see `LICENCE.md`)
 
 ## Team Contacts
 
+- **Keel**: GrudgeID SSO (`id.grudge-studio.com`), Railway player API (`grudge-api`)
+- **Hitch**: GitHub repository management
 - **Dock**: Railway/VPS game server deployments
 - **Gate**: Vercel client deployments
-- **Hitch**: GrudgeID SSO, auth flows
-- **Muster**: Game design, script authoring
-- **Keel**: Backend/infra architecture
+- **Muster**: Game scripts, prefabs, world design
 
 For questions about this kit, ask in `#grudgeblox` or ping Dock.
 
@@ -513,7 +541,7 @@ No. GrudgeBlox game servers are off-chain. GBuX SPL balances are handled by `gru
 
 ### Can I run multiple rooms on one Railway service?
 
-Not easily. Deploy one Railway service per room/world. For multi-instance, use `docker-compose.yml` on a VPS.
+No. Deploy one Railway service per room/world. For multi-instance, use `docker-compose.yml` on a VPS with nginx/Caddy.
 
 ### Why is the repo called "notblox" in package.json?
 
@@ -533,8 +561,9 @@ Not recommended. Rapier3D is deeply integrated (see `back/src/ecs/system/physics
 
 ### Is there a live demo?
 
-- **Test lobby**: https://blox.grudge-studio.com/play/test (Vercel + Railway)
+- **Test lobby**: Ask Dock for current Railway URL
 - **Dope Budz Streets**: Separate Railway deploy (ask Dock for URL)
+- **Local dev**: Follow "Running Locally" section above
 
 ---
 
