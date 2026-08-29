@@ -11,5 +11,7 @@
     "tvsRoster": "https://assets.grudge-studio.com/models/voxels/tvs/unit-roster.json"
   },
   "grudox": "voxel",
-  "law": "GRUDOX = voxel. Do not union Warlords heroes onto voxel maps. Do not use loadRaceKit Toon as voxel play body. Do not label GRUDOX as nexus."
+  "mine": "voxel",
+  "bloxWorlds": ["test", "combat", "lobby", "grudox", "streets"],
+  "law": "Mine + GRUDOX + Blox (including /play/combat) = voxel characters. combatEnabled is the 1-5 skill bar, not a Warlords era. Do not use loadRaceKit Toon as voxel play body."
 }

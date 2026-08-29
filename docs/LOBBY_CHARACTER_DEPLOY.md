@@ -15,7 +15,7 @@
   ├── Cover image + Online badge          ← Notblox
   ├── Display name                        ← Notblox playerName
   ├── Fleet character roster              ← era of this world only
-  │     voxel worlds: era=voxel (never Warlords heroes)
+  │     Blox + Mine + GRUDOX: era=voxel (never Warlords heroes)
   │     SSOT: Railway /api/characters?era=
   ├── Enter world → WebSocket multiplayer ← Notblox ECS + Rapier
   ├── Local avatar mesh                   ← grudge6 CDN GLB (visual)
@@ -48,7 +48,7 @@ Optional rewrite `/api/characters` → Railway game API (same as fleet satellite
 | Slug | Era | Combat | Port |
 |------|-----|--------|------|
 | `test` | voxel | yes | 8001 |
-| `combat` | warlords | yes | 8002 |
+| `combat` | voxel | yes | 8002 |
 | `lobby` | voxel | no | 8003 |
 | `grudox` | voxel | yes | 8004 |
 

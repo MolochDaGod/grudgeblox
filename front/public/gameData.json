@@ -32,10 +32,10 @@
       }
     ],
     "websocketPort": 8002,
-    "era": "warlords",
+    "era": "voxel",
     "combatEnabled": true,
-    "metaDescription": "Weapon skill fighting sandbox \u2014 slash, bolt, shot with production cast timing.",
-    "markdown": "## Combat Arena\n\nPractice fleet weapon skills with correct **windup / active / recovery** and projectile impact timing.\n"
+    "metaDescription": "Voxel combat sandbox \u2014 same era=voxel heroes as Mine / GRUDOX. Skills 1\u20135 (not a Warlords roster).",
+    "markdown": "## Combat Arena\n\nThis is a **GrudgeBlox weapon-skill room**, not Warlords play. Roster is `?era=voxel` \u2014 Mine, GRUDOX, and Blox all share voxel characters.\n\n`combatEnabled` only means the 1\u20135 skill bar (windup \u2192 hit / projectile). It is not a product era.\n"
   },
   {
     "title": "Voxel Lobby Bridge",

@@ -84,8 +84,13 @@ export function getEraPolicy(id?: string): EraCharacterPolicy {
   return CHARACTER_ERA_POLICIES.voxel
 }
 
-/** Roster query eras for a GrudgeBlox world. Voxel maps stay voxel-only. */
+/**
+ * GrudgeBlox worlds (test, combat, lobby, grudox, streets) are voxel play.
+ * Mine + GRUDOX + Blox share era=voxel heroes. Warlords stay on warlords hosts.
+ */
 export function rosterErasForWorld(era?: string): FleetEraId[] {
+  const key = (era || VOXEL_ERA).toLowerCase()
+  if (key === 'warlords') return CHARACTER_ERA_POLICIES.voxel.shareFrom
   return getEraPolicy(era).shareFrom
 }
 
