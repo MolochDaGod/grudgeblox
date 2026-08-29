@@ -1,4 +1,5 @@
 const DEFAULT_LOCAL_SERVER_PORT = 8001
+const DEFAULT_RAILWAY_WSS = 'wss://grudgeblox-production.up.railway.app'
 
 function isLoopbackHost(hostname: string): boolean {
   return (
@@ -12,21 +13,31 @@ function isLoopbackHost(hostname: string): boolean {
 /**
  * Resolve a world's WebSocket endpoint.
  *
- * A normal local run has one backend on port 8001, so an unported loopback URL
- * deliberately sends every world to that process. Non-loopback hosts retain
- * the per-world ports used by the production multi-instance deployment. An
- * explicit port in NEXT_PUBLIC_SERVER_URL always wins.
+ * Local: one backend on 8001 (or an explicit port in the env URL).
+ * Production (wss, Railway / custom domain): TLS is on 443. Do **not** append
+ * docker-compose world ports 8001–8005 — that times out on Railway.
+ * An explicit port in NEXT_PUBLIC_SERVER_URL always wins.
  */
 export function resolveWebSocketServerUrl(baseUrl: string | undefined, worldPort: number): string {
-  const normalizedBaseUrl = (baseUrl ?? 'ws://127.0.0.1').replace(/\/$/, '')
+  const raw = (baseUrl && baseUrl.trim()) || (typeof window === 'undefined' ? 'ws://127.0.0.1' : DEFAULT_RAILWAY_WSS)
+  const normalizedBaseUrl = raw.replace(/\/$/, '')
   const url = new URL(normalizedBaseUrl)
 
   if (url.protocol !== 'ws:' && url.protocol !== 'wss:') {
     throw new Error('NEXT_PUBLIC_SERVER_URL must use ws:// or wss://')
   }
 
-  if (url.port) return normalizedBaseUrl
+  if (url.port) return url.toString().replace(/\/$/, '')
 
-  url.port = String(isLoopbackHost(url.hostname) ? DEFAULT_LOCAL_SERVER_PORT : worldPort)
+  if (isLoopbackHost(url.hostname)) {
+    url.port = String(worldPort || DEFAULT_LOCAL_SERVER_PORT)
+    return url.toString().replace(/\/$/, '')
+  }
+
+  if (url.protocol === 'wss:') {
+    return url.toString().replace(/\/$/, '')
+  }
+
+  url.port = String(worldPort || DEFAULT_LOCAL_SERVER_PORT)
   return url.toString().replace(/\/$/, '')
 }

@@ -55,6 +55,7 @@ export default function GamePlayer({
     async function initializeGame() {
       setIsLoading(true)
       setConnectionError(null)
+      if (connectionAttempt > 0) Game.resetInstance()
       const game = Game.getInstance(gameInfo.websocketPort, refContainer)
       game.hud.passChatState(setMessages)
       setGameInstance(game)

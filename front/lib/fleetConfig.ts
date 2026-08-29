@@ -10,8 +10,12 @@
 export const FLEET = {
   /** Public product host (metaverse DNS) */
   blox: 'https://blox.grudge-studio.com',
-  /** Vercel preview / fallback */
+  /** Vercel production alias */
   bloxVercel: 'https://grudgeblox.vercel.app',
+  /** Live Rapier/uWS room (Railway TLS on 443 — no :8001) */
+  ws: 'wss://grudgeblox-production.up.railway.app',
+  /** Optional custom WS host after Cloudflare grey-cloud CNAME */
+  wsCustom: 'wss://blox-game.grudge-studio.com',
   /** Auth */
   id: 'https://id.grudge-studio.com',
   /** Characters / account (Builder Railway via any fleet SPA rewrite) */

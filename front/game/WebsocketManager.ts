@@ -7,6 +7,7 @@ import { ClientMessage } from '@shared/network/client/base'
 import pako from 'pako'
 import { config } from '@shared/network/config'
 import { resolveWebSocketServerUrl } from './serverUrl'
+import { FLEET } from '@/lib/fleetConfig'
 
 const CONNECTION_TIMEOUT_MS = 8000
 
@@ -19,11 +20,12 @@ export class WebSocketManager {
 
   timeSinceLastServerUpdate: number = 0
   constructor(game: Game, port: number = 8001) {
-    // Production: NEXT_PUBLIC_SERVER_URL=wss://blox-game.grudge-studio.com (port appended)
-    // Or full URL with port already: wss://host:8001
-    // Local loopback without a port uses the single backend on 8001.
-    // Production hosts without a port retain the configured per-world port.
-    this.serverUrl = resolveWebSocketServerUrl(process.env.NEXT_PUBLIC_SERVER_URL, port)
+    // Production: NEXT_PUBLIC_SERVER_URL=wss://grudgeblox-production.up.railway.app (no extra port)
+    // Local: ws://127.0.0.1 → :8001. Explicit :port in env always wins.
+    this.serverUrl = resolveWebSocketServerUrl(
+      process.env.NEXT_PUBLIC_SERVER_URL || FLEET.ws,
+      port,
+    )
 
     this.addMessageHandler(ServerMessageType.FIRST_CONNECTION, (message) => {
       const connectionMessage = message as ConnectionMessage
@@ -45,7 +47,9 @@ export class WebSocketManager {
       if (!this.isConnected()) {
         this.disconnect()
         const websocket = new WebSocket(this.serverUrl)
+        websocket.binaryType = 'arraybuffer'
         this.websocket = websocket
+        console.log('[blox-ws] connecting', this.serverUrl)
         let settled = false
 
         const rejectConnection = (message: string) => {
@@ -137,9 +141,15 @@ export class WebSocketManager {
   }
 
   private async onMessage(event: MessageEvent) {
-    const buffer = await event.data.arrayBuffer()
+    const raw = event.data
+    const buffer: ArrayBuffer =
+      raw instanceof ArrayBuffer
+        ? raw
+        : raw instanceof Blob
+          ? await raw.arrayBuffer()
+          : new Uint8Array(raw as ArrayBufferLike).buffer
     // Decompress the zlib first
-    const decompressed = pako.inflate(buffer)
+    const decompressed = pako.inflate(new Uint8Array(buffer))
     // Then decompress the msgpackr
     const message: ServerMessage = unpack(decompressed)
 

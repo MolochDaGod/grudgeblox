@@ -26,7 +26,7 @@ import { MutableRefObject } from 'react'
 import { ClientMessageType, SetPlayerNameMessage } from '@shared/network/client'
 
 export class Game {
-  private static instance: Game
+  private static instance: Game | undefined
   entityManager = EntityManager
   currentPlayerEntityId: number | undefined
   private lastRenderTime = Date.now()
@@ -83,6 +83,18 @@ export class Game {
       Game.instance = new Game(gameContainerRef, port)
     }
     return Game.instance
+  }
+
+  /** Drop the singleton so lobby retry can open a fresh WebSocket. */
+  static resetInstance() {
+    if (!Game.instance) return
+    try {
+      Game.instance.websocketManager.disconnect()
+      Game.instance.renderer.setAnimationLoop(null)
+    } catch {
+      /* ignore */
+    }
+    Game.instance = undefined
   }
 
   async start() {
