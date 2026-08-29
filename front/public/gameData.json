@@ -70,10 +70,10 @@
       }
     ],
     "websocketPort": 8004,
-    "era": "nexus",
+    "era": "voxel",
     "combatEnabled": true,
-    "metaDescription": "Nexus / GRUDOX-era multiplayer sandbox with fleet avatars.",
-    "markdown": "## GRUDOX Sandbox\n\nNexus-era roster (`?era=nexus`). Visual kit is the same 4character Mixamo pack used on voxel worlds so skins still replicate.\n"
+    "metaDescription": "GRUDOX voxel-era sandbox \u2014 same era=voxel roster as Mine-Loader / Grudges.",
+    "markdown": "## GRUDOX Sandbox\n\n**GRUDOX = voxel.** Roster is `?era=voxel` (not nexus). Same 4character Mixamo kit as other voxel worlds so skins replicate.\n"
   },
   {
     "title": "Dope Budz Streets",

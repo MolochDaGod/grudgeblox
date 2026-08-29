@@ -1,6 +1,6 @@
 /**
  * Fleet character roster for GrudgeBlox lobby / character select.
- * Same Railway SSOT as Mine-Loader / Warlords (era=voxel | warlords | nexus).
+ * Same Railway SSOT as Mine-Loader. GRUDOX = voxel. Warlords stays era=warlords.
  */
 import { FLEET, STORAGE, getAuthToken } from './fleetConfig'
 import {

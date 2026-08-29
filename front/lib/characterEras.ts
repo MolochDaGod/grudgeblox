@@ -49,7 +49,7 @@ export const CHARACTER_ERA_POLICIES: Record<FleetEraId, EraCharacterPolicy> = {
     apiEra: 'nexus',
     shareFrom: ['nexus'],
     createPath: '/foundry?era=nexus&mode=create',
-    playHosts: ['https://grudox.grudge-studio.com', 'https://open.grudge-studio.com'],
+    playHosts: ['https://open.grudge-studio.com'],
   },
   armada: {
     id: 'armada',

@@ -19,7 +19,7 @@
 - Persist name / selection in localStorage
 - Guest explorer fallback
 
-**Ours:** `FleetCharacterSelect` + fleet Railway eras (voxel/warlords/nexus)
+**Ours:** `FleetCharacterSelect` + fleet Railway eras (voxel including GRUDOX / warlords)
 
 ### 2. Avatar deploy
 - Per-character model URL + scale + rotateY + anim map

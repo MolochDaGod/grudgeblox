@@ -32,7 +32,7 @@ Physics/network body remains Notblox ECS. **Avatar is a visual swap** on **every
 |------|------|
 | **blox.grudge-studio.com** | GrudgeBlox SPA (this repo front) |
 | mine.grudge-studio.com | Voxel Realms lobby / play (`#/lobby`, `#/play`) |
-| grudox.grudge-studio.com | GRUDOX rooms / nexus |
+| grudox.grudge-studio.com | GRUDOX voxel hub / cabinets |
 | **grudox.grudge-studio.com/studio/** | Creative Sandbox **Voxel Studio** (modes, maker, AI lobby) |
 | id.grudge-studio.com | Grudge ID SSO |
 | assets.grudge-studio.com | grudge6 race GLBs |
@@ -50,7 +50,7 @@ Optional rewrite `/api/characters` → Railway game API (same as fleet satellite
 | `test` | voxel | yes | 8001 |
 | `combat` | warlords | yes | 8002 |
 | `lobby` | voxel | no | 8003 |
-| `grudox` | nexus | yes | 8004 |
+| `grudox` | voxel | yes | 8004 |
 
 ---
 
@@ -96,7 +96,7 @@ Aligned with GrudgeBuilder `ProductionSkillCombatRuntime`:
 | From | To |
 |------|-----|
 | GrudgeBlox lobby | Mine-Loader `#/lobby` (same characterId storage keys) |
-| GrudgeBlox | GRUDOX hub for nexus rooms |
+| GrudgeBlox | GRUDOX hub (voxel era) |
 | GrudgeBlox / Mine | **Voxel Studio** `/studio/` (maker + game modes from `voxel-studio.zip`) |
 | Empty roster | Foundry `era=voxel` create with returnTo play URL |
 

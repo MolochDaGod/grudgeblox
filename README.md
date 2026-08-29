@@ -488,7 +488,7 @@ The game loop (`back/src/index.ts`) runs all systems every tick (50ms at 20Hz).
 - **id.grudge-studio.com**: GrudgeID SSO (Keel owns)
 - **assets.grudge-studio.com**: CDN for GLB models, textures (Grudge6 races, voxel kits)
 - **Mine-Loader** (mine.grudge-studio.com): Voxel Realms lobby (separate product, shares character storage keys)
-- **GRUDOX** (grudox.grudge-studio.com): Nexus multiplayer hub (separate product)
+- **GRUDOX** (grudox.grudge-studio.com): Voxel-era launcher / cabinets (same `era=voxel` as Mine-Loader / Grudges)
 
 ---
 

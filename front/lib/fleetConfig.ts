@@ -3,8 +3,7 @@
  *
  * Play surface: blox.grudge-studio.com (or vercel alias)
  * Character SSOT: Railway via GrudgeBuilder / fleet game-data
- * Voxel lobby peer: mine.grudge-studio.com
- * GRUDOX rooms: grudox.grudge-studio.com
+ * Voxel peers: mine.grudge-studio.com · grudox.grudge-studio.com (GRUDOX = voxel)
  */
 
 export const FLEET = {
