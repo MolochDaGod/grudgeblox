@@ -122,7 +122,9 @@ export default function GamePlayer({
         if (!meshC?.mesh) continue
         avatarTried.current = true
         playerMeshRef.current = meshC.mesh
-        const loaded = await applyAvatarToMesh(meshC.mesh, character)
+        const loaded = await applyAvatarToMesh(meshC.mesh, character, {
+          worldSlug: gameInfo.slug,
+        })
         if (!cancelled) {
           loadedAvatar.current = loaded
           setAvatarReady(!!loaded)
@@ -138,7 +140,7 @@ export default function GamePlayer({
     return () => {
       cancelled = true
     }
-  }, [isLoading, character])
+  }, [isLoading, character, gameInfo.slug])
 
   // Foot IK + projectile update loop
   useEffect(() => {
