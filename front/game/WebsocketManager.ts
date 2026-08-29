@@ -142,14 +142,13 @@ export class WebSocketManager {
 
   private async onMessage(event: MessageEvent) {
     const raw = event.data
-    const buffer: ArrayBuffer =
+    const bytes =
       raw instanceof ArrayBuffer
-        ? raw
+        ? new Uint8Array(raw)
         : raw instanceof Blob
-          ? await raw.arrayBuffer()
-          : new Uint8Array(raw as ArrayBufferLike).buffer
-    // Decompress the zlib first
-    const decompressed = pako.inflate(new Uint8Array(buffer))
+          ? new Uint8Array(await raw.arrayBuffer())
+          : new Uint8Array(raw as Uint8Array)
+    const decompressed = pako.inflate(bytes)
     // Then decompress the msgpackr
     const message: ServerMessage = unpack(decompressed)
 
