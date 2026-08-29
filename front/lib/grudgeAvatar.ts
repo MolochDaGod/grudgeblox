@@ -8,6 +8,7 @@ import { DRACOLoader } from 'three/examples/jsm/loaders/DRACOLoader.js'
 // three@0.183: examples/jsm path is supported via package exports
 import { raceCdnUrl, FLEET } from './fleetConfig'
 import type { FleetCharacter } from './fleetCharacters'
+import { getAvatarVisualCorrection } from './avatarVisualProfile'
 import {
   attachAvatarHitboxes,
   attachWeaponColliderToHand,
@@ -16,6 +17,23 @@ import {
 import { FootIkLite } from './footIkLite'
 
 const TARGET_HEIGHT_M = 1.8
+
+export type AvatarLoadContext = {
+  worldSlug?: string
+}
+
+export type AvatarTransformBounds = {
+  before: { minY: number; maxY: number; height: number }
+  after: { minY: number; maxY: number; height: number }
+  heightRatio: number
+  topDelta: number
+  bottomDelta: number
+  intendedGroundY: number
+  worldTranslationY: number
+  yawRadians: number
+  effectiveVisualYawRadians: number
+  visualScale: [number, number, number]
+}
 
 function makeLoader(): GLTFLoader {
   const loader = new GLTFLoader()
@@ -45,17 +63,92 @@ function resolveUrl(character: FleetCharacter): string {
   return raceCdnUrl(character.raceId)
 }
 
+function yBounds(root: THREE.Object3D) {
+  root.updateMatrixWorld(true)
+  const box = new THREE.Box3().setFromObject(root)
+  return {
+    minY: box.min.y,
+    maxY: box.max.y,
+    height: box.max.y - box.min.y,
+    center: box.getCenter(new THREE.Vector3()),
+  }
+}
+
+function applyTopAnchoredVisualCorrection(
+  root: THREE.Group,
+  visual: THREE.Object3D,
+  correction: ReturnType<typeof getAvatarVisualCorrection>,
+): AvatarTransformBounds | undefined {
+  if (correction.verticalScale === 1 && correction.yawRadians === 0) return undefined
+
+  const before = yBounds(root)
+  if (!Number.isFinite(before.height) || before.height < 1e-4) {
+    throw new Error('Cannot correct avatar visual with empty bounds')
+  }
+
+  const pivot = new THREE.Group()
+  pivot.name = 'lobby_guest_visual_correction'
+  const centerInRoot = root.worldToLocal(before.center.clone())
+  pivot.position.copy(centerInRoot)
+  root.add(pivot)
+  pivot.updateMatrixWorld(true)
+  pivot.attach(visual)
+
+  pivot.rotation.y = correction.yawRadians
+  pivot.scale.set(1, correction.verticalScale, 1)
+  const scaled = yBounds(root)
+
+  let worldTranslationY = 0
+  if (correction.preserveTop) {
+    worldTranslationY = before.maxY - scaled.maxY
+    const rootWorldScaleY = root.getWorldScale(new THREE.Vector3()).y
+    if (Math.abs(rootWorldScaleY) < 1e-6) {
+      throw new Error('Cannot top-anchor avatar visual under zero vertical scale')
+    }
+    pivot.position.y += worldTranslationY / rootWorldScaleY
+  }
+
+  const after = yBounds(root)
+  const expectedHeight = before.height * correction.verticalScale
+  const intendedGroundY = before.minY - before.height
+  const tolerance = Math.max(1e-4, before.height * 1e-4)
+  if (
+    Math.abs(after.height - expectedHeight) > tolerance ||
+    Math.abs(after.maxY - before.maxY) > tolerance ||
+    Math.abs(after.minY - intendedGroundY) > tolerance
+  ) {
+    throw new Error('Avatar visual correction failed its bounds invariant')
+  }
+
+  return {
+    before: { minY: before.minY, maxY: before.maxY, height: before.height },
+    after: { minY: after.minY, maxY: after.maxY, height: after.height },
+    heightRatio: after.height / before.height,
+    topDelta: after.maxY - before.maxY,
+    bottomDelta: after.minY - before.minY,
+    intendedGroundY,
+    worldTranslationY,
+    yawRadians: correction.yawRadians,
+    effectiveVisualYawRadians: pivot.rotation.y + visual.rotation.y,
+    visualScale: [1, correction.verticalScale, 1],
+  }
+}
+
 export type LoadedAvatar = {
   root: THREE.Group
   weaponCollider: THREE.Mesh
   footIk: FootIkLite
   hitboxCount: number
+  transformBounds?: AvatarTransformBounds
 }
 
 /**
  * Load avatar root group (feet on origin) + hitboxes + weapon collider + foot IK.
  */
-export async function loadGrudgeAvatar(character: FleetCharacter): Promise<LoadedAvatar> {
+export async function loadGrudgeAvatar(
+  character: FleetCharacter,
+  context: AvatarLoadContext = {},
+): Promise<LoadedAvatar> {
   const url = resolveUrl(character)
   const loader = makeLoader()
   const gltf = await loader.loadAsync(url)
@@ -67,6 +160,22 @@ export async function loadGrudgeAvatar(character: FleetCharacter): Promise<Loade
   // grudge6 art-forward often +X; face +Z for Notblox camera
   gltf.scene.rotation.y = Math.PI / 2
   fitHeight(root, TARGET_HEIGHT_M)
+  const transformBounds = applyTopAnchoredVisualCorrection(
+    root,
+    gltf.scene,
+    getAvatarVisualCorrection({
+      worldSlug: context.worldSlug,
+      characterId: character.id,
+      modelUrl: url,
+    }),
+  )
+  if (
+    transformBounds &&
+    typeof window !== 'undefined' &&
+    ['127.0.0.1', 'localhost', '::1', '[::1]'].includes(window.location.hostname.toLowerCase())
+  ) {
+    console.info('[grudgeAvatar] lobby guest bounds', JSON.stringify(transformBounds))
+  }
   root.traverse((o) => {
     if ((o as THREE.Mesh).isMesh) {
       o.castShadow = true
@@ -84,7 +193,8 @@ export async function loadGrudgeAvatar(character: FleetCharacter): Promise<Loade
   root.userData.weaponCollider = weaponCollider
   root.userData.footIk = footIk
 
-  return { root, weaponCollider, footIk, hitboxCount: boxes.length }
+  root.userData.avatarTransformBounds = transformBounds
+  return { root, weaponCollider, footIk, hitboxCount: boxes.length, transformBounds }
 }
 
 /**
@@ -93,9 +203,10 @@ export async function loadGrudgeAvatar(character: FleetCharacter): Promise<Loade
 export async function applyAvatarToMesh(
   meshRoot: THREE.Object3D,
   character: FleetCharacter,
+  context: AvatarLoadContext = {},
 ): Promise<LoadedAvatar | null> {
   try {
-    const loaded = await loadGrudgeAvatar(character)
+    const loaded = await loadGrudgeAvatar(character, context)
     // Clear children except helpers
     const keep: THREE.Object3D[] = []
     meshRoot.children.forEach((c) => {

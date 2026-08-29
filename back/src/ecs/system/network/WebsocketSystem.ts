@@ -18,6 +18,7 @@ import {
   InputMessage,
   ProximityPromptInteractMessage,
   SetPlayerNameMessage,
+  WorldActionMessage,
   ClientMessageType,
   ClientMessage,
 } from '@shared/network/client/index.js'
@@ -39,6 +40,7 @@ import { EntityManager } from '@shared/system/EntityManager.js'
 import { MessageListComponent } from '@shared/component/MessageComponent.js'
 import { ChatComponent } from '../../component/tag/TagChatComponent.js'
 import { WebSocketComponent } from '../../component/WebsocketComponent.js'
+import { WorldActionEvent } from '../../component/events/WorldActionEvent.js'
 
 type PlayerData = { player?: Player }
 type MessageHandler = (ws: WebSocket<PlayerData>, message: ClientMessage) => void
@@ -54,6 +56,10 @@ export class WebsocketSystem {
   })
 
   constructor() {
+    const configuredPort = Number(process.env.GAME_PORT)
+    if (Number.isInteger(configuredPort) && configuredPort > 0 && configuredPort <= 65535) {
+      this.port = configuredPort
+    }
     this.initializeServer()
     this.initializeMessageHandlers()
   }
@@ -69,6 +75,7 @@ export class WebsocketSystem {
 
   private initializeServer() {
     const isProduction = process.env.NODE_ENV === 'production'
+    const listenHost = process.env.LISTEN_HOST || (isProduction ? '0.0.0.0' : '127.0.0.1')
     const acceptedOrigin: string | undefined = process.env.FRONTEND_URL
     const sslKeyFile: string = process.env.SSL_KEY_FILE || '/etc/letsencrypt/live/npm-3/privkey.pem'
     const sslCertFile: string = process.env.SSL_CERT_FILE || '/etc/letsencrypt/live/npm-3/cert.pem'
@@ -147,7 +154,9 @@ export class WebsocketSystem {
       upgrade: this.upgradeHandler.bind(this, isProduction, acceptedOrigin),
     })
 
-    app.listen(this.port, this.listenHandler.bind(this))
+    app.listen(listenHost, this.port, (listenSocket) =>
+      this.listenHandler(listenSocket, listenHost)
+    )
   }
   private upgradeHandler(
     isProduction: boolean,
@@ -172,11 +181,11 @@ export class WebsocketSystem {
     )
   }
 
-  private listenHandler(listenSocket: us_listen_socket) {
+  private listenHandler(listenSocket: us_listen_socket, listenHost: string) {
     if (listenSocket) {
-      console.log(`WebSocket server listening on port ${this.port}`)
+      console.log(`WebSocket server listening on ${listenHost}:${this.port}`)
     } else {
-      console.error(`Failed to listen on port ${this.port}`)
+      console.error(`Failed to listen on ${listenHost}:${this.port}`)
     }
   }
 
@@ -196,6 +205,10 @@ export class WebsocketSystem {
     this.addMessageHandler(
       ClientMessageType.SET_PLAYER_NAME,
       this.handleSetPlayerNameMessage.bind(this) as MessageHandler
+    )
+    this.addMessageHandler(
+      ClientMessageType.WORLD_ACTION,
+      this.handleWorldActionMessage.bind(this) as MessageHandler
     )
   }
 
@@ -390,5 +403,21 @@ export class WebsocketSystem {
     } else {
       console.error(`TextComponent not found for player ${player.entity.id}`)
     }
+  }
+
+  private handleWorldActionMessage(ws: WebSocket<PlayerData>, message: WorldActionMessage) {
+    const player = ws.getUserData().player
+    if (!player) {
+      console.error(`Player with WS ${ws} not found.`)
+      return
+    }
+
+    const action = typeof message.action === 'string' ? message.action.trim().toLowerCase() : ''
+    if (!/^[a-z0-9:_-]{1,40}$/.test(action)) {
+      console.error(`Invalid world action from player ${player.entity.id}`)
+      return
+    }
+
+    EventSystem.addEvent(new WorldActionEvent(player.entity.id, action))
   }
 }

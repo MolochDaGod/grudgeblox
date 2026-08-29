@@ -4,12 +4,11 @@ import { SnapshotMessage } from '@shared/network/server/serialized'
 import { Game } from './Game'
 import { ConnectionMessage } from '@shared/network/server/connection'
 import { ClientMessage } from '@shared/network/client/base'
-import { isNativeAccelerationEnabled } from 'msgpackr'
 import pako from 'pako'
 import { config } from '@shared/network/config'
+import { resolveWebSocketServerUrl } from './serverUrl'
 
-if (!isNativeAccelerationEnabled)
-  console.warn('Native acceleration not enabled, verify that install finished properly')
+const CONNECTION_TIMEOUT_MS = 8000
 
 type MessageHandler = (message: ServerMessage) => void
 
@@ -22,10 +21,9 @@ export class WebSocketManager {
   constructor(game: Game, port: number = 8001) {
     // Production: NEXT_PUBLIC_SERVER_URL=wss://blox-game.grudge-studio.com (port appended)
     // Or full URL with port already: wss://host:8001
-    // Local: ws://localhost
-    const baseUrl = (process.env.NEXT_PUBLIC_SERVER_URL ?? 'ws://localhost').replace(/\/$/, '')
-    const hasPort = /:\d+$/.test(baseUrl.replace(/^wss?:\/\//, ''))
-    this.serverUrl = hasPort ? baseUrl : `${baseUrl}:${port}`
+    // Local loopback without a port uses the single backend on 8001.
+    // Production hosts without a port retain the configured per-world port.
+    this.serverUrl = resolveWebSocketServerUrl(process.env.NEXT_PUBLIC_SERVER_URL, port)
 
     this.addMessageHandler(ServerMessageType.FIRST_CONNECTION, (message) => {
       const connectionMessage = message as ConnectionMessage
@@ -45,17 +43,41 @@ export class WebSocketManager {
   async connect(): Promise<void> {
     return new Promise<void>((resolve, reject) => {
       if (!this.isConnected()) {
-        this.websocket = new WebSocket(this.serverUrl)
-        this.websocket.addEventListener('open', (event) => {
+        this.disconnect()
+        const websocket = new WebSocket(this.serverUrl)
+        this.websocket = websocket
+        let settled = false
+
+        const rejectConnection = (message: string) => {
+          if (settled) return
+          settled = true
+          window.clearTimeout(timeout)
+          if (this.websocket === websocket) this.websocket = null
+          websocket.close()
+          reject(new Error(message))
+        }
+
+        const timeout = window.setTimeout(() => {
+          rejectConnection('The game server did not respond in time.')
+        }, CONNECTION_TIMEOUT_MS)
+
+        websocket.addEventListener('open', (event) => {
+          if (settled) return
+          settled = true
+          window.clearTimeout(timeout)
           console.log('WebSocket connection opened:', event)
-          resolve() // Resolve the promise when the connection is open.
+          resolve()
         })
-        this.websocket.addEventListener('message', this.onMessage.bind(this))
-        this.websocket.addEventListener('error', (errorEvent) => {
-          console.error('WebSocket error:', errorEvent)
-          reject(errorEvent) // Reject the promise on error.
+        websocket.addEventListener('message', this.onMessage.bind(this))
+        websocket.addEventListener('error', () => {
+          console.error('WebSocket connection failed')
+          rejectConnection('Could not reach the game server.')
         })
-        this.websocket.addEventListener('close', (closeEvent) => {
+        websocket.addEventListener('close', (closeEvent) => {
+          if (!settled) {
+            rejectConnection('The game server closed the connection before startup completed.')
+            return
+          }
           if (closeEvent.wasClean) {
             console.log(
               `WebSocket connection closed cleanly, code=${closeEvent.code}, reason=${closeEvent.reason}`
@@ -65,7 +87,7 @@ export class WebSocketManager {
           }
         })
       } else {
-        resolve() // WebSocket already exists, resolve without a value.
+        resolve()
       }
     })
   }

@@ -56,3 +56,4 @@ fastlane/screenshots
 *.blend
 .vercel
 .env*
+!.env.example

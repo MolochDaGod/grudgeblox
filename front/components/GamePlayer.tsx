@@ -33,6 +33,8 @@ export default function GamePlayer({
   ...gameInfo
 }: GamePlayerProps) {
   const [isLoading, setIsLoading] = useState(true)
+  const [connectionError, setConnectionError] = useState<string | null>(null)
+  const [connectionAttempt, setConnectionAttempt] = useState(0)
   const [messages, setMessages] = useState<MessageComponent[]>([])
   const [gameInstance, setGameInstance] = useState<Game | null>(null)
   const [avatarReady, setAvatarReady] = useState(false)
@@ -48,7 +50,11 @@ export default function GamePlayer({
   const playerMeshRef = useRef<THREE.Object3D | null>(null)
 
   useEffect(() => {
+    let active = true
+
     async function initializeGame() {
+      setIsLoading(true)
+      setConnectionError(null)
       const game = Game.getInstance(gameInfo.websocketPort, refContainer)
       game.hud.passChatState(setMessages)
       setGameInstance(game)
@@ -60,14 +66,27 @@ export default function GamePlayer({
         if (character?.id) {
           game.setFleetCharacter?.(character)
         }
-        setIsLoading(false)
+        if (active) setIsLoading(false)
       } catch (error) {
         console.error('Error connecting to WebSocket:', error)
+        if (active) {
+          setIsLoading(false)
+          setConnectionError(
+            error instanceof Error ? error.message : 'Could not reach the game server.'
+          )
+        }
       }
     }
 
-    initializeGame()
-  }, [gameInfo.websocketPort, playerName, character])
+    void initializeGame()
+    return () => {
+      active = false
+    }
+  }, [gameInfo.websocketPort, playerName, character, connectionAttempt])
+
+  const retryConnection = useCallback(() => {
+    setConnectionAttempt((attempt) => attempt + 1)
+  }, [])
 
   // Soft aim RMB (three-player-controller soft aim)
   useEffect(() => {
@@ -103,7 +122,9 @@ export default function GamePlayer({
         if (!meshC?.mesh) continue
         avatarTried.current = true
         playerMeshRef.current = meshC.mesh
-        const loaded = await applyAvatarToMesh(meshC.mesh, character)
+        const loaded = await applyAvatarToMesh(meshC.mesh, character, {
+          worldSlug: gameInfo.slug,
+        })
         if (!cancelled) {
           loadedAvatar.current = loaded
           setAvatarReady(!!loaded)
@@ -119,7 +140,7 @@ export default function GamePlayer({
     return () => {
       cancelled = true
     }
-  }, [isLoading, character])
+  }, [isLoading, character, gameInfo.slug])
 
   // Foot IK + projectile update loop
   useEffect(() => {
@@ -271,7 +292,13 @@ export default function GamePlayer({
 
   return (
     <div className="fixed inset-0 w-full h-full">
-      {isLoading && <LoadingScreen />}
+      {(isLoading || connectionError) && (
+        <LoadingScreen
+          error={connectionError}
+          isRetrying={isLoading && connectionAttempt > 0}
+          onRetry={retryConnection}
+        />
+      )}
       {gameInstance && (
         <div ref={refContainer} className="contents">
           <MetaverseHud
@@ -286,6 +313,7 @@ export default function GamePlayer({
             killFeed={killFeed}
             softAim={softAim}
             fightLinks={METAVERSE_FIGHT_LINKS}
+            worldSlug={gameInfo.slug}
           />
           <WeaponSkillBar enabled={combatEnabled !== false && !isLoading} onCast={onCast} />
           {/* Crosshair (three-player-controller) */}

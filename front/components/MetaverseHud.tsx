@@ -14,6 +14,7 @@ import { GameInfo } from '@/types'
 import gameData from '../public/gameData.json'
 import { FLEET } from '@/lib/fleetConfig'
 import type { FleetCharacter } from '@/lib/fleetCharacters'
+import DopeBudzControls from './DopeBudzControls'
 
 export interface MetaverseHudProps {
   messages: MessageComponent[]
@@ -27,6 +28,7 @@ export interface MetaverseHudProps {
   killFeed?: Array<{ id: number; text: string }>
   softAim?: boolean
   fightLinks?: Record<string, string>
+  worldSlug?: string
 }
 
 export default function MetaverseHud({
@@ -41,6 +43,7 @@ export default function MetaverseHud({
   killFeed = [],
   softAim = false,
   fightLinks,
+  worldSlug,
 }: MetaverseHudProps) {
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const [notifications, setNotifications] = useState<
@@ -193,6 +196,11 @@ export default function MetaverseHud({
               <MapIcon className="w-3 h-3" /> Tab board
             </span>
           </div>
+          {worldSlug === 'streets' && (
+            <DopeBudzControls
+              onAction={(action) => gameInstance.hud.sendWorldActionToServer(action)}
+            />
+          )}
         </div>
 
         <div className="pointer-events-auto flex flex-col items-end gap-2">
