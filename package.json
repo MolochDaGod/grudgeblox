@@ -1,6 +1,7 @@
 {
   "name": "notblox-mono",
   "private": true,
+  "packageManager": "pnpm@11.19.0",
   "workspaces": [
     "shared",
     "front",
@@ -13,6 +14,7 @@
     "dev:back": "pnpm --filter @notblox/back run dev",
     "build:front": "pnpm --filter @notblox/front run build",
     "dev:front": "pnpm --filter @notblox/front run dev",
+    "test:back": "pnpm --filter @notblox/back run test",
     "build-vercel": "pnpm run build:shared && pnpm run build:front",
     "build": "pnpm run build:shared && pnpm run build:back && pnpm run build:front",
     "dev": "concurrently \"pnpm run dev:shared\" \"pnpm run dev:back\" \"pnpm run dev:front\"",

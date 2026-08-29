@@ -2,3 +2,11 @@ packages:
   - 'shared'
   - 'front'
   - 'back'
+
+# pnpm 11 blocks undeclared dependency lifecycle builds. These are the native
+# build steps used by the checked-in dependency graph in local, CI, and Docker installs.
+allowBuilds:
+  esbuild: true
+  msgpackr-extract: true
+  sharp: true
+  unrs-resolver: true

@@ -10,7 +10,20 @@ import pako from 'pako'
 export class NetworkSystem {
   //  Serializes the given entities.
   private static packr = new Packr({})
-  private websocketSystem = new WebsocketSystem()
+  private websocketSystem: WebsocketSystem
+
+  constructor() {
+    this.websocketSystem = new WebsocketSystem()
+  }
+
+  waitUntilListening(): Promise<void> {
+    return this.websocketSystem.listening
+  }
+
+  markReady(): void {
+    this.websocketSystem.markReady()
+  }
+
   private serialize(entities: Entity[], serializeAll: boolean): SerializedEntity[] {
     const serializedEntities: SerializedEntity[] = []
 

@@ -1,7 +1,7 @@
 import 'dotenv/config'
 import { resolve } from 'path'
 import { pathToFileURL } from 'url'
-import { startGameLoop } from './index.js'
+import { startGameRuntime } from './index.js'
 
 // This isn't a true "sandbox", not secured if player's can create their own scripts.
 // isolation could be done with this : https://github.com/sebastianwessel/quickjs maybe.
@@ -14,6 +14,13 @@ async function loadGameLogic() {
   await import(pathToFileURL(codePath).href)
 }
 
-loadGameLogic()
-  .then(() => startGameLoop())
-  .catch((err) => console.error(err))
+async function main() {
+  await loadGameLogic()
+  await startGameRuntime()
+}
+
+main().catch((error: unknown) => {
+  const message = error instanceof Error ? error.message : String(error)
+  console.error(`Startup failed: ${message}`)
+  process.exit(1)
+})

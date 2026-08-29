@@ -35,7 +35,6 @@ import { ProximityPromptSystem } from './ecs/system/events/ProximityPromptEventS
 import { ConvexHullColliderSystem } from './ecs/system/physics/ConvexHullColliderSystem.js'
 import { VehicleSystem } from './ecs/system/VehicleSystem.js'
 
-// TODO: Make it wait for the websocket server to start
 const eventSystem = EventSystem.getInstance()
 const entityManager = EntityManager.getInstance()
 const entities = entityManager.getAllEntities()
@@ -65,7 +64,7 @@ const proximityPromptSystem = new ProximityPromptSystem()
 
 const movementSystem = new MovementSystem()
 const vehicleSystem = new VehicleSystem()
-const networkSystem = new NetworkSystem()
+let networkSystem: NetworkSystem | undefined
 
 const animationSystem = new AnimationSystem()
 const sleepCheckSystem = new SleepCheckSystem()
@@ -130,6 +129,7 @@ async function updateGameState(dt: number) {
 
   messageEventSystem.update(entities)
   lockedRotationSystem.update(entities)
+  if (!networkSystem) throw new Error('Network system is not initialized')
   networkSystem.update(entities)
   sleepCheckSystem.update(entities)
 
@@ -177,7 +177,16 @@ async function gameLoop() {
   setTimeout(gameLoop, config.SERVER_TICKRATE / 2)
 }
 
-export function startGameLoop() {
+function startGameLoop() {
   lastFrameTime = Date.now()
   gameLoop()
+}
+
+export async function startGameRuntime() {
+  if (networkSystem) throw new Error('Game runtime has already been started')
+
+  networkSystem = new NetworkSystem()
+  await networkSystem.waitUntilListening()
+  networkSystem.markReady()
+  startGameLoop()
 }

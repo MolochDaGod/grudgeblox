@@ -8,8 +8,6 @@ import { SerializedMessageType } from '../../../../../shared/network/server/seri
 import { config } from '../../../../../shared/network/config.js'
 
 export class MessageEventSystem {
-  private MAX_MESSAGES: number = 20
-
   update(entities: Entity[]) {
     const chatMessageEvents = EventSystem.getEvents(MessageEvent)
 
@@ -38,7 +36,7 @@ export class MessageEventSystem {
         // Limit content length
         content = content.slice(0, config.MAX_MESSAGE_CONTENT_LENGTH)
         // Limit message history (bandwidth)
-        if (messageListComponent.list.length >= this.MAX_MESSAGES) {
+        if (messageListComponent.list.length >= config.MAX_RETAINED_MESSAGES) {
           messageListComponent.list.shift()
         }
 
