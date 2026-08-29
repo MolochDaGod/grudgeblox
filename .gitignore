@@ -11,3 +11,5 @@ front/package-lock.json
 shared/package-lock.json
 .vercel
 .env*
+!.env.example
+!**/.env.example

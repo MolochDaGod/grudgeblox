@@ -30,7 +30,7 @@ export class Renderer extends THREE.WebGLRenderer {
 
     this.scene = new THREE.Scene()
     this.shadowMap.enabled = true
-    this.shadowMap.type = THREE.PCFSoftShadowMap
+    this.shadowMap.type = THREE.PCFShadowMap
 
     this.setSize(window.innerWidth, window.innerHeight)
     this.setPixelRatio(this.getDevicePixelRatio())
