@@ -2,3 +2,13 @@ packages:
   - 'shared'
   - 'front'
   - 'back'
+
+# pnpm 11 defaults to strictDepBuilds: true, so any dependency lifecycle build
+# script that is not explicitly approved fails the install with
+# ERR_PNPM_IGNORED_BUILDS. Approve the native builds the project relies on so
+# `pnpm install --frozen-lockfile` succeeds in CI, Docker, and local/dev.
+allowBuilds:
+  esbuild: true
+  msgpackr-extract: true
+  sharp: true
+  unrs-resolver: true
