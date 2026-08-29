@@ -5,6 +5,7 @@ import { MessageComponent } from '@shared/component/MessageComponent'
 import { Game } from './Game'
 import { ClientMessageType } from '@shared/network/client/base'
 import { ChatMessage } from '@shared/network/client/chatMessage'
+import { WorldActionMessage } from '@shared/network/client/worldActionMessage'
 import { config } from '@shared/network/config'
 
 // Props drill
@@ -24,5 +25,16 @@ export class Hud {
       content: trimmedMessage,
     }
     Game.getInstance().websocketManager.send(chatMessage)
+  }
+
+  sendWorldActionToServer(action: string) {
+    const normalizedAction = action.trim().toLowerCase()
+    if (!normalizedAction) return
+
+    const worldAction: WorldActionMessage = {
+      t: ClientMessageType.WORLD_ACTION,
+      action: normalizedAction,
+    }
+    Game.getInstance().websocketManager.send(worldAction)
   }
 }

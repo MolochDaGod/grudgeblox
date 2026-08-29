@@ -313,6 +313,7 @@ export default function GamePlayer({
             killFeed={killFeed}
             softAim={softAim}
             fightLinks={METAVERSE_FIGHT_LINKS}
+            worldSlug={gameInfo.slug}
           />
           <WeaponSkillBar enabled={combatEnabled !== false && !isLoading} onCast={onCast} />
           {/* Crosshair (three-player-controller) */}

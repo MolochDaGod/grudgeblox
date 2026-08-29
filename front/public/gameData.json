@@ -91,7 +91,7 @@
     "websocketPort": 8005,
     "era": "voxel",
     "combatEnabled": true,
-    "metaDescription": "GTA-like Dope Budz open world \u2014 six cities, 18 BUDZ/SOL lots, growhouses, street missions. GAME_SCRIPT=dopebudzStreets.ts",
-    "markdown": "## Dope Budz Streets\n\nThird-person shooting and driving on the GrudgeBlox live server.\n\n- Grove, Harbor, Neon, Mesa, Fogtown, Little Beach\n- 18 land deeds (BUDZ or SOL)\n- Grow benches, street / sales / robbery terminals\n- Motor Row cars, kits 1\u20134\n\n### Controls\nWASD move \u00b7 F drive (A left / D right) \u00b7 E interact \u00b7 1\u20134 kits \u00b7 mouse look\n"
+    "metaDescription": "Integrated Dope Budz Streets ECS world \u2014 claim session lots, grow and harvest, run terminal routes, drive, and fight across six districts.",
+    "markdown": "## Dope Budz Streets\n\nThe primary Streets experience runs inside the GrudgeBlox ECS authority.\n\n- Six districts: Grove, Harbor, Neon, Mesa, Fogtown, Little Beach\n- Claimable session lots with BUDZ/SOL balances and owner labels\n- Timed plant and harvest cycles on grow benches\n- Terminal-to-terminal jobs with BUDZ and reputation rewards\n- Motor Row cars, street crews, jump pad, and weapon kits\n\nUse the in-game **Street status**, **Owned lots**, and **Current job** controls for live server state. Session progress resets on disconnect until an owner-managed persistence service is configured.\n\n### Controls\nWASD move/drive \u00b7 E enter, exit, or interact \u00b7 1\u20134 kits \u00b7 mouse look\n"
   }
 ]

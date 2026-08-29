@@ -1,6 +1,8 @@
-# Dope Budz Streets — live server
+# Dope Budz Streets — JSON compatibility server
 
-GrudgeBlox-style 20Hz WebSocket authority for **Dope Budz Streets**.
+Separately deployable 20Hz JSON WebSocket authority for legacy or lightweight **Dope Budz Streets** clients.
+
+The current GrudgeBlox frontend uses the integrated msgpack ECS runtime at `GAME_SCRIPT=dopebudzStreets.ts`. Do not point `/play/streets` at this JSON service. Keep this instance on its own URL when a compatible client actually needs it.
 
 ## Railway
 
@@ -8,13 +10,13 @@ GrudgeBlox-style 20Hz WebSocket authority for **Dope Budz Streets**.
 2. Root directory: `dopebudz-streets`.
 3. Railway reads `Dockerfile` + `railway.toml`.
 4. Set `GAME_TICKRATE=20` (40–60 if cars feel laggy, same as GrudgeBlox).
-5. Point the web client at the public `wss://` URL (`VITE_LIVE_WS`).
+5. Configure `ALLOWED_ORIGINS` for the compatible client and give the instance a distinct public `wss://` URL.
 
-Health: `GET /health` → `{ ok, players, tick, lots }`.
+Health: `GET /health`. Runtime role, protocol, capabilities, and limits: `GET /meta`.
 
 ## Protocol
 
-Matches the in-browser P2P payload (`pose`, `shot`, `plot`) so the same `src/game/net.ts` types work on Railway.
+Protocol `dopebudz-json-v1` preserves `hello`, `pose`, `shot`, `plot`, and `snapshot`, and adds bounded errors and `ping`/`pong`. It is not the GrudgeBlox ECS msgpack protocol.
 
 ## ECS path
 
