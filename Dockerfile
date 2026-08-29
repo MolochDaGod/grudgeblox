@@ -43,8 +43,9 @@ COPY back/src ./back/src
 # Run from back/ so Node resolves tsx from back/node_modules
 WORKDIR /app/back
 
-# Probe TCP port 8001 – container is healthy once the WS server is accepting connections
+# Require the application-level health endpoint to report ready. The probe supports
+# both the existing direct-TLS mode and plaintext behind an external TLS proxy.
 HEALTHCHECK --interval=5s --timeout=3s --start-period=15s --retries=3 \
-  CMD node -e "const p=process.env.PORT||8001; const n=require('net').createConnection(Number(p),'localhost'); n.on('connect',()=>{n.destroy();process.exit(0);}); n.on('error',()=>process.exit(1));"
+  CMD node src/healthcheck.mjs
 
 CMD ["node", "--import", "tsx/esm", "src/sandbox.ts"]

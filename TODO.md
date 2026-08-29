@@ -15,10 +15,13 @@ Status labels are evidence-based: **complete** means source plus a relevant chec
 
 ### Other local functionality
 
-- [ ] **Open — truthful backend readiness.** Wait for successful WebSocket listening and game-script loading, exit nonzero on either failure, and report healthy only after both are ready.
-- [ ] **Open — bounded WebSocket message handling.** Catch invalid msgpack, validate message shape, and apply per-message/per-player limits; the existing limiter only covers connections.
+- [x] **Complete — truthful backend readiness.** The game script now loads before the listener starts; startup awaits a successful bind, reports `503` until ready, and exits nonzero on script or listen failure. Focused missing-script and occupied-port smoke checks pass.
+- [x] **Complete — private-data-safe health and authenticated event access.** `/health` contains no player/chat/notification data. The optional `/admin/events` feed is disabled without `ADMIN_API_TOKEN`, requires exact bearer authentication when enabled, and documents an in-memory 20-message/restart retention boundary. Unit and live HTTP checks pass.
+- [x] **Complete — bounded WebSocket message handling.** Invalid/oversized msgpack is contained, every client message type is schema-validated, and a configurable per-connection message limiter protects dispatch. Unit plus live malformed, oversized, and burst checks pass.
+- [x] **Complete — explicit WebSocket origins.** Production fails startup without configured origins and rejects missing/unapproved origins. Exact multi-origin configuration and the legacy `FRONTEND_URL` value are supported; loopback development remains available only through the documented local defaults or explicit configuration.
 - [~] **Partial — lint backend + shared.** Backend ESLint passes. Shared passes its TypeScript build/type check but has no lint script or lint configuration; adding a new lint policy/toolchain is a separate maintenance choice.
-- [ ] **Open — frontend CI coverage.** Add the existing frontend production build to CI after the local integration build is green.
+- [x] **Complete — frontend CI/package consistency.** CI now uses the pinned pnpm/Node versions, runs the focused backend tests, and builds shared, backend, and the production frontend from the repository root. The stale Pages deployment assumptions were replaced with a build-only workflow.
+- [x] **Complete — web manifest and icon pack.** The existing GrudgeBlox face branding now supplies standard, Apple, 192/512, and maskable icons through a generated web manifest; production build and local manifest/icon checks pass.
 
 ## Server/admin/owner changes
 
@@ -27,9 +30,10 @@ Status labels are evidence-based: **complete** means source plus a relevant chec
 - [!] **Admin — choose identity and persistence.** Provide the approved account identity and backing store/volume for durable balances, lots, crops, and missions. Until then, ECS progress is deliberately released on disconnect and JSON claims are session-only.
 - [!] **Admin — reconcile world ports and scripts.** The client advertises `test`, `combat`, `lobby`, `grudox`, and `streets` on `8001`–`8005`, while Compose currently starts default, parkour, football, pet-simulator, and Streets scripts. Decide the intended mapping before deployment.
 - [!] **Admin — correct production origins.** Compose ports `8001`–`8004` allow `https://www.notblox.online`, while the current frontend is `https://blox.grudge-studio.com`; the exact origin check will reject the current frontend until the server environment is corrected.
-- [!] **Admin — align the game-server image.** The publish workflow creates `ghcr.io/molochdagod/grudgeblox-game-server`, while Compose pulls `ghcr.io/iercann/notblox-game-server:latest`. Select the owned image and immutable release/SHA tag.
+- [~] **Admin — pin the game-server image.** Repository Compose defaults now match the published `ghcr.io/molochdagod/grudgeblox-game-server` image and accept `GRUDGEBLOX_GAME_IMAGE`; production still needs an approved immutable release/SHA tag or digest.
 - [!] **Admin — TLS/DNS exposure.** Choose the existing proxy stack or direct WSS ports, provide valid DNS/certificates, and expose only the listeners required by the selected architecture. Caddy/Certbot is not an additional requirement when the existing proxy terminates TLS.
 - [!] **Owner — rotate/revoke the historical Vercel credential.** The source deletion is local, but credential invalidation and any coordinated history cleanup are owner-controlled.
+- [!] **Owner — reconcile licence metadata and restricted-use wording.** Package manifests declare MIT while `LICENCE.md` adds a blockchain/cryptocurrency prohibition. Select the intended policy before any release touching token-like functionality; this pass deliberately leaves the legal/commercial text unchanged.
 - [!] **Owner/external — Voxel Realms reports.** `snapToTerrain` and the missing model/texture references belong in the owning deployment/source repository.
 - [ ] **Owner — final lobby guest visual acceptance.** Automated bounds and unaffected-route checks pass; manual acceptance remains separate.
 

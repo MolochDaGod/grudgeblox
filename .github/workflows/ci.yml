@@ -7,8 +7,8 @@ on:
     branches: ['**']
 
 jobs:
-  lint-typecheck:
-    name: Lint & Type-check (backend)
+  lint-test-build:
+    name: Lint, test & production build
     runs-on: ubuntu-latest
 
     steps:
@@ -18,7 +18,7 @@ jobs:
       - name: Setup pnpm
         uses: pnpm/action-setup@v4
         with:
-          version: latest
+          version: 11.19.0
 
       - name: Setup Node 24
         uses: actions/setup-node@v4
@@ -32,11 +32,17 @@ jobs:
       - name: Build shared
         run: pnpm run build:shared
 
+      - name: Test backend network policy
+        run: pnpm run test:back
+
       - name: Lint backend
         run: pnpm --filter @notblox/back run lint
 
       - name: Type-check backend
         run: pnpm --filter @notblox/back run build
+
+      - name: Build frontend production bundle
+        run: pnpm run build:front
 
   docker-smoke:
     name: Docker build & smoke test

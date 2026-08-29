@@ -9,7 +9,7 @@ import {
   us_listen_socket,
   us_socket_context_t,
 } from 'uWebSockets.js'
-import { unpack } from 'msgpackr'
+import { randomUUID } from 'node:crypto'
 import { RateLimiterMemory } from 'rate-limiter-flexible'
 import { config } from '@shared/network/config.js'
 
@@ -25,7 +25,6 @@ import {
 } from '@shared/network/client/index.js'
 import {
   ConnectionMessage,
-  SerializedMessageType,
   ServerMessageType,
 } from '@shared/network/server/index.js'
 import { EventSystem } from '@shared/system/EventSystem.js'
@@ -43,50 +42,54 @@ import { MessageListComponent } from '@shared/component/MessageComponent.js'
 import { ChatComponent } from '../../component/tag/TagChatComponent.js'
 import { WebSocketComponent } from '../../component/WebsocketComponent.js'
 import { WorldActionEvent } from '../../component/events/WorldActionEvent.js'
+import { decodeClientMessage, MAX_CLIENT_MESSAGE_BYTES } from './clientMessageValidation.js'
+import {
+  buildHealthPayload,
+  isAdminAuthorized,
+  isWebSocketOriginAllowed,
+  readBoundedInteger,
+  resolveAllowedOrigins,
+} from './serverPolicy.js'
 
-type PlayerData = { player?: Player }
+type PlayerData = { player?: Player; rateKey: string }
 type MessageHandler = (ws: WebSocket<PlayerData>, message: ClientMessage) => void
 
-function allowedOriginsFromEnv(raw: string | undefined): string[] {
-  if (!raw) return []
-  return raw
-    .split(',')
-    .map((s) => s.trim())
-    .filter(Boolean)
-}
-
-function originAllowed(origin: string, allowed: string[]): boolean {
-  if (allowed.length === 0) return true
-  if (allowed.includes('*')) return true
-  if (allowed.includes(origin)) return true
-  return allowed.some((rule) => {
-    if (!rule.includes('*')) return false
-    const escaped = rule.replace(/[.+?^${}()|[\]\\]/g, '\\$&').replace(/\\\*/g, '.*')
-    return new RegExp(`^${escaped}$`).test(origin)
-  })
-}
-
 export class WebsocketSystem {
-  private port: number = Number(process.env.PORT || process.env.GAME_PORT || 8001)
+  private port: number
   private players: Player[] = []
   private messageHandlers: Map<ClientMessageType, MessageHandler> = new Map()
   private inputProcessingSystem: InputProcessingSystem = new InputProcessingSystem()
-  private limiter = new RateLimiterMemory({
+  private connectionLimiter = new RateLimiterMemory({
     points: 10, // Max 10 points per second
     duration: 1, // Each point expires after 1 second
   })
+  private messageLimiter: RateLimiterMemory
+  private applicationReady = false
+  private resolveListening!: () => void
+  private rejectListening!: (reason?: unknown) => void
+  public readonly listening: Promise<void>
 
   constructor() {
-    const configuredPort = Number(process.env.GAME_PORT)
-    if (Number.isInteger(configuredPort) && configuredPort > 0 && configuredPort <= 65535) {
-      this.port = configuredPort
-    }
-    this.initializeServer()
+    this.port = readBoundedInteger(process.env.PORT ?? process.env.GAME_PORT, 8001, 1, 65535)
+    this.messageLimiter = new RateLimiterMemory({
+      points: readBoundedInteger(process.env.MAX_MESSAGES_PER_SECOND, 80, 10, 1000),
+      duration: 1,
+    })
+    this.listening = new Promise<void>((resolve, reject) => {
+      this.resolveListening = resolve
+      this.rejectListening = reject
+    })
     this.initializeMessageHandlers()
+    this.initializeServer()
   }
-  private async isRateLimited(ip: string): Promise<boolean> {
+
+  markReady() {
+    this.applicationReady = true
+  }
+
+  private async isConnectionRateLimited(ip: string): Promise<boolean> {
     try {
-      await this.limiter.consume(ip) // Use a unique identifier for each WebSocket connection
+      await this.connectionLimiter.consume(ip)
       return false // Not rate limited
       // eslint-disable-next-line @typescript-eslint/no-unused-vars
     } catch (_rejRes) {
@@ -97,7 +100,7 @@ export class WebsocketSystem {
   private initializeServer() {
     const isProduction = process.env.NODE_ENV === 'production'
     const listenHost = process.env.LISTEN_HOST || (isProduction ? '0.0.0.0' : '127.0.0.1')
-    const allowedOrigins = allowedOriginsFromEnv(process.env.FRONTEND_URL)
+    const allowedOrigins = resolveAllowedOrigins(isProduction)
     const sslKeyFile = process.env.SSL_KEY_FILE || ''
     const sslCertFile = process.env.SSL_CERT_FILE || ''
     const isRailway = Boolean(
@@ -120,9 +123,7 @@ export class WebsocketSystem {
     console.log(`TLS in-process: ${useTls ? 'on' : 'off (edge proxy)'}`)
     console.log(`PORT : Listening on ${listenHost}:${this.port}`)
 
-    if (allowedOrigins.length) {
-      console.log('FRONTEND_URL : accepting origins:', allowedOrigins.join(', '))
-    }
+    console.log('WebSocket origins: only accepting', [...allowedOrigins].join(', '))
 
     const app = useTls
       ? SSLApp({
@@ -131,55 +132,57 @@ export class WebsocketSystem {
         })
       : App()
 
-    // Add health check endpoint
+    // Health is deliberately operational-only: no player names, chat, notifications, or target IDs.
     app.get('/health', (res) => {
-      // Get connected players count
-      const connectedPlayers = this.players.map(
-        (player) => player.entity.getComponent(PlayerComponent)?.name
+      const healthData = buildHealthPayload(
+        this.applicationReady,
+        process.env.GAME_SCRIPT || 'Unknown',
+        config.SERVER_TICKRATE
       )
+      res.writeStatus(this.applicationReady ? '200 OK' : '503 Service Unavailable')
+      res.writeHeader('Content-Type', 'application/json')
+      res.writeHeader('Cache-Control', 'no-store')
+      res.end(JSON.stringify(healthData))
+    })
 
-      // Get message list from MessageListComponent if available
+    // Optional in-memory moderation view. It is unavailable until an admin token is configured.
+    app.get('/admin/events', (res, req) => {
+      const adminToken = process.env.ADMIN_API_TOKEN
+      if (!adminToken) {
+        res.writeStatus('404 Not Found').end()
+        return
+      }
+      if (!isAdminAuthorized(req.getHeader('authorization'), adminToken)) {
+        res.writeStatus('401 Unauthorized')
+        res.writeHeader('WWW-Authenticate', 'Bearer')
+        res.writeHeader('Cache-Control', 'no-store')
+        res.end(JSON.stringify({ error: 'unauthorized' }))
+        return
+      }
+
       const chatEntity = EntityManager.getFirstEntityWithComponent(
         EntityManager.getInstance().getAllEntities(),
         ChatComponent
       )
-      const messageListComponent = chatEntity?.getComponent(MessageListComponent)
-      const messages = messageListComponent?.list
-
-      const healthData = {
-        status: 'ok',
-        timestamp: new Date().toISOString(),
-        uptime: process.uptime(),
-        game: {
-          script: process.env.GAME_SCRIPT || 'Unknown',
-          tickrate: config.SERVER_TICKRATE,
-        },
-        players: connectedPlayers,
-        messages: {
-          globalChat: messages?.filter(
-            ({ messageType }) => messageType === SerializedMessageType.GLOBAL_CHAT
-          ),
-          targetedChat: messages?.filter(
-            ({ messageType }) => messageType === SerializedMessageType.TARGETED_CHAT
-          ),
-          globalNotification: messages?.filter(
-            ({ messageType }) => messageType === SerializedMessageType.GLOBAL_NOTIFICATION
-          ),
-          targetedNotification: messages?.filter(
-            ({ messageType }) => messageType === SerializedMessageType.TARGETED_NOTIFICATION
-          ),
-        },
-      }
-
+      const messages = chatEntity?.getComponent(MessageListComponent)?.list ?? []
       res.writeHeader('Content-Type', 'application/json')
-      res.writeHeader('Access-Control-Allow-Origin', '*')
-      res.end(JSON.stringify(healthData))
+      res.writeHeader('Cache-Control', 'no-store')
+      res.end(
+        JSON.stringify({
+          retention: {
+            storage: 'memory',
+            maxMessages: config.MAX_RETAINED_MESSAGES,
+            resetsOnRestart: true,
+          },
+          events: messages.map((message) => message.serialize()),
+        })
+      )
     })
 
     app.ws<PlayerData>('/*', {
       idleTimeout: 32,
       maxBackpressure: 1024,
-      maxPayloadLength: 512,
+      maxPayloadLength: MAX_CLIENT_MESSAGE_BYTES,
       compression: DEDICATED_COMPRESSOR_3KB,
       message: this.onMessage.bind(this),
       open: this.onConnect.bind(this),
@@ -194,19 +197,19 @@ export class WebsocketSystem {
   }
   private upgradeHandler(
     isProduction: boolean,
-    allowedOrigins: string[],
+    allowedOrigins: ReadonlySet<string>,
     res: HttpResponse,
     req: HttpRequest,
     context: us_socket_context_t
   ) {
     const origin = req.getHeader('origin')
-    if (isProduction && allowedOrigins.length > 0 && origin && !originAllowed(origin, allowedOrigins)) {
+    if (!isWebSocketOriginAllowed(origin, isProduction, allowedOrigins)) {
       res.writeStatus('403 Forbidden').end()
       return
     }
 
     res.upgrade<PlayerData>(
-      {},
+      { rateKey: randomUUID() },
       req.getHeader('sec-websocket-key'),
       req.getHeader('sec-websocket-protocol'),
       req.getHeader('sec-websocket-extensions'),
@@ -217,8 +220,11 @@ export class WebsocketSystem {
   private listenHandler(listenSocket: us_listen_socket, listenHost: string) {
     if (listenSocket) {
       console.log(`WebSocket server listening on ${listenHost}:${this.port}`)
+      this.resolveListening()
     } else {
-      console.error(`Failed to listen on ${listenHost}:${this.port}`)
+      const error = new Error(`Failed to listen on ${listenHost}:${this.port}`)
+      console.error(error.message)
+      this.rejectListening(error)
     }
   }
 
@@ -254,10 +260,36 @@ export class WebsocketSystem {
   }
 
   private onMessage(ws: WebSocket<PlayerData>, message: ArrayBuffer) {
-    const clientMessage: ClientMessage = unpack(Buffer.from(message))
-    const handler = this.messageHandlers.get(clientMessage.t)
-    if (handler) {
-      handler(ws, clientMessage)
+    void this.processMessage(ws, message)
+  }
+
+  private async processMessage(ws: WebSocket<PlayerData>, payload: ArrayBuffer) {
+    try {
+      await this.messageLimiter.consume(ws.getUserData().rateKey)
+    } catch {
+      console.warn('Closing WebSocket connection after per-message rate limit exceeded')
+      ws.end(1008, 'Message rate limit exceeded')
+      return
+    }
+
+    const decoded = decodeClientMessage(payload)
+    if (!decoded.ok) {
+      console.warn(`Closing WebSocket connection after rejected client message: ${decoded.reason}`)
+      ws.end(1008, 'Invalid client message')
+      return
+    }
+
+    const handler = this.messageHandlers.get(decoded.message.t)
+    if (!handler) {
+      ws.end(1008, 'Unsupported client message')
+      return
+    }
+
+    try {
+      handler(ws, decoded.message)
+    } catch (error) {
+      console.error('Client message handler failed', error)
+      ws.end(1011, 'Message handler failed')
     }
   }
 
@@ -267,9 +299,9 @@ export class WebsocketSystem {
   private async onConnect(ws: WebSocket<PlayerData>) {
     const ipBuffer = ws.getRemoteAddressAsText() as ArrayBuffer
     const ip = Buffer.from(ipBuffer).toString()
-    if (await this.isRateLimited(ip)) {
+    if (await this.isConnectionRateLimited(ip)) {
       // Respond to the client indicating that the connection is rate limited
-      return ws.close()
+      return ws.end(1008, 'Connection rate limit exceeded')
     }
     const player = new Player(ws, Math.random() * 5, 5, Math.random() * 5)
     const connectionMessage: ConnectionMessage = {
@@ -329,6 +361,7 @@ export class WebsocketSystem {
       typeof right !== 'boolean' ||
       typeof space !== 'boolean' ||
       typeof angleY !== 'number' ||
+      !Number.isFinite(angleY) ||
       typeof interact !== 'boolean'
     ) {
       console.error('Invalid input message', message)
@@ -339,7 +372,6 @@ export class WebsocketSystem {
   }
 
   private handleChatMessage(ws: WebSocket<PlayerData>, message: ChatMessage) {
-    console.log('Chat message received', message)
     const player = ws.getUserData().player
     if (!player) {
       console.error(`Player with WS ${ws} not found.`)
@@ -347,8 +379,13 @@ export class WebsocketSystem {
     }
 
     const { content } = message
-    if (!content || typeof content !== 'string' || content.length === 0) {
-      console.error(`Invalid chat message, sent from ${player}`, message)
+    if (
+      !content ||
+      typeof content !== 'string' ||
+      content.trim().length === 0 ||
+      content.length > config.MAX_MESSAGE_CONTENT_LENGTH
+    ) {
+      console.error(`Invalid chat message from player ${player.entity.id}`)
       return
     }
 
@@ -370,6 +407,10 @@ export class WebsocketSystem {
       return
     }
     const { eId } = message
+    if (!Number.isSafeInteger(eId) || eId <= 0) {
+      console.error(`Invalid proximity entity ID from player ${player.entity.id}`)
+      return
+    }
     EventSystem.addEvent(new ProximityPromptInteractEvent(player.entity.id, eId))
   }
 
@@ -429,7 +470,8 @@ export class WebsocketSystem {
     }
 
     const { name } = message
-    if (!name || typeof name !== 'string') {
+    if (!name || typeof name !== 'string' || name.length > 64) {
+      console.error(`Invalid player name message, sent from ${player.entity.id}`)
       return
     }
 

@@ -3,10 +3,16 @@ import type { Metadata } from 'next'
 
 export const metadata: Metadata = {
   metadataBase: new URL('https://blox.grudge-studio.com'),
+  applicationName: 'GrudgeBlox',
+  manifest: '/manifest.webmanifest',
   icons: {
-    icon: '/favicon.ico',
+    icon: [
+      { url: '/favicon.ico' },
+      { url: '/icons/grudgeblox-32.png', type: 'image/png', sizes: '32x32' },
+      { url: '/icons/grudgeblox-192.png', type: 'image/png', sizes: '192x192' },
+    ],
     shortcut: '/favicon.ico',
-    apple: '/LogoFlat.png',
+    apple: [{ url: '/icons/grudgeblox-180.png', type: 'image/png', sizes: '180x180' }],
   },
 }
 

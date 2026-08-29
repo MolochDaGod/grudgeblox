@@ -47,7 +47,7 @@ services:
         max-file: '3'
 
   game_obby_parkour:
-    image: ghcr.io/iercann/notblox-game-server:latest
+    image: ${GRUDGEBLOX_GAME_IMAGE:-ghcr.io/molochdagod/grudgeblox-game-server:latest}
     labels:
       - com.centurylinklabs.watchtower.enable=true
     environment:
@@ -67,7 +67,7 @@ services:
         max-file: '3'
 
   game_football:
-    image: ghcr.io/iercann/notblox-game-server:latest
+    image: ${GRUDGEBLOX_GAME_IMAGE:-ghcr.io/molochdagod/grudgeblox-game-server:latest}
     labels:
       - com.centurylinklabs.watchtower.enable=true
     environment:
@@ -87,7 +87,7 @@ services:
         max-file: '3'
 
   game_pet_simulator:
-    image: ghcr.io/iercann/notblox-game-server:latest
+    image: ${GRUDGEBLOX_GAME_IMAGE:-ghcr.io/molochdagod/grudgeblox-game-server:latest}
     labels:
       - com.centurylinklabs.watchtower.enable=true
     environment:
