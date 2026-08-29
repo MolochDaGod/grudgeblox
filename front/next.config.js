@@ -6,7 +6,7 @@ const nextConfig = {
   },
   env: {
     NEXT_PUBLIC_SERVER_URL:
-      process.env.NEXT_PUBLIC_SERVER_URL || 'wss://blox-game.grudge-studio.com',
+      process.env.NEXT_PUBLIC_SERVER_URL || 'wss://grudgeblox-production.up.railway.app',
     NEXT_PUBLIC_FLEET_ASSETS:
       process.env.NEXT_PUBLIC_FLEET_ASSETS || 'https://assets.grudge-studio.com',
   },

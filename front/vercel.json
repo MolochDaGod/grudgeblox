@@ -1,7 +1,4 @@
 {
-  "installCommand": "pnpm install",
-  "buildCommand": "pnpm run build:shared && pnpm run build:front",
-  "framework": "nextjs",
   "rewrites": [
     {
       "source": "/login",
