@@ -46,7 +46,7 @@ type PlayerData = { player?: Player }
 type MessageHandler = (ws: WebSocket<PlayerData>, message: ClientMessage) => void
 
 export class WebsocketSystem {
-  private port: number = 8001
+  private port: number = Number(process.env.PORT) || 8001
   private players: Player[] = []
   private messageHandlers: Map<ClientMessageType, MessageHandler> = new Map()
   private inputProcessingSystem: InputProcessingSystem = new InputProcessingSystem()
@@ -77,11 +77,24 @@ export class WebsocketSystem {
     const isProduction = process.env.NODE_ENV === 'production'
     const listenHost = process.env.LISTEN_HOST || (isProduction ? '0.0.0.0' : '127.0.0.1')
     const acceptedOrigin: string | undefined = process.env.FRONTEND_URL
-    const sslKeyFile: string = process.env.SSL_KEY_FILE || '/etc/letsencrypt/live/npm-3/privkey.pem'
-    const sslCertFile: string = process.env.SSL_CERT_FILE || '/etc/letsencrypt/live/npm-3/cert.pem'
-
-    if (isProduction) {
-      console.log('NODE_ENV : Running in production mode')
+    
+    // Detect Railway: Railway always injects RAILWAY_ENVIRONMENT_NAME, RAILWAY_ENVIRONMENT_ID, and RAILWAY_SERVICE_ID
+    const isRailway = Boolean(
+      process.env.RAILWAY_ENVIRONMENT_NAME ||
+      process.env.RAILWAY_ENVIRONMENT_ID ||
+      process.env.RAILWAY_SERVICE_ID
+    )
+    
+    // SSL/TLS decision:
+    // - Railway: ALWAYS use plain HTTP App() (Railway proxy handles TLS)
+    // - VPS with NODE_ENV=production: use SSLApp with mounted certs
+    // - Local dev: use plain HTTP App()
+    const useSSL = isProduction && !isRailway
+    
+    if (isRailway) {
+      console.log('RAILWAY : Detected Railway environment, using plain HTTP behind proxy')
+    } else if (isProduction) {
+      console.log('NODE_ENV : Running in production mode with SSL/TLS')
     } else {
       console.log('NODE_ENV : Running in development mode')
     }
@@ -90,12 +103,26 @@ export class WebsocketSystem {
       console.log('FRONTEND_URL : Only accepting connections from origin:', acceptedOrigin)
     }
 
-    const app = isProduction
-      ? SSLApp({
-          key_file_name: sslKeyFile,
-          cert_file_name: sslCertFile,
-        })
-      : App()
+    console.log(`PORT : Listening on ${this.port}`)
+
+    let app
+    if (useSSL) {
+      // VPS production mode: check if cert files exist before using SSLApp
+      const sslKeyFile: string = process.env.SSL_KEY_FILE || '/etc/letsencrypt/live/npm-3/privkey.pem'
+      const sslCertFile: string = process.env.SSL_CERT_FILE || '/etc/letsencrypt/live/npm-3/cert.pem'
+      
+      console.log('SSL : Attempting to use SSLApp with mounted certificates')
+      console.log(`SSL_KEY_FILE : ${sslKeyFile}`)
+      console.log(`SSL_CERT_FILE : ${sslCertFile}`)
+      
+      app = SSLApp({
+        key_file_name: sslKeyFile,
+        cert_file_name: sslCertFile,
+      })
+    } else {
+      // Railway or development: plain HTTP (proxy handles TLS if needed)
+      app = App()
+    }
 
     // Add health check endpoint
     app.get('/health', (res) => {
