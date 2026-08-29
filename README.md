@@ -2,7 +2,15 @@
 
 **Modular WebSocket game-server kit for Grudge Studio multiplayer games.**
 
-GrudgeBlox provides a shared ECS (Entity-Component-System) runtime with real-time physics, networking, and pluggable game scripts. Game servers run on Railway; web clients are Next.js SPAs deployed to Vercel. This kit powers Warlords, Nemesis, Armada, and other studio titles.
+GrudgeBlox provides a shared ECS runtime with real-time physics, networking, and pluggable game scripts. Game rooms run on Railway; the web client is Next.js on Vercel.
+
+### Live
+
+- **Frontend:** [blox.grudge-studio.com](https://blox.grudge-studio.com/)
+- **Game room:** `wss://blox-game.grudge-studio.com`
+- **Repo:** [github.com/MolochDaGod/grudgeblox](https://github.com/MolochDaGod/grudgeblox)
+- Characters / bag: fleet Railway `grudge-api-production` (not a second player DB)
+- Upstream engine: [NotBlox.online](https://www.notblox.online/)
 
 ---
 

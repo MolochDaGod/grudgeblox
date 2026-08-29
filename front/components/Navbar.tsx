@@ -39,6 +39,14 @@ export default function Navbar() {
             Mine lobby
           </a>
           <a
+            href={FLEET.grudoxStudio}
+            className="text-cyan-400/90 hover:text-cyan-300"
+            target="_blank"
+            rel="noreferrer"
+          >
+            Voxel Studio
+          </a>
+          <a
             href={FLEET.grudox}
             className="text-violet-400/90 hover:text-violet-300"
             target="_blank"

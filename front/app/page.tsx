@@ -63,7 +63,14 @@ export default async function Home() {
           Twitter
         </Link>
         <Link
-          href={'https://github.com/iErcann/Notblox'}
+          href={'https://blox.grudge-studio.com'}
+          className="flex py-2 items-center justify-center   px-8   font-medium   border border-transparent rounded-md hover:bg-gray-100   md:text-lg md:px-10"
+        >
+          <ExternalLink className="mr-2" />
+          Live · blox.grudge-studio.com
+        </Link>
+        <Link
+          href={'https://github.com/MolochDaGod/grudgeblox'}
           className="flex py-2 items-center justify-center   px-8   font-medium  border border-transparent rounded-md hover:bg-gray-100   md:text-lg md:px-10"
         >
           <Github className="mr-2" />

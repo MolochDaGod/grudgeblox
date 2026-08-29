@@ -131,6 +131,9 @@ export default function FleetCharacterSelect({
           <a href={FLEET.mineLobby} className="text-sky-400/90 underline" target="_blank" rel="noreferrer">
             Mine-Loader lobby
           </a>
+          <a href={FLEET.grudoxStudio} className="text-cyan-400/90 underline" target="_blank" rel="noreferrer">
+            Voxel Studio
+          </a>
           <a href={FLEET.grudox} className="text-violet-400/90 underline" target="_blank" rel="noreferrer">
             GRUDOX hub
           </a>
@@ -145,7 +148,7 @@ export default function FleetCharacterSelect({
       </button>
       <p className="text-[10px] text-stone-500 leading-relaxed">
         Avatar uses fleet grudge6 / voxel mesh on CDN. Weapon skills 1–5: windup → hit / projectile
-        impact. Worlds: blox.grudge-studio.com · mine.grudge-studio.com · grudox.grudge-studio.com
+        impact. Worlds: blox · mine · grudox/studio (Voxel Studio tools)
       </p>
     </div>
   )

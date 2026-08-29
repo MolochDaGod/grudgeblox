@@ -45,6 +45,6 @@ WORKDIR /app/back
 
 # Probe TCP port 8001 – container is healthy once the WS server is accepting connections
 HEALTHCHECK --interval=5s --timeout=3s --start-period=15s --retries=3 \
-  CMD node -e "const n=require('net').createConnection(8001,'localhost'); n.on('connect',()=>{n.destroy();process.exit(0);}); n.on('error',()=>process.exit(1));"
+  CMD node -e "const p=process.env.PORT||8001; const n=require('net').createConnection(Number(p),'localhost'); n.on('connect',()=>{n.destroy();process.exit(0);}); n.on('error',()=>process.exit(1));"
 
 CMD ["node", "--import", "tsx/esm", "src/sandbox.ts"]

@@ -222,6 +222,14 @@ export default function MetaverseHud({
               Mine play
             </a>
             <a
+              href={FLEET.grudoxStudio}
+              target="_blank"
+              rel="noreferrer"
+              className="text-[11px] px-2 py-1 rounded-md bg-black/60 border border-cyan-700/40 text-cyan-200 hover:bg-cyan-950/50"
+            >
+              Voxel Studio
+            </a>
+            <a
               href={fightLinks?.grudox || FLEET.grudox}
               target="_blank"
               rel="noreferrer"

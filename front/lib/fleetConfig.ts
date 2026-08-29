@@ -27,8 +27,12 @@ export const FLEET = {
   mine: 'https://mine.grudge-studio.com',
   mineLobby: 'https://mine.grudge-studio.com/#/lobby',
   minePlay: 'https://mine.grudge-studio.com/#/play',
+  /** Creative Sandbox Voxel Studio (Mine-Loader monorepo artifact) */
+  mineStudio: 'https://mine.grudge-studio.com/studio/',
   /** GRUDOX multiplayer hub */
   grudox: 'https://grudox.grudge-studio.com',
+  /** Voxel Studio tool surface on GRUDOX (BASE_PATH=/studio/) */
+  grudoxStudio: 'https://grudox.grudge-studio.com/studio/',
   /** Foundry create */
   foundry: 'https://character.grudge-studio.com',
   /** Production play lab (Warlords) */

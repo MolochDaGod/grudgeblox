@@ -1,3 +1,4 @@
+import { existsSync } from 'node:fs'
 import {
   App,
   DEDICATED_COMPRESSOR_3KB,
@@ -45,8 +46,27 @@ import { WorldActionEvent } from '../../component/events/WorldActionEvent.js'
 type PlayerData = { player?: Player }
 type MessageHandler = (ws: WebSocket<PlayerData>, message: ClientMessage) => void
 
+function allowedOriginsFromEnv(raw: string | undefined): string[] {
+  if (!raw) return []
+  return raw
+    .split(',')
+    .map((s) => s.trim())
+    .filter(Boolean)
+}
+
+function originAllowed(origin: string, allowed: string[]): boolean {
+  if (allowed.length === 0) return true
+  if (allowed.includes('*')) return true
+  if (allowed.includes(origin)) return true
+  return allowed.some((rule) => {
+    if (!rule.includes('*')) return false
+    const escaped = rule.replace(/[.+?^${}()|[\]\\]/g, '\\$&').replace(/\\\*/g, '.*')
+    return new RegExp(`^${escaped}$`).test(origin)
+  })
+}
+
 export class WebsocketSystem {
-  private port: number = Number(process.env.PORT) || 8001
+  private port: number = Number(process.env.PORT || process.env.GAME_PORT || 8001)
   private players: Player[] = []
   private messageHandlers: Map<ClientMessageType, MessageHandler> = new Map()
   private inputProcessingSystem: InputProcessingSystem = new InputProcessingSystem()
@@ -76,53 +96,39 @@ export class WebsocketSystem {
   private initializeServer() {
     const isProduction = process.env.NODE_ENV === 'production'
     const listenHost = process.env.LISTEN_HOST || (isProduction ? '0.0.0.0' : '127.0.0.1')
-    const acceptedOrigin: string | undefined = process.env.FRONTEND_URL
-    
-    // Detect Railway: Railway always injects RAILWAY_ENVIRONMENT_NAME, RAILWAY_ENVIRONMENT_ID, and RAILWAY_SERVICE_ID
+    const allowedOrigins = allowedOriginsFromEnv(process.env.FRONTEND_URL)
+    const sslKeyFile = process.env.SSL_KEY_FILE || ''
+    const sslCertFile = process.env.SSL_CERT_FILE || ''
     const isRailway = Boolean(
       process.env.RAILWAY_ENVIRONMENT_NAME ||
-      process.env.RAILWAY_ENVIRONMENT_ID ||
-      process.env.RAILWAY_SERVICE_ID
+        process.env.RAILWAY_ENVIRONMENT_ID ||
+        process.env.RAILWAY_SERVICE_ID,
     )
-    
-    // SSL/TLS decision:
-    // - Railway: ALWAYS use plain HTTP App() (Railway proxy handles TLS)
-    // - VPS with NODE_ENV=production: use SSLApp with mounted certs
-    // - Local dev: use plain HTTP App()
-    const useSSL = isProduction && !isRailway
-    
+    // Railway / Vercel terminate TLS. Only bind SSLApp when cert files exist and we are not on Railway.
+    const useTls =
+      !isRailway &&
+      Boolean(sslKeyFile && sslCertFile && existsSync(sslKeyFile) && existsSync(sslCertFile))
+
     if (isRailway) {
-      console.log('RAILWAY : Detected Railway environment, using plain HTTP behind proxy')
+      console.log('RAILWAY : plain HTTP behind proxy')
     } else if (isProduction) {
-      console.log('NODE_ENV : Running in production mode with SSL/TLS')
+      console.log('NODE_ENV : production')
     } else {
-      console.log('NODE_ENV : Running in development mode')
+      console.log('NODE_ENV : development')
+    }
+    console.log(`TLS in-process: ${useTls ? 'on' : 'off (edge proxy)'}`)
+    console.log(`PORT : Listening on ${listenHost}:${this.port}`)
+
+    if (allowedOrigins.length) {
+      console.log('FRONTEND_URL : accepting origins:', allowedOrigins.join(', '))
     }
 
-    if (acceptedOrigin) {
-      console.log('FRONTEND_URL : Only accepting connections from origin:', acceptedOrigin)
-    }
-
-    console.log(`PORT : Listening on ${this.port}`)
-
-    let app
-    if (useSSL) {
-      // VPS production mode: check if cert files exist before using SSLApp
-      const sslKeyFile: string = process.env.SSL_KEY_FILE || '/etc/letsencrypt/live/npm-3/privkey.pem'
-      const sslCertFile: string = process.env.SSL_CERT_FILE || '/etc/letsencrypt/live/npm-3/cert.pem'
-      
-      console.log('SSL : Attempting to use SSLApp with mounted certificates')
-      console.log(`SSL_KEY_FILE : ${sslKeyFile}`)
-      console.log(`SSL_CERT_FILE : ${sslCertFile}`)
-      
-      app = SSLApp({
-        key_file_name: sslKeyFile,
-        cert_file_name: sslCertFile,
-      })
-    } else {
-      // Railway or development: plain HTTP (proxy handles TLS if needed)
-      app = App()
-    }
+    const app = useTls
+      ? SSLApp({
+          key_file_name: sslKeyFile,
+          cert_file_name: sslCertFile,
+        })
+      : App()
 
     // Add health check endpoint
     app.get('/health', (res) => {
@@ -164,8 +170,8 @@ export class WebsocketSystem {
         },
       }
 
-      // Send response
       res.writeHeader('Content-Type', 'application/json')
+      res.writeHeader('Access-Control-Allow-Origin', '*')
       res.end(JSON.stringify(healthData))
     })
 
@@ -178,7 +184,7 @@ export class WebsocketSystem {
       open: this.onConnect.bind(this),
       drain: this.onDrain.bind(this),
       close: this.onClose.bind(this),
-      upgrade: this.upgradeHandler.bind(this, isProduction, acceptedOrigin),
+      upgrade: this.upgradeHandler.bind(this, isProduction, allowedOrigins),
     })
 
     app.listen(listenHost, this.port, (listenSocket) =>
@@ -187,14 +193,13 @@ export class WebsocketSystem {
   }
   private upgradeHandler(
     isProduction: boolean,
-    acceptedOrigin: string | undefined,
+    allowedOrigins: string[],
     res: HttpResponse,
     req: HttpRequest,
     context: us_socket_context_t
   ) {
-    // Only accept connections from the frontend
     const origin = req.getHeader('origin')
-    if (isProduction && acceptedOrigin && origin !== acceptedOrigin) {
+    if (isProduction && allowedOrigins.length > 0 && origin && !originAllowed(origin, allowedOrigins)) {
       res.writeStatus('403 Forbidden').end()
       return
     }
