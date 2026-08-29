@@ -11,6 +11,7 @@ import type { WeaponSkillDef } from '@/lib/weaponSkillsCombat'
 import { CurrentPlayerComponent } from '@/game/ecs/component/CurrentPlayerComponent'
 import { MeshComponent } from '@/game/ecs/component/MeshComponent'
 import { applyAvatarToMesh, type LoadedAvatar } from '@/lib/grudgeAvatar'
+import { fxForSkillStyle } from '@/lib/fourCharacterKit'
 import {
   FlyingProjectile,
   baseDamageForSkill,
@@ -61,11 +62,10 @@ export default function GamePlayer({
       setGameInstance(game)
       try {
         await game.start()
-        if (playerName && playerName.trim()) {
-          game.setPlayerName(playerName.trim())
-        }
         if (character?.id) {
           game.setFleetCharacter?.(character)
+        } else if (playerName && playerName.trim()) {
+          game.setPlayerName(playerName.trim())
         }
         if (active) setIsLoading(false)
       } catch (error) {
@@ -217,6 +217,7 @@ export default function GamePlayer({
         if (phase === 'windup') {
           if (meshRoot) meshRoot.scale.setScalar(1.03)
           if (collider) collider.visible = false
+          gameInstance.sendPlayerFx?.(fxForSkillStyle(skill.style, skill.projectile))
         } else if (phase === 'active') {
           if (meshRoot) meshRoot.scale.setScalar(1)
           // Melee: enable weapon collider for active window

@@ -59,7 +59,7 @@ export class Player {
 
     const serverMeshComponent = new ServerMeshComponent(
       this.entity.id,
-      'https://notbloxo.fra1.cdn.digitaloceanspaces.com/Notblox-Assets/character/Character.glb'
+      '/kit/4character/races/human.glb'
     )
     this.entity.addComponent(serverMeshComponent)
 

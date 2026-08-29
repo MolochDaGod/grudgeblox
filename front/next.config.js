@@ -9,6 +9,8 @@ const nextConfig = {
       process.env.NEXT_PUBLIC_SERVER_URL || 'wss://grudgeblox-production.up.railway.app',
     NEXT_PUBLIC_FLEET_ASSETS:
       process.env.NEXT_PUBLIC_FLEET_ASSETS || 'https://assets.grudge-studio.com',
+    NEXT_PUBLIC_MINE:
+      process.env.NEXT_PUBLIC_MINE || 'https://mine.grudge-studio.com',
   },
   images: {
     remotePatterns: [

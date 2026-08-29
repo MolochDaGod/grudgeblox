@@ -18,12 +18,14 @@ import {
   TextComponentSystem,
   InvisibilitySystem,
   VehicleSystem,
+  PlayerAvatarSystem,
 } from './ecs/system'
 import { Hud } from './Hud'
 import { Renderer } from './Renderer'
 import { EventSystem } from '@shared/system/EventSystem'
 import { MutableRefObject } from 'react'
-import { ClientMessageType, SetPlayerNameMessage } from '@shared/network/client'
+import { ClientMessageType, SetPlayerNameMessage, WorldActionMessage } from '@shared/network/client'
+import { kitModelKey, sanitizeKitModel3d } from '@/lib/fourCharacterKit'
 
 export class Game {
   private static instance: Game | undefined
@@ -48,6 +50,7 @@ export class Game {
   private textComponentSystem: TextComponentSystem
   private vehicleSystem: VehicleSystem
   private invisibilitySystem: InvisibilitySystem
+  private playerAvatarSystem: PlayerAvatarSystem
   renderer: Renderer
   hud: Hud
   private identifyFollowedMeshSystem: IdentifyFollowedMeshSystem
@@ -69,6 +72,7 @@ export class Game {
     this.textComponentSystem = new TextComponentSystem()
     this.vehicleSystem = new VehicleSystem()
     this.invisibilitySystem = new InvisibilitySystem()
+    this.playerAvatarSystem = new PlayerAvatarSystem()
 
     this.renderer = new Renderer(gameContainerRef)
     this.inputManager = new InputManager(this.websocketManager, this.renderer.camera.controlSystem)
@@ -110,25 +114,49 @@ export class Game {
    */
   setPlayerName(name: string) {
     if (!name || !name.trim()) return
-    
-    // Send the player name to the server using the correct message format
-    const message: SetPlayerNameMessage = {
-      t: ClientMessageType.SET_PLAYER_NAME,
-      name: name.trim()
-    }
-    this.websocketManager.send(message)
+    this.sendAppearance(name.trim())
   }
 
-  /** Fleet character id/race for avatar systems (client visual) */
-  fleetCharacter: { id: string; name: string; raceId?: string; classId?: string } | null = null
+  /** Fleet character id/race for avatar systems (replicated on PlayerComponent) */
+  fleetCharacter: {
+    id: string
+    name: string
+    raceId?: string
+    classId?: string
+    model3d?: string
+  } | null = null
 
   setFleetCharacter(character: {
     id: string
     name: string
     raceId?: string
     classId?: string
+    model3d?: string
   }) {
     this.fleetCharacter = character
+    this.sendAppearance(character.name || 'Player')
+  }
+
+  sendAppearance(name?: string) {
+    const c = this.fleetCharacter
+    const message: SetPlayerNameMessage = {
+      t: ClientMessageType.SET_PLAYER_NAME,
+      name: (name || c?.name || 'Player').trim().slice(0, 20),
+      raceId: c?.raceId,
+      classId: c?.classId,
+      characterId: c?.id,
+      model3d: sanitizeKitModel3d(c?.model3d, c?.raceId) || kitModelKey(c?.raceId),
+    }
+    this.websocketManager.send(message)
+  }
+
+  sendPlayerFx(fxId: string) {
+    const id = (fxId || 'slash').toLowerCase().replace(/[^a-z0-9_-]/g, '').slice(0, 16)
+    const message: WorldActionMessage = {
+      t: ClientMessageType.WORLD_ACTION,
+      action: `fx:${id}`,
+    }
+    this.websocketManager.send(message)
   }
 
   private loadingPromise: Promise<void> | null = null
@@ -164,6 +192,7 @@ export class Game {
     this.chatSystem.update(entities, this.hud)
     this.textComponentSystem.update(entities, deltaTime)
     this.syncSizeSystem.update(entities)
+    this.playerAvatarSystem.update(entities)
     this.animationSystem.update(deltaTime, entities)
     this.destroySystem.afterUpdate(entities)
     this.eventSystem.afterUpdate(entities)

@@ -9,6 +9,7 @@ import { DRACOLoader } from 'three/examples/jsm/loaders/DRACOLoader.js'
 import { raceCdnUrl, FLEET } from './fleetConfig'
 import type { FleetCharacter } from './fleetCharacters'
 import { getAvatarVisualCorrection } from './avatarVisualProfile'
+import { avatarAppearanceSig, isKitUrl, kitRaceUrl, kitWeaponUrl } from './fourCharacterKit'
 import {
   attachAvatarHitboxes,
   attachWeaponColliderToHand,
@@ -55,12 +56,30 @@ function fitHeight(root: THREE.Object3D, targetH = TARGET_HEIGHT_M) {
   root.position.y -= box2.min.y
 }
 
-function resolveUrl(character: FleetCharacter): string {
+export function resolveAvatarUrl(character: FleetCharacter): string {
   if (character.model3d) {
     if (character.model3d.startsWith('http')) return character.model3d
+    if (character.model3d.startsWith('/kit/')) return character.model3d
+    if (character.model3d.startsWith('races/')) return `/kit/4character/${character.model3d}`
+    if (character.model3d.startsWith('/')) return character.model3d
     return `${FLEET.assets}/${character.model3d.replace(/^\//, '')}`
   }
-  return raceCdnUrl(character.raceId)
+  return kitRaceUrl(character.raceId) || raceCdnUrl(character.raceId)
+}
+
+function resolveUrl(character: FleetCharacter): string {
+  return resolveAvatarUrl(character)
+}
+
+function findBone(root: THREE.Object3D, names: string[]): THREE.Object3D | null {
+  const want = names.map((n) => n.toLowerCase())
+  let found: THREE.Object3D | null = null
+  root.traverse((o) => {
+    if (found) return
+    const n = (o.name || '').toLowerCase()
+    if (want.some((w) => n === w || n.endsWith(w))) found = o
+  })
+  return found
 }
 
 function yBounds(root: THREE.Object3D) {
@@ -140,6 +159,8 @@ export type LoadedAvatar = {
   footIk: FootIkLite
   hitboxCount: number
   transformBounds?: AvatarTransformBounds
+  clips: THREE.AnimationClip[]
+  mixer: THREE.AnimationMixer
 }
 
 /**
@@ -156,10 +177,33 @@ export async function loadGrudgeAvatar(
   root.name = `grudge_avatar_${character.id}`
   root.userData.characterId = character.id
   root.userData.raceId = character.raceId
+  root.userData.kitUrl = url
   root.add(gltf.scene)
-  // grudge6 art-forward often +X; face +Z for Notblox camera
-  gltf.scene.rotation.y = Math.PI / 2
+  // Mixamo 4character kit already faces +Z. grudge6 Toon FBX-style kits need +π/2.
+  if (!isKitUrl(url)) {
+    gltf.scene.rotation.y = Math.PI / 2
+  }
   fitHeight(root, TARGET_HEIGHT_M)
+
+  const clips = gltf.animations?.length ? gltf.animations : []
+  const mixer = new THREE.AnimationMixer(gltf.scene)
+
+  try {
+    const weaponUrl = kitWeaponUrl(character.classId)
+    const weaponGltf = await loader.loadAsync(weaponUrl)
+    const hand = findBone(root, [
+      'mixamorigRightHand',
+      'mixamorig_righthand',
+      'righthand',
+      'hand_r',
+    ])
+    if (hand) {
+      weaponGltf.scene.scale.setScalar(1)
+      hand.add(weaponGltf.scene)
+    }
+  } catch {
+    /* weapon optional */
+  }
   const transformBounds = applyTopAnchoredVisualCorrection(
     root,
     gltf.scene,
@@ -192,9 +236,19 @@ export async function loadGrudgeAvatar(
   root.userData.hitboxCount = boxes.length
   root.userData.weaponCollider = weaponCollider
   root.userData.footIk = footIk
+  root.userData.clips = clips
+  root.userData.mixer = mixer
 
   root.userData.avatarTransformBounds = transformBounds
-  return { root, weaponCollider, footIk, hitboxCount: boxes.length, transformBounds }
+  return {
+    root,
+    weaponCollider,
+    footIk,
+    hitboxCount: boxes.length,
+    transformBounds,
+    clips,
+    mixer,
+  }
 }
 
 /**
@@ -217,8 +271,13 @@ export async function applyAvatarToMesh(
     meshRoot.add(loaded.root)
     meshRoot.userData.grudgeAvatar = true
     meshRoot.userData.characterId = character.id
+    meshRoot.userData.raceId = character.raceId
+    meshRoot.userData.classId = character.classId
+    meshRoot.userData.kitSig = avatarAppearanceSig(character)
     meshRoot.userData.weaponCollider = loaded.weaponCollider
     meshRoot.userData.footIk = loaded.footIk
+    meshRoot.userData.mixer = loaded.mixer
+    ;(meshRoot as THREE.Object3D & { animations?: THREE.AnimationClip[] }).animations = loaded.clips
     return loaded
   } catch (e) {
     console.warn('[grudgeAvatar] load failed', e)

@@ -53,6 +53,7 @@ fastlane/Preview.html
 fastlane/screenshots
 
 *.glb
+!public/kit/**/*.glb
 *.blend
 .vercel
 .env*

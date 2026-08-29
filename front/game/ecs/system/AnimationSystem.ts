@@ -1,7 +1,9 @@
+import * as THREE from 'three'
 import { Entity } from '@shared/entity/Entity'
 import { AnimationComponent } from '../component/AnimationComponent'
 import { StateComponent } from '@shared/component/StateComponent'
 import { MeshComponent } from '../component/MeshComponent'
+import { clipNameForState, findClip } from '@/lib/fourCharacterKit'
 
 export class AnimationSystem {
   update(dt: number, entities: Entity[]) {
@@ -12,25 +14,25 @@ export class AnimationSystem {
 
       if (animationComponent && stateComponent && meshComponent) {
         const mesh = meshComponent.mesh
-        const animations = mesh.animations
+        const animations: THREE.AnimationClip[] =
+          animationComponent.animations?.length > 0
+            ? animationComponent.animations
+            : mesh.animations || []
 
         const isNotPlaying = animationComponent.mixer.time === 0
 
-        if (stateComponent.updated || isNotPlaying) {
-          // Find the animation that corresponds to the current state
-          const requestAnimationName = stateComponent.state
+        if ((stateComponent.updated || isNotPlaying) && animations.length > 0) {
+          const match = findClip(animations, clipNameForState(String(stateComponent.state)))
+          const matchName = match?.name
 
           for (const clip of animations) {
             const action = animationComponent.mixer.clipAction(clip)
-            if (clip.name !== requestAnimationName) {
-              // Fade out all animations except the one corresponding to the current state
+            if (!matchName || clip.name !== matchName) {
               action.fadeOut(0.2)
             } else {
-              // Fade in and play the animation corresponding to the current state
               action.reset()
-
+              action.setLoop(THREE.LoopRepeat, Infinity)
               action.fadeIn(0.1)
-
               action.play()
             }
           }

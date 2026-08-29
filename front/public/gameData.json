@@ -15,8 +15,8 @@
     "websocketPort": 8001,
     "era": "voxel",
     "combatEnabled": true,
-    "metaDescription": "Metaverse test world \u2014 fleet character select, grudge6 avatar mesh, weapon skills 1\u20135. Host: blox.grudge-studio.com",
-    "markdown": "## GrudgeBlox Test World\n\nProduction sandbox for **voxel / GRUDOX-style** lobby + character select (Notblox `/play/test` flow) with **fleet Railway heroes** and **weapon skill combat timing**.\n\n### Stack\n- Lobby: name + fleet roster (Mine-Loader multi-era pattern)\n- Avatar: assets.grudge-studio.com grudge6 race kits\n- Skills: windup \u2192 active hit / projectile impact\n- DNS: blox.grudge-studio.com \u00b7 mine.grudge-studio.com \u00b7 grudox.grudge-studio.com\n\n### Controls\n- WASD move \u00b7 Space jump \u00b7 E interact \u00b7 1\u20135 skills \u00b7 Mouse look\n"
+    "metaDescription": "Voxel-era test world \u2014 4-slot era=voxel roster, 4character Mixamo skins, Mine-Loader Codex icons, weapon skills 1\u20135.",
+    "markdown": "## GrudgeBlox Test World\n\nVoxel / Realms play on **blox.grudge-studio.com**. Roster is **era=voxel only** (Mine-Loader law \u2014 Warlords heroes do not appear here).\n\n### Stack\n- 4-slot select + create (Railway `?era=voxel`)\n- Avatar: 4character Mixamo races (replicated to other players)\n- Portraits + hotbar: Mine-Loader Codex / `ui-icons`\n- Skills: windup \u2192 active hit / projectile impact\n- Peers: [Mine-Loader Codex](https://mine.grudge-studio.com/#/defs) \u00b7 [GRUDOX](https://grudox.grudge-studio.com)\n\n### Controls\n- WASD move \u00b7 Space jump \u00b7 E interact \u00b7 1\u20135 skills \u00b7 Mouse look\n"
   },
   {
     "title": "Combat Arena",
@@ -54,7 +54,7 @@
     "era": "voxel",
     "combatEnabled": false,
     "metaDescription": "Bridge room toward Mine-Loader lobby and GRUDOX hubs \u2014 character handoff test.",
-    "markdown": "## Voxel Lobby Bridge\n\nUse fleet character select, then jump to [Mine-Loader lobby](https://mine.grudge-studio.com/#/lobby) or [GRUDOX](https://grudox.grudge-studio.com).\n"
+    "markdown": "## Voxel Lobby Bridge\n\nEra=voxel 4-slot handoff. Jump to [Mine-Loader lobby](https://mine.grudge-studio.com/#/lobby), [Codex defs](https://mine.grudge-studio.com/#/defs), or [GRUDOX](https://grudox.grudge-studio.com).\n"
   },
   {
     "title": "GRUDOX Sandbox",
@@ -73,7 +73,7 @@
     "era": "nexus",
     "combatEnabled": true,
     "metaDescription": "Nexus / GRUDOX-era multiplayer sandbox with fleet avatars.",
-    "markdown": "## GRUDOX Sandbox\n\nNexus-era play with interim voxel/grudge6 avatars until toon pipeline is full-time.\n"
+    "markdown": "## GRUDOX Sandbox\n\nNexus-era roster (`?era=nexus`). Visual kit is the same 4character Mixamo pack used on voxel worlds so skins still replicate.\n"
   },
   {
     "title": "Dope Budz Streets",

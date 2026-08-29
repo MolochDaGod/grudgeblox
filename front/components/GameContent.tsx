@@ -93,6 +93,7 @@ export default function GameContent({ gameInfo }: { gameInfo: GameInfo }) {
                   onSelect={setCharacter}
                   onPlay={handlePlayClick}
                   gameTitle={gameInfo.title}
+                  era={gameInfo.era || 'voxel'}
                 />
               </div>
             </div>

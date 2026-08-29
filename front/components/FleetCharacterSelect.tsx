@@ -1,5 +1,6 @@
 /**
- * Notblox-style play lobby + fleet character select (Mine-Loader multi-era roster).
+ * Notblox-style play lobby + 4-slot character select/create (Mine-Loader + Foundry pattern).
+ * Looks: 4character Mixamo races. Identity: Railway when signed in.
  */
 'use client'
 
@@ -10,8 +11,18 @@ import {
   getStoredCharacterId,
   type FleetCharacter,
   guestExplorer,
+  createBloxHero,
 } from '@/lib/fleetCharacters'
 import { buildFoundryCreateUrl, buildLoginUrl, FLEET, getAuthToken } from '@/lib/fleetConfig'
+import { getEraPolicy } from '@/lib/characterEras'
+import { CODEX, probeCodexSystems, voxelPortraitUrl } from '@/lib/voxelCodex'
+import {
+  KIT_CLASSES,
+  KIT_RACES,
+  normalizeKitRace,
+  type KitClassId,
+  type KitRaceId,
+} from '@/lib/fourCharacterKit'
 
 export interface FleetCharacterSelectProps {
   playerName: string
@@ -20,7 +31,10 @@ export interface FleetCharacterSelectProps {
   onSelect: (c: FleetCharacter) => void
   onPlay: () => void
   gameTitle: string
+  era?: string
 }
+
+const SLOT_COUNT = 4
 
 export default function FleetCharacterSelect({
   playerName,
@@ -29,34 +43,53 @@ export default function FleetCharacterSelect({
   onSelect,
   onPlay,
   gameTitle,
+  era = 'voxel',
 }: FleetCharacterSelectProps) {
   const [chars, setChars] = useState<FleetCharacter[]>([])
   const [status, setStatus] = useState<string>('loading')
   const [loading, setLoading] = useState(true)
+  const [creating, setCreating] = useState(false)
+  const [createOpen, setCreateOpen] = useState(false)
+  const [createName, setCreateName] = useState('')
+  const [createRace, setCreateRace] = useState<KitRaceId>(KIT_RACES[0].id)
+  const [createClass, setCreateClass] = useState<KitClassId>(KIT_CLASSES[0].id)
+  const [createError, setCreateError] = useState<string | null>(null)
+  const [codexNote, setCodexNote] = useState<string>('')
+  const policy = getEraPolicy(era)
+
+  const refresh = async () => {
+    setLoading(true)
+    const r = await loadFleetRoster(era)
+    setChars(r.characters)
+    setStatus(r.status)
+    const stored = getStoredCharacterId()
+    const pick =
+      r.characters.find((c) => c.id === stored) ||
+      r.characters.find((c) => c.id !== 'guest-explorer') ||
+      r.characters[0] ||
+      guestExplorer()
+    onSelect(pick)
+    if (pick.name && !playerName) onPlayerNameChange(pick.name)
+    setLoading(false)
+  }
 
   useEffect(() => {
     let cancelled = false
     ;(async () => {
-      setLoading(true)
-      const r = await loadFleetRoster()
+      await refresh()
+      const probe = await probeCodexSystems()
       if (cancelled) return
-      setChars(r.characters)
-      setStatus(r.status)
-      const stored = getStoredCharacterId()
-      const pick =
-        r.characters.find((c) => c.id === stored) ||
-        r.characters.find((c) => c.id !== 'guest-explorer') ||
-        r.characters[0] ||
-        guestExplorer()
-      onSelect(pick)
-      if (pick.name && !playerName) onPlayerNameChange(pick.name)
-      setLoading(false)
+      setCodexNote(
+        probe.ok
+          ? `Codex · ${probe.races} races${probe.tvsUnits ? ` · ${probe.tvsUnits} TVS units` : ''} (${probe.source})`
+          : 'Codex portraits local · Mine-Loader defs live',
+      )
     })()
     return () => {
       cancelled = true
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+  }, [era])
 
   const pick = (c: FleetCharacter) => {
     onSelect(c)
@@ -65,6 +98,34 @@ export default function FleetCharacterSelect({
   }
 
   const signedIn = !!getAuthToken()
+  const slots: Array<FleetCharacter | null> = Array.from({ length: SLOT_COUNT }, (_, i) => chars[i] || null)
+
+  const onCreate = async () => {
+    setCreateError(null)
+    setCreating(true)
+    try {
+      const result = await createBloxHero({
+        name: createName || playerName || 'Hero',
+        raceId: createRace,
+        classId: createClass,
+        gameEra: policy.apiEra,
+      })
+      pick(result.character)
+      setChars((prev) => {
+        const next = prev.filter((c) => c.id !== 'guest-explorer')
+        if (next.some((c) => c.id === result.character.id)) return next
+        return [...next, result.character].slice(0, SLOT_COUNT)
+      })
+      if (result.character.name) onPlayerNameChange(result.character.name)
+      setCreateOpen(false)
+      if (result.error) setCreateError(result.error)
+      if (result.stored === 'railway') void refresh()
+    } catch (e) {
+      setCreateError(e instanceof Error ? e.message : 'Create failed')
+    } finally {
+      setCreating(false)
+    }
+  }
 
   return (
     <div className="flex flex-col space-y-4">
@@ -85,15 +146,34 @@ export default function FleetCharacterSelect({
 
       <div className="space-y-2">
         <div className="flex items-center justify-between">
-          <span className="text-sm font-medium text-amber-100/90">Character (fleet roster)</span>
+          <span className="text-sm font-medium text-amber-100/90">
+            Heroes · {policy.label} (4 slots)
+          </span>
           <span className="text-[10px] uppercase tracking-wider text-stone-500">{status}</span>
         </div>
         {loading ? (
           <p className="text-xs text-stone-400">Loading heroes…</p>
         ) : (
-          <div className="grid grid-cols-1 gap-2 max-h-48 overflow-y-auto pr-1">
-            {chars.map((c) => {
+          <div className="grid grid-cols-2 gap-2">
+            {slots.map((c, i) => {
+              if (!c) {
+                return (
+                  <button
+                    key={`empty-${i}`}
+                    type="button"
+                    onClick={() => {
+                      setCreateName(playerName)
+                      setCreateOpen(true)
+                    }}
+                    className="min-h-[4.5rem] text-left px-3 py-2 rounded-lg border border-dashed border-stone-600 bg-black/20 text-stone-400 hover:border-amber-700/60"
+                  >
+                    <div className="font-semibold text-sm">Empty slot</div>
+                    <div className="text-[11px] text-amber-400/80">Create hero</div>
+                  </button>
+                )
+              }
               const active = selected?.id === c.id
+              const race = normalizeKitRace(c.raceId)
               return (
                 <button
                   key={c.id}
@@ -105,37 +185,122 @@ export default function FleetCharacterSelect({
                       : 'border-stone-700/60 bg-black/30 text-stone-300 hover:border-amber-800/40'
                   }`}
                 >
-                  <div className="font-semibold text-sm">{c.name}</div>
-                  <div className="text-[11px] text-stone-500">
-                    Lv {c.level ?? 1} · {c.raceId || '—'} · {c.classId || '—'} · {c.gameEra || 'voxel'}
+                  <div className="flex items-center gap-2">
+                    <img
+                      src={voxelPortraitUrl(race)}
+                      alt=""
+                      width={32}
+                      height={32}
+                      className="w-8 h-8 rounded border border-stone-700 object-cover bg-stone-900"
+                    />
+                    <div className="min-w-0">
+                      <div className="font-semibold text-sm truncate">{c.name}</div>
+                      <div className="text-[11px] text-stone-500 truncate">
+                        {race} · {c.classId || 'adventurer'}
+                      </div>
+                    </div>
                   </div>
                 </button>
               )
             })}
           </div>
         )}
+
+        {createOpen && (
+          <div className="rounded-xl border border-amber-800/40 bg-black/50 p-3 space-y-3">
+            <div className="text-sm font-medium text-amber-100">Create hero</div>
+            <input
+              type="text"
+              value={createName}
+              onChange={(e) => setCreateName(e.target.value)}
+              placeholder="Hero name"
+              maxLength={20}
+              className="w-full px-3 py-2 border border-amber-800/40 rounded-lg bg-black/40 text-amber-50 text-sm outline-none"
+            />
+            <div className="grid grid-cols-3 gap-1.5">
+              {KIT_RACES.map((r) => (
+                <button
+                  key={r.id}
+                  type="button"
+                  onClick={() => setCreateRace(r.id)}
+                  className={`px-2 py-1.5 rounded-md text-[11px] border ${
+                    createRace === r.id
+                      ? 'border-amber-500 bg-amber-950/60 text-amber-50'
+                      : 'border-stone-700 text-stone-300'
+                  }`}
+                >
+                  {r.label}
+                </button>
+              ))}
+            </div>
+            <div className="grid grid-cols-2 gap-1.5">
+              {KIT_CLASSES.map((c) => (
+                <button
+                  key={c.id}
+                  type="button"
+                  onClick={() => setCreateClass(c.id)}
+                  className={`px-2 py-1.5 rounded-md text-[11px] border ${
+                    createClass === c.id
+                      ? 'border-amber-500 bg-amber-950/60 text-amber-50'
+                      : 'border-stone-700 text-stone-300'
+                  }`}
+                >
+                  {c.label}
+                </button>
+              ))}
+            </div>
+            {createError && <p className="text-[11px] text-red-300">{createError}</p>}
+            <div className="flex gap-2">
+              <button
+                type="button"
+                disabled={creating}
+                onClick={() => void onCreate()}
+                className="flex-1 bg-amber-800 hover:bg-amber-700 text-amber-50 text-sm py-2 rounded-lg disabled:opacity-50"
+              >
+                {creating ? 'Saving…' : signedIn ? 'Save to roster' : 'Save look'}
+              </button>
+              <button
+                type="button"
+                onClick={() => setCreateOpen(false)}
+                className="px-3 py-2 text-sm text-stone-400"
+              >
+                Cancel
+              </button>
+            </div>
+            <p className="text-[10px] text-stone-500">
+              {signedIn
+                ? 'Signed in: new hero POSTs Railway /api/characters (era=voxel).'
+                : 'Guest look is local to this lobby. Sign in + Foundry for fleet roster.'}
+            </p>
+          </div>
+        )}
+
         <div className="flex flex-wrap gap-2 text-[11px]">
           {!signedIn && (
             <a href={buildLoginUrl(`/play/test`)} className="text-emerald-400 underline">
               Sign in Grudge ID
             </a>
           )}
+          <button
+            type="button"
+            onClick={() => setCreateOpen(true)}
+            className="text-amber-300 underline"
+          >
+            Create in lobby
+          </button>
           <a
-            href={buildFoundryCreateUrl(`/play/test`)}
+            href={buildFoundryCreateUrl(`/play/test`, policy.apiEra)}
             className="text-amber-400/90 underline"
             target="_blank"
             rel="noreferrer"
           >
-            Create hero (Foundry)
+            Foundry (fleet)
+          </a>
+          <a href={CODEX.defs} className="text-lime-400/90 underline" target="_blank" rel="noreferrer">
+            Codex defs
           </a>
           <a href={FLEET.mineLobby} className="text-sky-400/90 underline" target="_blank" rel="noreferrer">
             Mine-Loader lobby
-          </a>
-          <a href={FLEET.grudoxStudio} className="text-cyan-400/90 underline" target="_blank" rel="noreferrer">
-            Voxel Studio
-          </a>
-          <a href={FLEET.grudox} className="text-violet-400/90 underline" target="_blank" rel="noreferrer">
-            GRUDOX hub
           </a>
         </div>
       </div>
@@ -147,8 +312,8 @@ export default function FleetCharacterSelect({
         Enter {gameTitle} →
       </button>
       <p className="text-[10px] text-stone-500 leading-relaxed">
-        Avatar uses fleet grudge6 / voxel mesh on CDN. Weapon skills 1–5: windup → hit / projectile
-        impact. Worlds: blox · mine · grudox/studio (Voxel Studio tools)
+        Era={policy.apiEra}. 4character Mixamo skins replicate to other players. Codex portraits +
+        Mine-Loader UI icons ship in this build. {codexNote}
       </p>
     </div>
   )

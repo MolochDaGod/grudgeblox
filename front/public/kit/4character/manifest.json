@@ -1,0 +1,10 @@
+{
+  "name": "4character",
+  "source": "D:/Games/Models/4character.zip",
+  "skeleton": "mixamorig",
+  "yaw": 0,
+  "heightM": 1.8,
+  "races": ["human", "barbarian", "dwarf", "high_elf", "orc", "undead"],
+  "clips": ["idle", "walk", "run", "attack", "jump"],
+  "note": "Play kit for GrudgeBlox lobby. Not Warlords Toon loadRaceKit."
+}

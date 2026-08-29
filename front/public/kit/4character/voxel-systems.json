@@ -1,0 +1,14 @@
+{
+  "era": "voxel",
+  "roster": "GET /api/characters?era=voxel",
+  "slots": 4,
+  "bodies": "/kit/4character/races/{race}.glb",
+  "portraits": "/assets/models/avatarbaseraces/{race}-portrait.png",
+  "codex": {
+    "defs": "https://mine.grudge-studio.com/#/defs",
+    "lobby": "https://mine.grudge-studio.com/#/lobby",
+    "uiIcons": "/assets/ui-icons",
+    "tvsRoster": "https://assets.grudge-studio.com/models/voxels/tvs/unit-roster.json"
+  },
+  "law": "Do not union Warlords heroes onto voxel maps. Do not use loadRaceKit Toon as voxel play body."
+}

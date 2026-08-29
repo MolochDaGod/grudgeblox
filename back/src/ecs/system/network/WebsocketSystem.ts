@@ -37,6 +37,7 @@ import { NetworkSystem } from './NetworkSystem.js'
 import { ProximityPromptInteractEvent } from '../../component/events/ProximityPromptInteractEvent.js'
 import { TextComponent } from '@shared/component/TextComponent.js'
 import { PlayerComponent } from '@shared/component/PlayerComponent.js'
+import { ServerMeshComponent } from '@shared/component/ServerMeshComponent.js'
 import { EntityManager } from '@shared/system/EntityManager.js'
 import { MessageListComponent } from '@shared/component/MessageComponent.js'
 import { ChatComponent } from '../../component/tag/TagChatComponent.js'
@@ -372,6 +373,48 @@ export class WebsocketSystem {
     EventSystem.addEvent(new ProximityPromptInteractEvent(player.entity.id, eId))
   }
 
+  private applyPlayerAppearance(
+    playerComponent: PlayerComponent,
+    message: SetPlayerNameMessage,
+    serverMesh?: { filePath: string; updated: boolean }
+  ) {
+    const allowedRace = new Set(['human', 'barbarian', 'dwarf', 'high_elf', 'orc', 'undead'])
+    const allowedClass = new Set(['warrior', 'ranger', 'mage', 'adventurer'])
+    let race = typeof message.raceId === 'string' ? message.raceId.toLowerCase().trim() : ''
+    if (race.includes('elf')) race = 'high_elf'
+    else if (race.includes('barb')) race = 'barbarian'
+    else if (race.includes('dwarf')) race = 'dwarf'
+    else if (race.includes('orc')) race = 'orc'
+    else if (race.includes('undead')) race = 'undead'
+    else if (race.includes('human') || race === 'wk') race = 'human'
+    if (!allowedRace.has(race)) race = playerComponent.raceId || 'human'
+
+    let klass = typeof message.classId === 'string' ? message.classId.toLowerCase().trim() : ''
+    if (klass.includes('war') || klass.includes('sword')) klass = 'warrior'
+    else if (klass.includes('range') || klass.includes('bow')) klass = 'ranger'
+    else if (klass.includes('mage') || klass.includes('magic') || klass.includes('wiz')) klass = 'mage'
+    else if (klass.includes('advent')) klass = 'adventurer'
+    if (!allowedClass.has(klass)) klass = playerComponent.classId || 'adventurer'
+
+    let characterId = typeof message.characterId === 'string' ? message.characterId.trim() : ''
+    characterId = characterId.replace(/[^\w-]/g, '').substring(0, 64)
+
+    let model3d = typeof message.model3d === 'string' ? message.model3d.replace(/\\/g, '/') : ''
+    const modelMatch = model3d.match(/races\/(human|barbarian|dwarf|high_elf|orc|undead)\.glb$/i)
+    model3d = modelMatch ? `races/${modelMatch[1].toLowerCase()}.glb` : `races/${race}.glb`
+
+    playerComponent.raceId = race
+    playerComponent.classId = klass
+    playerComponent.characterId = characterId
+    playerComponent.model3d = model3d
+    playerComponent.updated = true
+
+    if (serverMesh) {
+      serverMesh.filePath = `/kit/4character/${model3d}`
+      serverMesh.updated = true
+    }
+  }
+
   private handleSetPlayerNameMessage(ws: WebSocket<PlayerData>, message: SetPlayerNameMessage) {
     const player = ws.getUserData().player
     if (!player) {
@@ -379,16 +422,19 @@ export class WebsocketSystem {
       return
     }
 
+    const playerComponent = player.entity.getComponent(PlayerComponent)
+    const serverMesh = player.entity.getComponent(ServerMeshComponent)
+    if (playerComponent) {
+      this.applyPlayerAppearance(playerComponent, message, serverMesh)
+    }
+
     const { name } = message
     if (!name || typeof name !== 'string') {
-      console.error(`Invalid player name message, sent from ${player.entity.id}`, message)
       return
     }
 
     // Check if player already has a custom name (not the default "Player" name)
-    const playerComponent = player.entity.getComponent(PlayerComponent)
     if (playerComponent && !playerComponent.name.startsWith('Player')) {
-      console.log(`Player ${playerComponent.name} attempted to change name again. Not allowed.`)
       return
     }
 
@@ -419,6 +465,7 @@ export class WebsocketSystem {
     // Find the PlayerComponent on the player entity and update it
     if (playerComponent) {
       playerComponent.name = sanitizedName
+      playerComponent.updated = true
     } else {
       console.error(`PlayerComponent not found for player ${player.entity.id}`)
     }
@@ -448,6 +495,16 @@ export class WebsocketSystem {
     if (!/^[a-z0-9:_-]{1,40}$/.test(action)) {
       console.error(`Invalid world action from player ${player.entity.id}`)
       return
+    }
+
+    if (action.startsWith('fx:')) {
+      const playerComponent = player.entity.getComponent(PlayerComponent)
+      if (playerComponent) {
+        const fx = action.slice(3).substring(0, 16)
+        playerComponent.fx = fx
+        playerComponent.fxSeq = (playerComponent.fxSeq || 0) + 1
+        playerComponent.updated = true
+      }
     }
 
     EventSystem.addEvent(new WorldActionEvent(player.entity.id, action))

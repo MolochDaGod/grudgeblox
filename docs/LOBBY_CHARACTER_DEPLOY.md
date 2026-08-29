@@ -14,15 +14,15 @@
 /play/test  (and /play/{slug})
   ├── Cover image + Online badge          ← Notblox
   ├── Display name                        ← Notblox playerName
-  ├── Fleet character roster              ← Mine-Loader multi-era pattern
-  │     eras: voxel · warlords · nexus
+  ├── Fleet character roster              ← era of this world only
+  │     voxel worlds: era=voxel (never Warlords heroes)
   │     SSOT: Railway /api/characters?era=
   ├── Enter world → WebSocket multiplayer ← Notblox ECS + Rapier
   ├── Local avatar mesh                   ← grudge6 CDN GLB (visual)
   └── Weapon skills 1–5                   ← windup → hit / projectile impact
 ```
 
-Physics/network body remains Notblox ECS. **Avatar is a visual swap** on the local player mesh (`applyAvatarToMesh`).
+Physics/network body remains Notblox ECS. **Avatar is a visual swap** on **every** player mesh (`PlayerAvatarSystem` + `applyAvatarToMesh`). Appearance (race / class / kit path / VFX seq) replicates on `PlayerComponent` so remotes see the same skin, locomotion clips, and skill FX.
 
 ---
 
@@ -71,10 +71,13 @@ Optional rewrite `/api/characters` → Railway game API (same as fleet satellite
 
 ## Avatar rules
 
-1. Prefer `character.model3d` if absolute/CDN path  
-2. Else race kit: `WK_|BRB_|ELF_|DWF_|ORC_|UD_` GLB on assets CDN  
-3. Fit height **1.8 m** (Box3); art-forward **+π/2** for grudge6  
-4. Never leave Meshy capsules as production look  
+1. Prefer 4character Mixamo races at `/kit/4character/races/{race}.glb` (unzipped from `D:\Games\Models\4character.zip`)
+2. Else `character.model3d` if absolute/CDN path
+3. Else grudge6 race kit: `WK_|BRB_|ELF_|DWF_|ORC_|UD_` GLB on assets CDN  
+4. Fit height **1.8 m** (Box3); Mixamo kit yaw **0**; grudge6 Toon **+π/2**  
+5. Never leave Meshy capsules as production look
+6. Create/select is **4 slots** (`FleetCharacterSelect`). Signed-in POST Railway `/api/characters` (`era=voxel`). Guest looks are lobby-only.
+7. `PlayerComponent` serializes `{ n, r, k, c, m, fx, fxn }` so each client loads the same race + plays Idle/Walk/Run from the race GLB + spawns kit VFX on `fx:` world actions.  
 
 ---
 

@@ -12,6 +12,7 @@ import {
   type SkillCastState,
   type WeaponSkillDef,
 } from '@/lib/weaponSkillsCombat'
+import { codexIconUrl } from '@/lib/voxelCodex'
 
 export interface WeaponSkillBarProps {
   enabled?: boolean
@@ -110,8 +111,13 @@ export default function WeaponSkillBar({ enabled = true, onCast }: WeaponSkillBa
                 opacity: ready ? 1 : 0.55,
               }}
             >
-              <span className="text-[9px] text-amber-400/80">{s.key}</span>
-              <span className="leading-tight">{s.label}</span>
+              <img
+                src={codexIconUrl(s.id)}
+                alt=""
+                className="absolute inset-1 w-10 h-10 object-contain opacity-80 pointer-events-none"
+              />
+              <span className="relative z-10 text-[9px] text-amber-200 drop-shadow">{s.key}</span>
+              <span className="relative z-10 leading-tight drop-shadow">{s.label}</span>
               {!ready && cdLeft > 0 && (
                 <span className="absolute inset-0 flex items-center justify-center bg-black/50 rounded-lg text-amber-200 text-xs">
                   {cdLeft.toFixed(1)}

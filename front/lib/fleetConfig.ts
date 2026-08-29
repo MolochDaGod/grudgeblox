@@ -99,8 +99,12 @@ export function buildLoginUrl(returnPath = '/play/test'): string {
   return `${FLEET.id}/login?redirect_uri=${redirect}`
 }
 
-export function buildFoundryCreateUrl(returnPath = '/play/test'): string {
+export function buildFoundryCreateUrl(
+  returnPath = '/play/test',
+  era = 'voxel',
+): string {
   const origin = typeof window !== 'undefined' ? window.location.origin : FLEET.blox
   const returnTo = encodeURIComponent(`${origin}${returnPath}`)
-  return `${FLEET.foundry}/?era=voxel&mode=create&returnTo=${returnTo}`
+  const e = (era || 'voxel').toLowerCase()
+  return `${FLEET.foundry}/foundry?era=${encodeURIComponent(e)}&mode=create&returnTo=${returnTo}`
 }
