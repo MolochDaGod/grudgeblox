@@ -4,6 +4,7 @@ dist/
 build/
 .next/
 out/
+*.tsbuildinfo
 
 # Lockfiles — managed at root by pnpm
 back/package-lock.json
