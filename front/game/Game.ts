@@ -126,6 +126,12 @@ export class Game {
     model3d?: string
   } | null = null
 
+  avatarWorldSlug: string | undefined
+
+  setAvatarWorldSlug(worldSlug: string) {
+    this.avatarWorldSlug = worldSlug
+  }
+
   setFleetCharacter(character: {
     id: string
     name: string
@@ -192,7 +198,7 @@ export class Game {
     this.chatSystem.update(entities, this.hud)
     this.textComponentSystem.update(entities, deltaTime)
     this.syncSizeSystem.update(entities)
-    this.playerAvatarSystem.update(entities)
+    this.playerAvatarSystem.update(entities, this.avatarWorldSlug)
     this.animationSystem.update(deltaTime, entities)
     this.destroySystem.afterUpdate(entities)
     this.eventSystem.afterUpdate(entities)

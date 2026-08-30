@@ -46,12 +46,21 @@ const requiredClips = [
   'strafe_left',
   'strafe_right',
 ]
+const expectedContactPlaneY = {
+  human: -1.638,
+  barbarian: -1.648,
+  dwarf: -1.613,
+  high_elf: -1.598,
+  orc: -1.638,
+  undead: -1.644,
+}
 
 assert.equal(manifest.orientationRoot, 'Root_normalized')
 assert.equal(manifest.sourceForwardAxis, '+X')
 assert.equal(manifest.worldForwardAxis, '+Z')
 assert.equal(manifest.yaw, -Math.PI / 2)
 assert.equal(manifest.heightM, 1.8)
+assert.deepEqual(manifest.contactPlaneYByRace, expectedContactPlaneY)
 assert.deepEqual([...manifest.races].sort(), Object.keys(expectedPrefixes).sort())
 
 function readGlbJson(file) {

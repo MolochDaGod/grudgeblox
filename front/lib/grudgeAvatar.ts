@@ -91,7 +91,7 @@ function applySourceOrientation(
   modelUrl: string,
 ) {
   const profile = getAvatarSourceOrientation(modelUrl)
-  if (!profile) return
+  if (!profile) return null
 
   const roots: THREE.Object3D[] = []
   scene.traverse((object) => {
@@ -114,6 +114,7 @@ function applySourceOrientation(
   // Rotate this stable source adapter before binding the unchanged mixer.
   sourceRoot.rotation.y += profile.yawRadians
   sourceRoot.userData.sourceOrientation = profile
+  return profile
 }
 
 function yBounds(root: THREE.Object3D) {
@@ -214,13 +215,19 @@ export async function loadGrudgeAvatar(
   root.userData.kitUrl = url
   root.add(gltf.scene)
   const clips = gltf.animations?.length ? gltf.animations : []
-  applySourceOrientation(gltf.scene, clips, url)
+  const sourceProfile = applySourceOrientation(gltf.scene, clips, url)
   // Bundled race yaw is handled by its source profile above. Legacy grudge6
   // Toon assets keep their existing +π/2 rule.
   if (!isKitUrl(url)) {
     gltf.scene.rotation.y = Math.PI / 2
   }
   fitHeight(root, TARGET_HEIGHT_M)
+  if (sourceProfile) {
+    // This is the existing non-animated presentation group above the untouched
+    // GLB scene/skeleton. The ECS mesh remains at the capsule body origin.
+    root.position.y += sourceProfile.presentationContactPlaneY
+    root.userData.presentationContactPlaneY = sourceProfile.presentationContactPlaneY
+  }
 
   const mixer = new THREE.AnimationMixer(gltf.scene)
 
@@ -268,6 +275,12 @@ export async function loadGrudgeAvatar(
   const weaponCollider = createWeaponCollider(0.3)
   attachWeaponColliderToHand(root, weaponCollider)
   const footIk = new FootIkLite(root, { weight: 0.85, maxStep: 0.32 })
+  if (sourceProfile) {
+    // FootIkLite writes the imported leg bones every frame. A rigid contact
+    // mount must not be followed by bone-space correction for these authored
+    // Mixamo clips; leaving it enabled caused the failed deformed-leg build.
+    footIk.enabled = false
+  }
 
   root.userData.hitboxCount = boxes.length
   root.userData.weaponCollider = weaponCollider

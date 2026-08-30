@@ -88,6 +88,7 @@ export class PlayerAvatarSystem {
             mesh.userData.kitSig = sig
             mesh.userData.lastFxSeq = player.fxSeq || 0
             if (loaded) {
+              mesh.userData.loadedAvatar = loaded
               const clips = loaded.clips
               let anim = entity.getComponent(AnimationComponent)
               if (anim) {

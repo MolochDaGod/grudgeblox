@@ -6,9 +6,14 @@ export type AvatarSourceOrientation = {
   sourceForwardAxis: '+X'
   worldForwardAxis: '+Z'
   yawRadians: number
+  /** Rigid offset on the existing outer avatar presentation group. */
+  presentationContactPlaneY: number
 }
 
-const FOUR_CHARACTER_RACE_ORIENTATION: AvatarSourceOrientation = {
+const FOUR_CHARACTER_RACE_ORIENTATION: Omit<
+  AvatarSourceOrientation,
+  'presentationContactPlaneY'
+> = {
   sourceId: '4character-races',
   rootNodeName: 'Root_normalized',
   sourceForwardAxis: '+X',
@@ -19,9 +24,23 @@ const FOUR_CHARACTER_RACE_ORIENTATION: AvatarSourceOrientation = {
 const FOUR_CHARACTER_RACE_URL =
   /^\/kit\/4character\/races\/(human|barbarian|dwarf|high_elf|orc|undead)\.glb$/i
 
+const FOUR_CHARACTER_CONTACT_PLANE_Y: Record<string, number> = {
+  human: -1.638,
+  barbarian: -1.648,
+  dwarf: -1.613,
+  high_elf: -1.598,
+  orc: -1.638,
+  undead: -1.644,
+}
+
 /** Source-specific model yaw. Movement/entity yaw remains canonical. */
 export function getAvatarSourceOrientation(modelUrl: string): AvatarSourceOrientation | null {
-  return FOUR_CHARACTER_RACE_URL.test(modelUrl) ? FOUR_CHARACTER_RACE_ORIENTATION : null
+  const match = modelUrl.match(FOUR_CHARACTER_RACE_URL)
+  if (!match) return null
+  return {
+    ...FOUR_CHARACTER_RACE_ORIENTATION,
+    presentationContactPlaneY: FOUR_CHARACTER_CONTACT_PLANE_Y[match[1].toLowerCase()],
+  }
 }
 
 export type AvatarVisualCorrection = {

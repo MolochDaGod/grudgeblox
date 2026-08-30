@@ -10,8 +10,8 @@ import type { FleetCharacter } from '@/lib/fleetCharacters'
 import type { WeaponSkillDef } from '@/lib/weaponSkillsCombat'
 import { CurrentPlayerComponent } from '@/game/ecs/component/CurrentPlayerComponent'
 import { MeshComponent } from '@/game/ecs/component/MeshComponent'
-import { applyAvatarToMesh, type LoadedAvatar } from '@/lib/grudgeAvatar'
-import { fxForSkillStyle } from '@/lib/fourCharacterKit'
+import type { LoadedAvatar } from '@/lib/grudgeAvatar'
+import { avatarAppearanceSig, fxForSkillStyle } from '@/lib/fourCharacterKit'
 import {
   FlyingProjectile,
   baseDamageForSkill,
@@ -58,6 +58,7 @@ export default function GamePlayer({
       setConnectionError(null)
       if (connectionAttempt > 0) Game.resetInstance()
       const game = Game.getInstance(gameInfo.websocketPort, refContainer)
+      game.setAvatarWorldSlug(gameInfo.slug)
       game.hud.passChatState(setMessages)
       setGameInstance(game)
       try {
@@ -83,7 +84,7 @@ export default function GamePlayer({
     return () => {
       active = false
     }
-  }, [gameInfo.websocketPort, playerName, character, connectionAttempt])
+  }, [gameInfo.websocketPort, gameInfo.slug, playerName, character, connectionAttempt])
 
   const retryConnection = useCallback(() => {
     setConnectionAttempt((attempt) => attempt + 1)
@@ -108,7 +109,7 @@ export default function GamePlayer({
     }
   }, [])
 
-  // Apply fleet avatar + hitboxes + weapon collider + foot IK
+  // Observe the avatar loaded by PlayerAvatarSystem (the single mixer owner).
   useEffect(() => {
     if (isLoading || !character || avatarTried.current) return
     let cancelled = false
@@ -121,16 +122,19 @@ export default function GamePlayer({
         if (!e.getComponent(CurrentPlayerComponent)) continue
         const meshC = e.getComponent(MeshComponent)
         if (!meshC?.mesh) continue
-        avatarTried.current = true
         playerMeshRef.current = meshC.mesh
-        const loaded = await applyAvatarToMesh(meshC.mesh, character, {
-          worldSlug: gameInfo.slug,
-        })
-        if (!cancelled) {
-          loadedAvatar.current = loaded
-          setAvatarReady(!!loaded)
+        const loaded = meshC.mesh.userData.loadedAvatar as LoadedAvatar | undefined
+        if (
+          loaded &&
+          meshC.mesh.userData.kitSig === avatarAppearanceSig(character)
+        ) {
+          avatarTried.current = true
+          if (!cancelled) {
+            loadedAvatar.current = loaded
+            setAvatarReady(true)
+          }
+          return
         }
-        return
       }
       if (attempts < 40 && !cancelled) {
         window.setTimeout(tryApply, 250)

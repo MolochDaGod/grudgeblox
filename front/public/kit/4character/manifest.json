@@ -7,7 +7,15 @@
   "worldForwardAxis": "+Z",
   "yaw": -1.5707963267948966,
   "heightM": 1.8,
+  "contactPlaneYByRace": {
+    "human": -1.638,
+    "barbarian": -1.648,
+    "dwarf": -1.613,
+    "high_elf": -1.598,
+    "orc": -1.638,
+    "undead": -1.644
+  },
   "races": ["human", "barbarian", "dwarf", "high_elf", "orc", "undead"],
   "clips": ["idle", "walk", "run", "attack", "jump"],
-  "note": "Orientation applies only at the existing non-animated Root_normalized node before AnimationMixer binding. Scale, grounding and mixer root are unchanged."
+  "note": "Orientation applies only at the existing non-animated Root_normalized node before AnimationMixer binding. Contact offsets apply to the existing outer presentation group; the source skeleton, mixer root and height fit stay unchanged."
 }
