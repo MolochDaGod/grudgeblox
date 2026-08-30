@@ -13,6 +13,14 @@ export class VehicleSystem {
   private wheelModelUrl =
     'https://notbloxo.fra1.cdn.digitaloceanspaces.com/Notblox-Assets/vehicle/Wheel.glb'
 
+  private sourceWheelRadius(wheelModel: THREE.Object3D): number {
+    wheelModel.updateMatrixWorld(true)
+    const size = new THREE.Box3()
+      .setFromObject(wheelModel, true)
+      .getSize(new THREE.Vector3())
+    return Math.max(size.y, size.z) / 2
+  }
+
   update(entities: Entity[]) {
     // Catch vehicle creation, add wheels to it.
     const addedVehicleEvents = EventSystem.getEventsWrapped(ComponentAddedEvent, VehicleComponent)
@@ -26,6 +34,7 @@ export class VehicleSystem {
         const meshComponent = vehicleEntity.getComponent(MeshComponent)
         const wheelComponents: WheelComponent[] = vehicleComponent.wheels
         if (vehicleComponent && meshComponent) {
+          const sourceRadius = this.sourceWheelRadius(wheelModel)
           const wheelMeshes: THREE.Mesh[] = []
           for (const wheel of wheelComponents) {
             const wheelMesh = wheelModel.clone()
@@ -43,7 +52,9 @@ export class VehicleSystem {
                 wheel.rotationComponent.w
               )
             )
-            wheelMesh.scale.set(wheel.radius, wheel.radius, wheel.radius)
+            const visualScale =
+              sourceRadius > 1e-4 ? wheel.radius / sourceRadius : wheel.radius
+            wheelMesh.scale.setScalar(visualScale)
             //Game.getInstance().renderer.scene.add(wheelMesh)
             meshComponent.mesh.add(wheelMesh)
             wheelMeshes.push(wheelMesh)

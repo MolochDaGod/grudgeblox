@@ -69,6 +69,10 @@ export interface CarParams {
   }
 }
 
+// The raycast-wheel centre that makes a radius-1.4 wheel meet the stable
+// convex-hull contact plane of the bundled car sources (measured at +0.2933).
+const DEFAULT_WHEEL_CONNECTION_Y = 0.3
+
 export class Car {
   entity: Entity
 
@@ -89,7 +93,12 @@ export class Car {
     // Create 4 wheels
     const frontLeftWheel = new WheelComponent({
       entityId: this.entity.id,
-      positionComponent: new PositionComponent(this.entity.id, -3.46, -0.0287, 4.14),
+      positionComponent: new PositionComponent(
+        this.entity.id,
+        -3.46,
+        DEFAULT_WHEEL_CONNECTION_Y,
+        4.14
+      ),
       rotationComponent: new RotationComponent(this.entity.id, 0, 0, 0),
       radius: wheelRadius?.frontLeft ?? 1.4,
       suspensionStiffness: 10000,
@@ -101,7 +110,12 @@ export class Car {
     })
     const frontRightWheel = new WheelComponent({
       entityId: this.entity.id,
-      positionComponent: new PositionComponent(this.entity.id, 3.46, -0.0287, 4.14),
+      positionComponent: new PositionComponent(
+        this.entity.id,
+        3.46,
+        DEFAULT_WHEEL_CONNECTION_Y,
+        4.14
+      ),
       rotationComponent: new RotationComponent(this.entity.id, 0, 0, 0),
       radius: wheelRadius?.frontRight ?? 1.4,
       suspensionStiffness: 10000,
@@ -113,7 +127,12 @@ export class Car {
     })
     const backLeftWheel = new WheelComponent({
       entityId: this.entity.id,
-      positionComponent: new PositionComponent(this.entity.id, -3.46, -0.0287, -4.14),
+      positionComponent: new PositionComponent(
+        this.entity.id,
+        -3.46,
+        DEFAULT_WHEEL_CONNECTION_Y,
+        -4.14
+      ),
       rotationComponent: new RotationComponent(this.entity.id, 0, 0, 0),
       radius: wheelRadius?.backLeft ?? 1.4,
       suspensionStiffness: 10000,
@@ -126,7 +145,12 @@ export class Car {
 
     const backRightWheel = new WheelComponent({
       entityId: this.entity.id,
-      positionComponent: new PositionComponent(this.entity.id, 3.46, -0.0287, -4.14),
+      positionComponent: new PositionComponent(
+        this.entity.id,
+        3.46,
+        DEFAULT_WHEEL_CONNECTION_Y,
+        -4.14
+      ),
       rotationComponent: new RotationComponent(this.entity.id, 0, 0, 0),
       radius: wheelRadius?.backRight ?? 1.4,
       suspensionStiffness: 10000,
