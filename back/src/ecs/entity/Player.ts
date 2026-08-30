@@ -18,6 +18,7 @@ import { ServerMeshComponent } from '@shared/component/ServerMeshComponent.js'
 import { TextComponent } from '@shared/component/TextComponent.js'
 import { PhysicsPropertiesComponent } from '../component/physics/PhysicsPropertiesComponent.js'
 import type { WebSocket } from 'uWebSockets.js'
+import { CANONICAL_CHARACTER_ROOT_SCALE } from '@shared/avatar/characterTransformContract.js'
 
 export class Player {
   entity: Entity
@@ -34,7 +35,13 @@ export class Player {
     const rotationComponent = new RotationComponent(this.entity.id, 0, 1, 2)
     this.entity.addComponent(rotationComponent)
 
-    const sizeComponent = new SingleSizeComponent(this.entity.id, 1.5 + Math.random())
+    // The avatar loader normalizes every supported rig to the canonical height.
+    // Keep the replicated physics/presentation parent at unit scale; grounding
+    // is owned by the race contact plane, never by a random size multiplier.
+    const sizeComponent = new SingleSizeComponent(
+      this.entity.id,
+      CANONICAL_CHARACTER_ROOT_SCALE
+    )
     this.entity.addComponent(sizeComponent)
 
     // Player name text on top of the head with offset

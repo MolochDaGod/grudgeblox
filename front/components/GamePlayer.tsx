@@ -219,11 +219,9 @@ export default function GamePlayer({
 
       try {
         if (phase === 'windup') {
-          if (meshRoot) meshRoot.scale.setScalar(1.03)
           if (collider) collider.visible = false
           gameInstance.sendPlayerFx?.(fxForSkillStyle(skill.style, skill.projectile))
         } else if (phase === 'active') {
-          if (meshRoot) meshRoot.scale.setScalar(1)
           // Melee: enable weapon collider for active window
           if (collider && !skill.projectile) {
             collider.visible = true
@@ -234,8 +232,11 @@ export default function GamePlayer({
           // Melee sphere check near hand
           if (!skill.projectile && meshRoot && scene) {
             const origin = new THREE.Vector3()
-            meshRoot.getWorldPosition(origin)
-            origin.y += 1.2
+            if (collider) collider.getWorldPosition(origin)
+            else {
+              meshRoot.getWorldPosition(origin)
+              origin.y += 1.2
+            }
             const forward = new THREE.Vector3(0, 0, 1).applyQuaternion(meshRoot.quaternion)
             const targets: THREE.Object3D[] = []
             scene.traverse((o) => {
@@ -260,10 +261,12 @@ export default function GamePlayer({
             }
           }
         } else if (phase === 'projectile' && scene && meshRoot) {
-          if (meshRoot) meshRoot.scale.setScalar(1)
           const from = new THREE.Vector3()
-          meshRoot.getWorldPosition(from)
-          from.y += 1.35
+          if (collider) collider.getWorldPosition(from)
+          else {
+            meshRoot.getWorldPosition(from)
+            from.y += 1.35
+          }
           const dir = new THREE.Vector3(0, 0, 1).applyQuaternion(meshRoot.quaternion)
           // Soft aim: pull toward camera forward (three-player soft aim)
           if (softAim && gameInstance.renderer?.camera) {

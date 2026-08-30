@@ -20,6 +20,7 @@ import {
 import type { FleetCharacter } from '@/lib/fleetCharacters'
 import { LoadManager } from '@/game/LoadManager'
 import { EntityManager } from '@shared/system/EntityManager'
+import { captureAvatarTransformContract } from '@/lib/avatarTransformContract'
 
 const vfxCache = new Map<string, THREE.Object3D>()
 
@@ -89,6 +90,28 @@ export class PlayerAvatarSystem {
             mesh.userData.lastFxSeq = player.fxSeq || 0
             if (loaded) {
               mesh.userData.loadedAvatar = loaded
+              const transformContract = captureAvatarTransformContract(
+                mesh,
+                loaded.root,
+                loaded.mixer.getRoot() as THREE.Object3D,
+              )
+              mesh.userData.avatarTransformContract = transformContract
+              if (
+                typeof window !== 'undefined' &&
+                ['127.0.0.1', 'localhost', '::1', '[::1]'].includes(
+                  window.location.hostname.toLowerCase(),
+                )
+              ) {
+                console.info(
+                  '[avatarTransform] bound canonical contract',
+                  JSON.stringify({
+                    raceId: character.raceId,
+                    rootScale: transformContract.meshScale,
+                    worldHeight: transformContract.canonicalWorldHeight,
+                    contactY: transformContract.presentationPosition[1],
+                  }),
+                )
+              }
               const clips = loaded.clips
               let anim = entity.getComponent(AnimationComponent)
               if (anim) {

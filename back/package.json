@@ -10,7 +10,7 @@
     "dev": "tsx watch src/sandbox.ts",
     "build": "tsc --noEmit",
     "start": "node --import tsx/esm src/sandbox.ts",
-    "test": "tsx --test src/ecs/system/network/serverPolicy.test.ts",
+    "test": "tsx --test src/ecs/system/network/serverPolicy.test.ts src/ecs/entity/Player.test.ts ../front/lib/avatarTransformContract.test.ts",
     "smoke:network": "node scripts/networkSmoke.mjs",
     "lint": "eslint src/",
     "format": "eslint src/ --fix"

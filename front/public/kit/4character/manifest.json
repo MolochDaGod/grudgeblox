@@ -7,6 +7,7 @@
   "worldForwardAxis": "+Z",
   "yaw": -1.5707963267948966,
   "heightM": 1.8,
+  "parentScale": 1,
   "contactPlaneYByRace": {
     "human": -1.638,
     "barbarian": -1.648,

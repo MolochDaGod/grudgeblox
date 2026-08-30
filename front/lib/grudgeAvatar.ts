@@ -19,8 +19,7 @@ import {
   createWeaponCollider,
 } from './avatarCombat'
 import { FootIkLite } from './footIkLite'
-
-const TARGET_HEIGHT_M = 1.8
+import { CANONICAL_CHARACTER_HEIGHT_M } from '@shared/avatar/characterTransformContract'
 
 export type AvatarLoadContext = {
   worldSlug?: string
@@ -47,7 +46,7 @@ function makeLoader(): GLTFLoader {
   return loader
 }
 
-function fitHeight(root: THREE.Object3D, targetH = TARGET_HEIGHT_M) {
+function fitHeight(root: THREE.Object3D, targetH = CANONICAL_CHARACTER_HEIGHT_M) {
   root.updateMatrixWorld(true)
   const box = new THREE.Box3().setFromObject(root)
   const size = box.getSize(new THREE.Vector3())
@@ -221,7 +220,7 @@ export async function loadGrudgeAvatar(
   if (!isKitUrl(url)) {
     gltf.scene.rotation.y = Math.PI / 2
   }
-  fitHeight(root, TARGET_HEIGHT_M)
+  fitHeight(root, CANONICAL_CHARACTER_HEIGHT_M)
   if (sourceProfile) {
     // This is the existing non-animated presentation group above the untouched
     // GLB scene/skeleton. The ECS mesh remains at the capsule body origin.

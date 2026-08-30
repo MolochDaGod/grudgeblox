@@ -60,6 +60,7 @@ assert.equal(manifest.sourceForwardAxis, '+X')
 assert.equal(manifest.worldForwardAxis, '+Z')
 assert.equal(manifest.yaw, -Math.PI / 2)
 assert.equal(manifest.heightM, 1.8)
+assert.equal(manifest.parentScale, 1)
 assert.deepEqual(manifest.contactPlaneYByRace, expectedContactPlaneY)
 assert.deepEqual([...manifest.races].sort(), Object.keys(expectedPrefixes).sort())
 
@@ -106,7 +107,14 @@ for (const race of manifest.races) {
 
   const animatedNodes = new Set()
   for (const animation of gltf.animations || []) {
-    for (const channel of animation.channels || []) animatedNodes.add(channel.target.node)
+    for (const channel of animation.channels || []) {
+      animatedNodes.add(channel.target.node)
+      assert.notEqual(
+        channel.target.path,
+        'scale',
+        `${race}/${animation.name}: clip must not author rig or bone scale`,
+      )
+    }
   }
   assert.equal(animatedNodes.has(sourceRoot.index), false, `${race}: orientation root is not animated`)
 

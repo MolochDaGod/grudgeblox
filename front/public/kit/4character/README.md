@@ -9,7 +9,9 @@ Unzipped from `D:\Games\Models\4character.zip` (source remains on disk).
 | `weapons/*.glb` | Hand attach by class |
 | `vfx/*.glb` | Replicated skill FX (`fx:slash\|bolt\|orb`) |
 
-The original meshes, skeletons, clips and 1.8 m height stay unchanged. These
+The original meshes, skeletons, clips and 1.8 m height stay unchanged. Their
+replicated player parent is always unit scale; the old randomized player-size
+experiment is not part of the character contract. These
 six race files author forward on `+X`; GrudgeBlox applies a
 clockwise 90° source yaw at their existing non-animated `Root_normalized` node
 before `AnimationMixer` binding so visual forward agrees with world `+Z`.
