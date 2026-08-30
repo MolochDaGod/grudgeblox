@@ -8,7 +8,10 @@ import { DRACOLoader } from 'three/examples/jsm/loaders/DRACOLoader.js'
 // three@0.183: examples/jsm path is supported via package exports
 import { raceCdnUrl, FLEET } from './fleetConfig'
 import type { FleetCharacter } from './fleetCharacters'
-import { getAvatarVisualCorrection } from './avatarVisualProfile'
+import {
+  getAvatarSourceOrientation,
+  getAvatarVisualCorrection,
+} from './avatarVisualProfile'
 import { avatarAppearanceSig, isKitUrl, kitRaceUrl, kitWeaponUrl } from './fourCharacterKit'
 import {
   attachAvatarHitboxes,
@@ -80,6 +83,37 @@ function findBone(root: THREE.Object3D, names: string[]): THREE.Object3D | null 
     if (want.some((w) => n === w || n.endsWith(w))) found = o
   })
   return found
+}
+
+function applySourceOrientation(
+  scene: THREE.Object3D,
+  clips: THREE.AnimationClip[],
+  modelUrl: string,
+) {
+  const profile = getAvatarSourceOrientation(modelUrl)
+  if (!profile) return
+
+  const roots: THREE.Object3D[] = []
+  scene.traverse((object) => {
+    if (object.name === profile.rootNodeName) roots.push(object)
+  })
+  if (roots.length !== 1) {
+    throw new Error(`${profile.sourceId} expected one ${profile.rootNodeName}; found ${roots.length}`)
+  }
+
+  const sourceRoot = roots[0]
+  if (
+    clips.some((clip) =>
+      clip.tracks.some((track) => track.name.split('.')[0] === sourceRoot.name)
+    )
+  ) {
+    throw new Error(`${profile.rootNodeName} is animated and cannot be the orientation seam`)
+  }
+
+  // Root_normalized already parents the original skeleton and skinned meshes.
+  // Rotate this stable source adapter before binding the unchanged mixer.
+  sourceRoot.rotation.y += profile.yawRadians
+  sourceRoot.userData.sourceOrientation = profile
 }
 
 function yBounds(root: THREE.Object3D) {
@@ -179,13 +213,15 @@ export async function loadGrudgeAvatar(
   root.userData.raceId = character.raceId
   root.userData.kitUrl = url
   root.add(gltf.scene)
-  // Mixamo 4character kit already faces +Z. grudge6 Toon FBX-style kits need +π/2.
+  const clips = gltf.animations?.length ? gltf.animations : []
+  applySourceOrientation(gltf.scene, clips, url)
+  // Bundled race yaw is handled by its source profile above. Legacy grudge6
+  // Toon assets keep their existing +π/2 rule.
   if (!isKitUrl(url)) {
     gltf.scene.rotation.y = Math.PI / 2
   }
   fitHeight(root, TARGET_HEIGHT_M)
 
-  const clips = gltf.animations?.length ? gltf.animations : []
   const mixer = new THREE.AnimationMixer(gltf.scene)
 
   try {

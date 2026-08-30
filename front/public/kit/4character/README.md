@@ -9,4 +9,9 @@ Unzipped from `D:\Games\Models\4character.zip` (source remains on disk).
 | `weapons/*.glb` | Hand attach by class |
 | `vfx/*.glb` | Replicated skill FX (`fx:slash\|bolt\|orb`) |
 
-Yaw 0, height 1.8 m. This is **not** Warlords Toon `loadRaceKit`.
+The original meshes, skeletons, clips, 1.8 m height and grounding stay
+unchanged. These six race files author forward on `+X`; GrudgeBlox applies a
+clockwise 90° source yaw at their existing non-animated `Root_normalized` node
+before `AnimationMixer` binding so visual forward agrees with world `+Z`.
+
+This is **not** Warlords Toon `loadRaceKit`.

@@ -2,9 +2,12 @@
   "name": "4character",
   "source": "D:/Games/Models/4character.zip",
   "skeleton": "mixamorig",
-  "yaw": 0,
+  "orientationRoot": "Root_normalized",
+  "sourceForwardAxis": "+X",
+  "worldForwardAxis": "+Z",
+  "yaw": -1.5707963267948966,
   "heightM": 1.8,
   "races": ["human", "barbarian", "dwarf", "high_elf", "orc", "undead"],
   "clips": ["idle", "walk", "run", "attack", "jump"],
-  "note": "Play kit for GrudgeBlox lobby. Not Warlords Toon loadRaceKit."
+  "note": "Orientation applies only at the existing non-animated Root_normalized node before AnimationMixer binding. Scale, grounding and mixer root are unchanged."
 }
