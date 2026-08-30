@@ -52,6 +52,7 @@ assert.equal(manifest.sourceForwardAxis, '+X')
 assert.equal(manifest.worldForwardAxis, '+Z')
 assert.equal(manifest.yaw, -Math.PI / 2)
 assert.equal(manifest.heightM, 1.8)
+assert.equal(manifest.meshRootContactPlaneY, -(0.5 + 1))
 assert.deepEqual([...manifest.races].sort(), Object.keys(expectedPrefixes).sort())
 
 function readGlbJson(file) {
@@ -127,8 +128,8 @@ for (const race of manifest.races) {
     assert.ok(clipNames.has(clip), `${race}: required ${clip} clip`)
   }
   console.log(
-    `${race}: ${meshNodes.map(({ node }) => node.name).join(', ')} | ${clipNames.size} clips | root stable`,
+    `${race}: ${meshNodes.map(({ node }) => node.name).join(', ')} | ${clipNames.size} clips | root stable | contact ${manifest.meshRootContactPlaneY}`,
   )
 }
 
-console.log('Avatar orientation registry validation passed for all six bundled races.')
+console.log('Avatar orientation and contact-plane registry validation passed for all six bundled races.')

@@ -6,6 +6,12 @@ export type AvatarSourceOrientation = {
   sourceForwardAxis: '+X'
   worldForwardAxis: '+Z'
   yawRadians: number
+  /**
+   * Offset in the unscaled network-player mesh. The ECS player position is the
+   * centre of a Rapier capsule with half-height 0.5 and radius 1, so its stable
+   * contact plane is 1.5 mesh units below that origin.
+   */
+  meshRootContactPlaneY: number
 }
 
 const FOUR_CHARACTER_RACE_ORIENTATION: AvatarSourceOrientation = {
@@ -14,6 +20,7 @@ const FOUR_CHARACTER_RACE_ORIENTATION: AvatarSourceOrientation = {
   sourceForwardAxis: '+X',
   worldForwardAxis: '+Z',
   yawRadians: -Math.PI / 2,
+  meshRootContactPlaneY: -1.5,
 }
 
 const FOUR_CHARACTER_RACE_URL =

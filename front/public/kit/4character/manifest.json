@@ -7,7 +7,8 @@
   "worldForwardAxis": "+Z",
   "yaw": -1.5707963267948966,
   "heightM": 1.8,
+  "meshRootContactPlaneY": -1.5,
   "races": ["human", "barbarian", "dwarf", "high_elf", "orc", "undead"],
   "clips": ["idle", "walk", "run", "attack", "jump"],
-  "note": "Orientation applies only at the existing non-animated Root_normalized node before AnimationMixer binding. Scale, grounding and mixer root are unchanged."
+  "note": "Orientation applies only at the existing non-animated Root_normalized node before AnimationMixer binding. The existing outer avatar child is translated to the ECS capsule contact plane after height fitting; scale, authored root, mixer root, collider and camera remain unchanged."
 }

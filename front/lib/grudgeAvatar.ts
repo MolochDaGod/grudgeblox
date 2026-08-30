@@ -91,7 +91,7 @@ function applySourceOrientation(
   modelUrl: string,
 ) {
   const profile = getAvatarSourceOrientation(modelUrl)
-  if (!profile) return
+  if (!profile) return null
 
   const roots: THREE.Object3D[] = []
   scene.traverse((object) => {
@@ -114,6 +114,7 @@ function applySourceOrientation(
   // Rotate this stable source adapter before binding the unchanged mixer.
   sourceRoot.rotation.y += profile.yawRadians
   sourceRoot.userData.sourceOrientation = profile
+  return profile
 }
 
 function yBounds(root: THREE.Object3D) {
@@ -214,13 +215,21 @@ export async function loadGrudgeAvatar(
   root.userData.kitUrl = url
   root.add(gltf.scene)
   const clips = gltf.animations?.length ? gltf.animations : []
-  applySourceOrientation(gltf.scene, clips, url)
+  const sourceProfile = applySourceOrientation(gltf.scene, clips, url)
   // Bundled race yaw is handled by its source profile above. Legacy grudge6
   // Toon assets keep their existing +π/2 rule.
   if (!isKitUrl(url)) {
     gltf.scene.rotation.y = Math.PI / 2
   }
   fitHeight(root, TARGET_HEIGHT_M)
+  if (sourceProfile) {
+    // The existing network mesh tracks the capsule centre and is scaled by the
+    // same SingleSize value as the collider. Move only this source-adapter
+    // child to the capsule contact plane; keep the physics root, authored
+    // Root_normalized transform, skeleton, mixer root, scale and yaw unchanged.
+    root.position.y += sourceProfile.meshRootContactPlaneY
+    root.userData.meshRootContactPlaneY = sourceProfile.meshRootContactPlaneY
+  }
 
   const mixer = new THREE.AnimationMixer(gltf.scene)
 
