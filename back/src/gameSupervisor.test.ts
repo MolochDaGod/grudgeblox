@@ -92,13 +92,13 @@ describe('game supervisor spawn', () => {
     }
   })
 
-  it('uses GAME_SOCKET or a tmp unix path for the worker', () => {
+  it('uses GAME_SOCKET only when explicitly set', () => {
     const previousSocket = process.env.GAME_SOCKET
     const previousWorker = process.env.GAME_WORKER
     try {
       delete process.env.GAME_SOCKET
       process.env.GAME_WORKER = '1'
-      assert.equal(workerSocketPath(), join(tmpdir(), 'grudgeblox-game.sock'))
+      assert.equal(workerSocketPath(), undefined)
       process.env.GAME_SOCKET = '/tmp/custom-game.sock'
       assert.equal(workerSocketPath(), '/tmp/custom-game.sock')
     } finally {

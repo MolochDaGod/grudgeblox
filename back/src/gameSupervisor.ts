@@ -1,9 +1,9 @@
 /**
  * Public /health stays on Node net at $PORT so Railway's proxy can reach us.
- * Game traffic is proxied to uWS on a Unix socket in this same process.
+ * Game traffic is proxied to in-process uWS on 127.0.0.1 (same heap).
  *
- * A second Node heap never accepted on Railway (health 200, WS 502).
- * GAME_WORKER_FORK=1 restores the spawned worker.
+ * Unix sockets and a second Node heap both 502'd on Railway.
+ * Set GAME_SOCKET to force a Unix path. GAME_WORKER_FORK=1 restores spawn.
  */
 import { existsSync, unlinkSync } from 'node:fs'
 import { connect, createServer, type Socket } from 'node:net'
@@ -12,7 +12,6 @@ import { resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import {
   buildHealthPayload,
-  DEFAULT_GAME_SOCKET,
   isHealthHttpRequest,
   onRailwayRuntime,
   readBoundedInteger,
@@ -30,8 +29,8 @@ export function internalPortFor(publicPort: number): number {
   return candidate === publicPort ? 18001 : candidate
 }
 
-export function workerSocketPath(): string {
-  return resolveGameSocketPath() || DEFAULT_GAME_SOCKET
+export function workerSocketPath(): string | undefined {
+  return resolveGameSocketPath()
 }
 
 export function workerScript(): string {
@@ -139,7 +138,9 @@ function connectWorker(
 export async function runGameSupervisor(startGame?: () => Promise<void>): Promise<void> {
   const publicPort = readBoundedInteger(process.env.PORT ?? process.env.GAME_PORT, 8001, 1, 65535)
   const listenHost = process.env.LISTEN_HOST || '0.0.0.0'
-  const socketPath = workerSocketPath()
+  const unixPath = resolveGameSocketPath()
+  const internalPort = internalPortFor(publicPort)
+  const workerLabel = unixPath || `127.0.0.1:${internalPort}`
   const inProcess = process.env.GAME_WORKER_FORK !== '1' && Boolean(startGame)
   const script = workerScript()
   let child: ChildProcess | undefined
@@ -162,21 +163,31 @@ export async function runGameSupervisor(startGame?: () => Promise<void>): Promis
     if (!client.destroyed) client.end(startingResponse())
   }
 
-  const openWorker = () => connect({ path: socketPath })
+  const openWorker = () =>
+    unixPath ? connect({ path: unixPath }) : connect(workerConnectOptions(internalPort))
+
+  const waitForWorker = () =>
+    unixPath ? connectWorkerSocket(unixPath) : connectWorkerPort(internalPort)
 
   const spawnWorker = () => {
     workerAccepting = false
-    unlinkSocket(socketPath)
+    if (unixPath) unlinkSocket(unixPath)
     child = spawn(process.execPath, workerNodeArgs(script), {
       cwd: process.cwd(),
       env: {
         ...process.env,
         GAME_WORKER: '1',
-        GAME_SOCKET: socketPath,
+        ...(unixPath
+          ? { GAME_SOCKET: unixPath }
+          : {
+              PORT: String(internalPort),
+              GAME_PORT: String(internalPort),
+              LISTEN_HOST: '127.0.0.1',
+            }),
       },
       stdio: 'inherit',
     })
-    console.log(`[supervisor] worker pid=${child.pid} ${script} ${socketPath}`)
+    console.log(`[supervisor] worker pid=${child.pid} ${script} ${workerLabel}`)
     child.on('error', (error) => {
       console.error(`[supervisor] spawn error: ${error.message}`)
     })
@@ -207,7 +218,7 @@ export async function runGameSupervisor(startGame?: () => Promise<void>): Promis
           game.once('error', () => rejectClient(socket))
           return
         }
-        void connectWorkerSocket(socketPath).then(
+        void waitForWorker().then(
           (game) => pipeToWorker(socket, chunk, game),
           () => rejectClient(socket)
         )
@@ -215,7 +226,7 @@ export async function runGameSupervisor(startGame?: () => Promise<void>): Promis
     })
     server.on('error', reject)
     server.listen(publicPort, listenHost, () => {
-      console.log(`[supervisor] public ${listenHost}:${publicPort} -> ${socketPath}`)
+      console.log(`[supervisor] public ${listenHost}:${publicPort} -> ${workerLabel}`)
       resolve()
     })
   })
@@ -225,10 +236,17 @@ export async function runGameSupervisor(startGame?: () => Promise<void>): Promis
     return
   }
 
-  unlinkSocket(socketPath)
   process.env.GAME_WORKER = '1'
-  process.env.GAME_SOCKET = socketPath
-  console.log(`[supervisor] in-process worker ${socketPath}`)
+  if (unixPath) {
+    unlinkSocket(unixPath)
+    process.env.GAME_SOCKET = unixPath
+  } else {
+    delete process.env.GAME_SOCKET
+    process.env.LISTEN_HOST = '127.0.0.1'
+    process.env.PORT = String(internalPort)
+    process.env.GAME_PORT = String(internalPort)
+  }
+  console.log(`[supervisor] in-process worker ${workerLabel}`)
   void startGame().catch((error: unknown) => {
     const message = error instanceof Error ? error.message : String(error)
     console.error(`[supervisor] game failed: ${message}`)
