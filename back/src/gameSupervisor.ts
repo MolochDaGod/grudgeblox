@@ -25,7 +25,7 @@ import {
 
 const WORKER_CONNECT_MS = 5000
 const WORKER_RETRY_MS = 50
-const UPGRADE_WAIT_MS = 15000
+const UPGRADE_WAIT_MS = 45000
 const STARTING_BODY = 'Game server starting\n'
 
 export function internalPortFor(publicPort: number): number {
