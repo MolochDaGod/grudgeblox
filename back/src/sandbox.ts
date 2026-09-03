@@ -2,6 +2,7 @@ import 'dotenv/config'
 import { resolve } from 'path'
 import { pathToFileURL } from 'url'
 import { runGameSupervisor, shouldSupervise } from './gameSupervisor.js'
+import { serverLoadsGltfColliders } from './physics/colliderBudget.js'
 
 async function loadGameLogic() {
   // Production default: GTA-like metaverse lobby (cars, districts, thugs)
@@ -27,8 +28,13 @@ async function runGame() {
   const network = await bindGameSocket()
   console.log('[worker] socket bound; loading physics')
   try {
-    const { startGameRuntime } = await import('./index.js')
-    await startGameRuntime(network)
+    if (serverLoadsGltfColliders()) {
+      const { startGameRuntime } = await import('./index.js')
+      await startGameRuntime(network)
+    } else {
+      const { startRailwayRuntime } = await import('./railwayRuntime.js')
+      await startRailwayRuntime(network)
+    }
     await new Promise((resolve) => setTimeout(resolve, 250))
     await loadGameLogic()
   } catch (error: unknown) {
