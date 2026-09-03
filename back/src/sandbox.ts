@@ -1,7 +1,7 @@
 import 'dotenv/config'
+import { isMainThread } from 'node:worker_threads'
 import { resolve } from 'path'
 import { pathToFileURL } from 'url'
-import { runGameSupervisor, shouldSupervise } from './gameSupervisor.js'
 import { serverLoadsGltfColliders } from './physics/colliderBudget.js'
 
 async function loadGameLogic() {
@@ -23,10 +23,13 @@ async function bindGameSocket() {
 
 async function runGame() {
   const socket = process.env.GAME_SOCKET
+  const noListen = process.env.GAME_NO_LISTEN === '1'
   console.log(
-    socket
-      ? `[worker] bind unix ${socket}`
-      : `[worker] bind ${process.env.LISTEN_HOST || 'default'}:${process.env.PORT ?? process.env.GAME_PORT}`
+    noListen
+      ? '[worker] I/O on parent thread; this thread does not bind $PORT'
+      : socket
+        ? `[worker] bind unix ${socket}`
+        : `[worker] bind ${process.env.LISTEN_HOST || 'default'}:${process.env.PORT ?? process.env.GAME_PORT}`
   )
   const network = await bindGameSocket()
   console.log('[worker] socket bound; loading physics')
@@ -51,10 +54,13 @@ process.on('unhandledRejection', (reason) => {
 })
 
 async function main() {
-  if (shouldSupervise()) {
-    console.log('SUPERVISOR : public /health isolated from the game worker')
-    await runGameSupervisor(runGame)
-    return
+  if (isMainThread) {
+    const { runGameSupervisor, shouldSupervise } = await import('./gameSupervisor.js')
+    if (shouldSupervise()) {
+      console.log('SUPERVISOR : public Node /health and WebSockets; Rapier in a worker thread')
+      await runGameSupervisor()
+      return
+    }
   }
 
   try {
