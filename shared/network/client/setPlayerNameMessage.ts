@@ -9,4 +9,6 @@ export interface SetPlayerNameMessage extends ClientMessage {
   characterId?: string
   model3d?: string
   gameEra?: string
+  /** Live island id (harbor-atoll, alpine-mesh, …). */
+  mapId?: string
 }

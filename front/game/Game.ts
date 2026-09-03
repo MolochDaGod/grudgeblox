@@ -114,6 +114,18 @@ export class Game {
     await this.websocketManager.connect()
     this.renderer.appendChild()
     this.renderer.setAnimationLoop(this.loopFunction)
+    this.joinLiveIsland()
+  }
+
+  /** Seat this client on a Super Terrain / Island Engine bake in the live room. */
+  joinLiveIsland() {
+    if (!this.worldMapId) return
+    const action = `island:${this.worldMapId}`.slice(0, 40)
+    const join: WorldActionMessage = {
+      t: ClientMessageType.WORLD_ACTION,
+      action,
+    }
+    this.websocketManager.send(join)
   }
 
   /**
@@ -136,9 +148,14 @@ export class Game {
   } | null = null
 
   avatarWorldSlug: string | undefined
+  worldMapId: string | undefined
 
   setAvatarWorldSlug(worldSlug: string) {
     this.avatarWorldSlug = worldSlug
+  }
+
+  setWorldMapId(mapId?: string) {
+    this.worldMapId = mapId
   }
 
   setFleetCharacter(character: {
@@ -163,8 +180,17 @@ export class Game {
       characterId: c?.id,
       model3d: sanitizeModel3d(c?.model3d, c?.raceId) || kitModelKey(c?.raceId),
       gameEra: c?.gameEra,
+      mapId: this.worldMapId,
     }
     this.websocketManager.send(message)
+    if (this.worldMapId) {
+      const action = `island:${this.worldMapId}`.slice(0, 40)
+      const join: WorldActionMessage = {
+        t: ClientMessageType.WORLD_ACTION,
+        action,
+      }
+      this.websocketManager.send(join)
+    }
   }
 
   sendPlayerFx(fxId: string) {

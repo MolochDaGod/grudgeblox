@@ -17,14 +17,22 @@ import { heightfieldSamples } from '@shared/maps/islandMesh.js'
 export class IslandMapWorld {
   entity: Entity
   bake: IslandBake
+  origin: { x: number; y: number; z: number }
 
-  constructor(bake: IslandBake) {
+  constructor(bake: IslandBake, origin: { x: number; y: number; z: number } = { x: 0, y: 0, z: 0 }) {
     this.bake = bake
+    this.origin = origin
     this.entity = EntityManager.createEntity(SerializedEntityType.WORLD)
 
     const serverMeshComponent = new ServerMeshComponent(this.entity.id, islandMeshUrl(bake.id))
+    const positionComponent = new PositionComponent(
+      this.entity.id,
+      origin.x,
+      origin.y,
+      origin.z
+    )
     this.entity.addComponent(serverMeshComponent)
-    this.entity.addComponent(new PositionComponent(this.entity.id, 0, 0, 0))
+    this.entity.addComponent(positionComponent)
     this.entity.addComponent(
       new ColliderPropertiesComponent(this.entity.id, {
         friction: 0.9,
@@ -51,7 +59,10 @@ export class IslandMapWorld {
       )
     )
     this.entity.addComponent(
-      new NetworkDataComponent(this.entity.id, this.entity.type, [serverMeshComponent])
+      new NetworkDataComponent(this.entity.id, this.entity.type, [
+        serverMeshComponent,
+        positionComponent,
+      ])
     )
   }
 }

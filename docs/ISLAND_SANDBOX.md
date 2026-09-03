@@ -1,6 +1,10 @@
 # Island maps + all-era sandboxes
 
-GrudgeBlox plays **baked** terrain from [Super Terrain](https://github.com/vibe-stack/super-terrain) and Island Terrain World Engine. **Every fleet era** enters the same sandbox. The lobby splits this into **Eras**, **Islands**, and **Maps**; deployment is one live room per island — see `docs/SANDBOX_DEPLOY.md`.
+GrudgeBlox plays **baked** terrain from [Super Terrain](https://github.com/vibe-stack/super-terrain) and Island Terrain World Engine. **Every fleet era** enters the same sandbox. The lobby splits this into **Eras**, **Islands**, and **Maps**.
+
+The **production live room** (`gtaLobbyScript.ts` on Railway) loads the city plate plus every catalog island east of spawn, with generative events, NPC AI (guides/scouts/wardens/raiders), and the island guide chat bot (`/help`, `/where`, `/npcs`, `/event`). `/play/island-*` sends `mapId` so you teleport onto that bake. `/play/test` stays in the city.
+
+Dedicated rooms still use `GAME_SCRIPT=islandSandboxScript.ts` — see `docs/SANDBOX_DEPLOY.md`.
 
 ## Super Terrain
 

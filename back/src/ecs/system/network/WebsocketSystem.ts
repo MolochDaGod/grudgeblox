@@ -44,6 +44,7 @@ import { WebSocketComponent } from '../../component/WebsocketComponent.js'
 import { WorldActionEvent } from '../../component/events/WorldActionEvent.js'
 import { decodeClientMessage, MAX_CLIENT_MESSAGE_BYTES } from './clientMessageValidation.js'
 import { sanitizeAppearance } from '@shared/avatar/appearancePolicy.js'
+import { parseIslandMapId } from '@shared/maps/islandLive.js'
 import {
   buildHealthPayload,
   isAdminAuthorized,
@@ -435,6 +436,12 @@ export class WebsocketSystem {
     playerComponent.characterId = appearance.characterId
     playerComponent.model3d = appearance.model3d
     playerComponent.gameEra = appearance.gameEra
+    if (typeof message.mapId === 'string') {
+      const mapId = parseIslandMapId(message.mapId)
+      if (mapId) {
+        playerComponent.mapId = mapId
+      }
+    }
     playerComponent.updated = true
 
     if (serverMesh) {

@@ -1,6 +1,8 @@
 # Super Terrain → live sandbox deployment
 
-GrudgeBlox turns [vibe-stack/super-terrain](https://github.com/vibe-stack/super-terrain) (and Island Terrain World Engine) into **one WebSocket process per island/map**. The lobby is split into **Eras**, **Islands**, and **Maps**. Every sandbox loads all five era generations.
+The **production Railway room** (`gtaLobbyScript.ts`, `wss://blox-game.grudge-studio.com`) now loads the city plate **and** every Super Terrain / Island Engine bake east of spawn, with NPCs, generative events, and the island guide chat bot. `/play/island-*` sends `mapId` so you teleport onto that island. `/play/test` stays in the city.
+
+Dedicated rooms still use `GAME_SCRIPT=islandSandboxScript.ts`.
 
 ## Pipeline
 

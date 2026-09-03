@@ -11,7 +11,9 @@ export class PlayerComponent extends NetworkComponent {
     public model3d: string = 'races/human.glb',
     public fx: string = '',
     public fxSeq: number = 0,
-    public gameEra: string = 'voxel'
+    public gameEra: string = 'voxel',
+    /** Server-only live island seat. Not replicated. */
+    public mapId: string = ''
   ) {
     super(entityId, SerializedComponentType.PLAYER)
   }
