@@ -25,6 +25,7 @@
     "lag:down": "sudo tc qdisc del dev lo root netem"
   },
   "devDependencies": {
-    "concurrently": "^8.2.2"
+    "concurrently": "^8.2.2",
+    "next": "15.5.12"
   }
 }

@@ -1,7 +1,8 @@
 {
   "installCommand": "pnpm install",
-  "buildCommand": "pnpm run build:shared && pnpm run build:front",
+  "buildCommand": "pnpm run build-vercel",
   "framework": "nextjs",
+  "outputDirectory": "front/.next",
   "rewrites": [
     {
       "source": "/login",
