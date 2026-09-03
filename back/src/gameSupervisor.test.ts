@@ -33,7 +33,7 @@ describe('game supervisor spawn', () => {
     ])
   })
 
-  it('auto-supervises on Railway so public /health stays on Node net', () => {
+  it('does not auto-supervise on Railway; extra-listen 502s there', () => {
     const keys = [
       'GAME_WORKER',
       'GAME_SUPERVISOR',
@@ -46,11 +46,10 @@ describe('game supervisor spawn', () => {
       for (const key of keys) delete process.env[key]
       process.env.RAILWAY_SERVICE_ID = 'prod'
       process.env.RAILWAY_ENVIRONMENT_NAME = 'production'
+      assert.equal(shouldSupervise(), false)
+      process.env.GAME_SUPERVISOR = '1'
       assert.equal(shouldSupervise(), true)
       process.env.GAME_SUPERVISOR = '0'
-      assert.equal(shouldSupervise(), false)
-      delete process.env.GAME_SUPERVISOR
-      process.env.GAME_WORKER = '1'
       assert.equal(shouldSupervise(), false)
     } finally {
       for (const key of keys) {

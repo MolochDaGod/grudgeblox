@@ -1,11 +1,9 @@
 /**
- * Public /health stays on Node net at $PORT so Railway's proxy can reach us.
- * Game traffic is proxied to in-process uWS on an internal port (same heap).
+ * Optional extra-listen: public Node /health on $PORT, game uWS on an
+ * internal port. GAME_SUPERVISOR=1 opts in. Railway extra-listen 502s
+ * (the proxy never reaches a second bind), so production uses uWS on $PORT.
  *
- * Binding that worker to 127.0.0.1 502'd on Railway even though Docker
- * loopback works. The worker listens on 0.0.0.0:<internal>; the supervisor
- * connects via 127.0.0.1 or ::1. Unix sockets and a second Node heap also 502'd.
- * Set GAME_SOCKET to force a Unix path. GAME_WORKER_FORK=1 restores spawn.
+ * Set GAME_SOCKET for a Unix worker. GAME_WORKER_FORK=1 restores spawn.
  */
 import { existsSync, unlinkSync } from 'node:fs'
 import { connect, createServer, type Socket } from 'node:net'
@@ -15,7 +13,6 @@ import { fileURLToPath } from 'node:url'
 import {
   buildHealthPayload,
   isHealthHttpRequest,
-  onRailwayRuntime,
   readBoundedInteger,
   resolveGameSocketPath,
 } from './ecs/system/network/serverPolicy.js'
@@ -67,9 +64,10 @@ export function workerNodeArgs(
 export function shouldSupervise(): boolean {
   if (process.env.GAME_WORKER === '1') return false
   if (process.env.GAME_SUPERVISOR === '0') return false
-  // Railway: public /health on Node net so probes stay up while the
-  // listen-first slim worker binds and loads Rapier. GAME_SUPERVISOR=0 opts out.
-  return process.env.GAME_SUPERVISOR === '1' || onRailwayRuntime()
+  // Extra-listen 502s on Railway: the proxy never reaches a second bind.
+  // uWS on $PORT (no supervisor) is the remaining public handshake path.
+  // GAME_SUPERVISOR=1 still opts into the Node net /health proxy.
+  return process.env.GAME_SUPERVISOR === '1'
 }
 
 function healthResponse(headOnly = false): Buffer {
