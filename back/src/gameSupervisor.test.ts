@@ -9,6 +9,8 @@ import {
   connectWorkerSocket,
   internalPortFor,
   shouldSupervise,
+  workerConnectTargets,
+  workerListenHost,
   workerNodeArgs,
   workerSocketPath,
 } from './gameSupervisor.js'
@@ -80,6 +82,22 @@ describe('game supervisor spawn', () => {
     }
   })
 
+  it('binds the in-process worker on 0.0.0.0 so Railway loopback can connect', () => {
+    const previous = process.env.GAME_INTERNAL_HOST
+    delete process.env.GAME_INTERNAL_HOST
+    try {
+      assert.equal(workerListenHost(), '0.0.0.0')
+      assert.equal(workerListenHost('::'), '::')
+      assert.deepEqual(
+        workerConnectTargets(18080).map((target) => target.host),
+        ['127.0.0.1', '::1']
+      )
+    } finally {
+      if (previous === undefined) delete process.env.GAME_INTERNAL_HOST
+      else process.env.GAME_INTERNAL_HOST = previous
+    }
+  })
+
   it('derives an internal port away from the public one', () => {
     const previous = process.env.GAME_INTERNAL_PORT
     delete process.env.GAME_INTERNAL_PORT
@@ -111,6 +129,23 @@ describe('game supervisor spawn', () => {
 })
 
 describe('game supervisor worker connect', () => {
+  it('retries until a 0.0.0.0 worker port accepts loopback connections', async () => {
+    const server = createServer()
+    const port = await new Promise<number>((resolve) => {
+      server.listen(0, '0.0.0.0', () => {
+        const address = server.address()
+        if (!address || typeof address === 'string') throw new Error('expected tcp port')
+        resolve(address.port)
+      })
+    })
+    try {
+      const socket = await connectWorkerPort(port, 1000, 20)
+      socket.end()
+    } finally {
+      server.close()
+    }
+  })
+
   it('retries until the worker port accepts IPv4 connections', async () => {
     const server = createServer()
     const port = await new Promise<number>((resolve) => {

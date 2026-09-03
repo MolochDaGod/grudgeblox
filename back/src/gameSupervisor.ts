@@ -1,8 +1,10 @@
 /**
  * Public /health stays on Node net at $PORT so Railway's proxy can reach us.
- * Game traffic is proxied to in-process uWS on 127.0.0.1 (same heap).
+ * Game traffic is proxied to in-process uWS on an internal port (same heap).
  *
- * Unix sockets and a second Node heap both 502'd on Railway.
+ * Binding that worker to 127.0.0.1 502'd on Railway even though Docker
+ * loopback works. The worker listens on 0.0.0.0:<internal>; the supervisor
+ * connects via 127.0.0.1 or ::1. Unix sockets and a second Node heap also 502'd.
  * Set GAME_SOCKET to force a Unix path. GAME_WORKER_FORK=1 restores spawn.
  */
 import { existsSync, unlinkSync } from 'node:fs'
@@ -18,7 +20,7 @@ import {
   resolveGameSocketPath,
 } from './ecs/system/network/serverPolicy.js'
 
-const WORKER_CONNECT_MS = 5000
+const WORKER_CONNECT_MS = 15000
 const WORKER_RETRY_MS = 50
 const STARTING_BODY = 'Game server starting\n'
 
@@ -27,6 +29,18 @@ export function internalPortFor(publicPort: number): number {
   if (configured) return readBoundedInteger(configured, 18001, 1024, 65535)
   const candidate = publicPort < 55000 ? publicPort + 10000 : publicPort - 10000
   return candidate === publicPort ? 18001 : candidate
+}
+
+export function workerListenHost(configured = process.env.GAME_INTERNAL_HOST): string {
+  const value = configured?.trim()
+  return value || '0.0.0.0'
+}
+
+export function workerConnectTargets(port: number) {
+  return [
+    { host: '127.0.0.1', port, family: 4 as const },
+    { host: '::1', port, family: 6 as const },
+  ]
 }
 
 export function workerSocketPath(): string | undefined {
@@ -58,7 +72,7 @@ export function shouldSupervise(): boolean {
   return process.env.GAME_SUPERVISOR === '1' || onRailwayRuntime()
 }
 
-function healthResponse(): Buffer {
+function healthResponse(headOnly = false): Buffer {
   const body = JSON.stringify(
     buildHealthPayload(
       true,
@@ -68,8 +82,9 @@ function healthResponse(): Buffer {
       process.env.ISLAND_MAP || 'live-hub'
     )
   )
+  const payload = headOnly ? '' : body
   return Buffer.from(
-    `HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nCache-Control: no-store\r\nContent-Length: ${Buffer.byteLength(body)}\r\nConnection: close\r\n\r\n${body}`
+    `HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nCache-Control: no-store\r\nContent-Length: ${Buffer.byteLength(body)}\r\nConnection: close\r\n\r\n${payload}`
   )
 }
 
@@ -79,8 +94,9 @@ function startingResponse(): Buffer {
   )
 }
 
-function workerConnectOptions(port: number) {
-  return { host: '127.0.0.1', port, family: 4 as const }
+function workerConnectOptions(port: number, index = 0) {
+  const targets = workerConnectTargets(port)
+  return targets[index % targets.length]
 }
 
 function unlinkSocket(path: string) {
@@ -96,7 +112,13 @@ export function connectWorkerPort(
   timeoutMs = WORKER_CONNECT_MS,
   retryMs = WORKER_RETRY_MS
 ): Promise<Socket> {
-  return connectWorker(() => connect(workerConnectOptions(port)), `tcp ${port}`, timeoutMs, retryMs)
+  let index = 0
+  return connectWorker(
+    () => connect(workerConnectOptions(port, index++)),
+    `tcp ${port}`,
+    timeoutMs,
+    retryMs
+  )
 }
 
 export function connectWorkerSocket(
@@ -140,21 +162,29 @@ export async function runGameSupervisor(startGame?: () => Promise<void>): Promis
   const listenHost = process.env.LISTEN_HOST || '0.0.0.0'
   const unixPath = resolveGameSocketPath()
   const internalPort = internalPortFor(publicPort)
-  const workerLabel = unixPath || `127.0.0.1:${internalPort}`
+  const internalHost = workerListenHost()
+  const workerLabel = unixPath || `${internalHost}:${internalPort}`
   const inProcess = process.env.GAME_WORKER_FORK !== '1' && Boolean(startGame)
   const script = workerScript()
   let child: ChildProcess | undefined
   let restarting = false
   let workerAccepting = false
+  let workerFamily: 4 | 6 = 4
 
   const pipeToWorker = (client: Socket, head: Buffer, game: Socket) => {
     workerAccepting = true
+    if (game.remoteFamily === 'IPv6') workerFamily = 6
+    else if (game.remoteFamily === 'IPv4') workerFamily = 4
     game.write(head)
     client.pipe(game)
     game.pipe(client)
+    client.resume()
     game.on('error', () => {
       workerAccepting = false
       if (!client.destroyed) client.destroy()
+    })
+    client.on('error', () => {
+      if (!game.destroyed) game.destroy()
     })
   }
 
@@ -164,7 +194,13 @@ export async function runGameSupervisor(startGame?: () => Promise<void>): Promis
   }
 
   const openWorker = () =>
-    unixPath ? connect({ path: unixPath }) : connect(workerConnectOptions(internalPort))
+    unixPath
+      ? connect({ path: unixPath })
+      : connect(
+          workerFamily === 6
+            ? { host: '::1', port: internalPort, family: 6 }
+            : { host: '127.0.0.1', port: internalPort, family: 4 }
+        )
 
   const waitForWorker = () =>
     unixPath ? connectWorkerSocket(unixPath) : connectWorkerPort(internalPort)
@@ -182,7 +218,7 @@ export async function runGameSupervisor(startGame?: () => Promise<void>): Promis
           : {
               PORT: String(internalPort),
               GAME_PORT: String(internalPort),
-              LISTEN_HOST: '127.0.0.1',
+              LISTEN_HOST: internalHost,
             }),
       },
       stdio: 'inherit',
@@ -206,10 +242,12 @@ export async function runGameSupervisor(startGame?: () => Promise<void>): Promis
 
   await new Promise<void>((resolve, reject) => {
     const server = createServer((socket) => {
+      socket.on('error', () => undefined)
       socket.once('data', (chunk) => {
+        socket.pause()
         const head = chunk.subarray(0, Math.min(chunk.length, 160)).toString('utf8')
         if (isHealthHttpRequest(head)) {
-          socket.end(healthResponse())
+          socket.end(healthResponse(/^\s*HEAD\s/i.test(head)))
           return
         }
         if (workerAccepting) {
@@ -242,7 +280,7 @@ export async function runGameSupervisor(startGame?: () => Promise<void>): Promis
     process.env.GAME_SOCKET = unixPath
   } else {
     delete process.env.GAME_SOCKET
-    process.env.LISTEN_HOST = '127.0.0.1'
+    process.env.LISTEN_HOST = internalHost
     process.env.PORT = String(internalPort)
     process.env.GAME_PORT = String(internalPort)
   }
