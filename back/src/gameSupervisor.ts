@@ -46,12 +46,9 @@ export function workerNodeArgs(
 
 export function shouldSupervise(): boolean {
   if (process.env.GAME_WORKER === '1') return false
-  return Boolean(
-    process.env.RAILWAY_SERVICE_ID ||
-      process.env.RAILWAY_ENVIRONMENT_ID ||
-      process.env.RAILWAY_ENVIRONMENT_NAME ||
-      process.env.GAME_SUPERVISOR === '1'
-  )
+  // Railway must not auto-spawn a second Node process. Two heaps leave the
+  // worker dead (public /health 200, WebSocket 502 Game server starting).
+  return process.env.GAME_SUPERVISOR === '1'
 }
 
 function healthResponse(): Buffer {

@@ -65,11 +65,17 @@ jobs:
           cache-to: type=gha,mode=max
 
       - name: Start container
-        run: docker run -d --name smoke notblox-game-server:ci
+        run: |
+          docker run -d --name smoke \
+            -e NODE_ENV=production \
+            -e RAILWAY_SERVICE_ID=ci \
+            -e GAME_SCRIPT=gtaLobbyScript.ts \
+            -e ISLAND_LIVE=0 \
+            notblox-game-server:ci
 
       - name: Wait for healthy
         run: |
-          for i in $(seq 1 12); do
+          for i in $(seq 1 24); do
             STATUS=$(docker inspect --format='{{.State.Health.Status}}' smoke 2>/dev/null || echo 'missing')
             echo "Attempt $i: $STATUS"
             if [ "$STATUS" = "healthy" ]; then
@@ -86,6 +92,9 @@ jobs:
           echo "Timed out waiting for container to become healthy"
           docker logs smoke
           exit 1
+
+      - name: WebSocket upgrade
+        run: docker exec smoke node src/wsUpgradeSmoke.mjs
 
       - name: Print logs
         if: always()
