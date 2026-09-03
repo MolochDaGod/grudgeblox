@@ -1,7 +1,7 @@
 import 'dotenv/config'
 import { resolve } from 'path'
 import { pathToFileURL } from 'url'
-import { runGameSupervisor, shouldSupervise } from './gameSupervisor.js'
+import { shouldSupervise, startHealthProxy } from './gameSupervisor.js'
 
 async function loadGameLogic() {
   // Production default: GTA-like metaverse lobby (cars, districts, thugs)
@@ -30,9 +30,9 @@ process.on('unhandledRejection', (reason) => {
 
 async function main() {
   if (shouldSupervise()) {
-    console.log('SUPERVISOR : public /health isolated from the game worker')
-    await runGameSupervisor()
-    return
+    startHealthProxy()
+    // Yield so the health thread can bind PORT before this thread compiles Rapier.
+    await new Promise((resolve) => setTimeout(resolve, 250))
   }
 
   try {
