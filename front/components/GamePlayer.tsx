@@ -43,6 +43,11 @@ export default function GamePlayer({
   const [kills, setKills] = useState(0)
   const [killFeed, setKillFeed] = useState<Array<{ id: number; text: string }>>([])
   const [softAim, setSoftAim] = useState(false)
+  const [playHud, setPlayHud] = useState({
+    pointerLocked: false,
+    gamepadConnected: false,
+    prompt: null as string | null,
+  })
   const refContainer = useRef(null)
   const avatarTried = useRef(false)
   const loadedAvatar = useRef<LoadedAvatar | null>(null)
@@ -98,6 +103,14 @@ export default function GamePlayer({
   const retryConnection = useCallback(() => {
     setConnectionAttempt((attempt) => attempt + 1)
   }, [])
+
+  useEffect(() => {
+    if (!gameInstance || isLoading) return
+    const id = window.setInterval(() => {
+      setPlayHud(gameInstance.inputManager.hudState())
+    }, 160)
+    return () => window.clearInterval(id)
+  }, [gameInstance, isLoading])
 
   // Soft aim RMB (three-player-controller soft aim)
   useEffect(() => {
@@ -332,8 +345,15 @@ export default function GamePlayer({
             softAim={softAim}
             fightLinks={METAVERSE_FIGHT_LINKS}
             worldSlug={gameInfo.slug}
+            pointerLocked={playHud.pointerLocked}
+            gamepadConnected={playHud.gamepadConnected}
+            prompt={playHud.prompt}
           />
-          <WeaponSkillBar enabled={combatEnabled !== false && !isLoading} onCast={onCast} />
+          <WeaponSkillBar
+            enabled={combatEnabled !== false && !isLoading}
+            onCast={onCast}
+            consumeSkillSlot={() => gameInstance.inputManager.consumeSkillSlot()}
+          />
           {/* Crosshair (three-player-controller) */}
           {combatEnabled !== false && !isLoading && (
             <div

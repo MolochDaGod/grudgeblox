@@ -97,7 +97,26 @@ Meshes parented to bones; raycast layer for weapons
 | `front/lib/dangerRoomSkills.ts` | Skill defs + fight links |
 | `front/lib/grudgeAvatar.ts` | Load + attach combat/IK |
 | `front/components/GamePlayer.tsx` | Loop: IK + projectiles + cast hooks |
-| `front/components/MetaverseHud.tsx` | HP, kills, feed, Tab board, Mine/GRUDOX |
+| `front/components/MetaverseHud.tsx` | HP, kills, feed, Tab board, prompt, pad |
+| `front/game/thirdPersonCamera.ts` | Chase-cam offset, look, wall pull-in |
+| `front/game/gamepad.ts` | Standard mapping: sticks, A jump, X interact |
+| `front/game/ecs/system/OrbitCameraFollowSystem.ts` | Pointer-lock third-person follow |
+
+---
+
+## Controls
+
+| Input | Action |
+|-------|--------|
+| Click world / drag | Look (pointer lock on desktop) |
+| WASD / left stick | Move relative to camera |
+| Right stick | Look |
+| Space / A (south) / Jump | Jump |
+| E / X (west) | Interact / vehicles |
+| RMB | Soft aim (does not rotate camera) |
+| LB / RB / LT / RT / Y | Skills 1–5 |
+| Tab | Scoreboard |
+| Wheel | Camera distance |
 
 ---
 
@@ -107,10 +126,14 @@ Meshes parented to bones; raycast layer for weapons
 /play/test
 [ ] Select fleet hero + enter
 [ ] Avatar mesh + hitboxes loaded
+[ ] Third-person chase cam behind the avatar
+[ ] Click-to-look + Esc releases pointer
+[ ] Gamepad left stick moves, right stick looks
 [ ] Foot IK on uneven ground (if terrain meshes present)
 [ ] 1 slash melee (weapon collider flashes)
 [ ] 3 bolt / 4 shot fly + impact
 [ ] RMB soft-aim tightens cone
 [ ] Tab scoreboard, kill feed updates
+[ ] Nearby prompt + mobile Jump / E
 [ ] Links open Mine / GRUDOX / Danger Room
 ```

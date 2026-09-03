@@ -4,7 +4,7 @@ import { Entity } from '@shared/entity/Entity'
 import { InputMessage } from '@shared/network/client/inputMessage'
 
 export class Camera extends THREE.PerspectiveCamera {
-  defaultOffset = new THREE.Vector3(0, 5, 15)
+  defaultOffset = new THREE.Vector3(0, 1.65, 4.6)
   controlSystem: OrbitCameraFollowSystem
 
   constructor(renderer: THREE.WebGLRenderer) {
