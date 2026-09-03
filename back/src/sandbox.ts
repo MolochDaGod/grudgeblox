@@ -31,7 +31,7 @@ process.on('unhandledRejection', (reason) => {
 async function main() {
   if (shouldSupervise()) {
     console.log('SUPERVISOR : public /health isolated from the game worker')
-    await runGameSupervisor(import.meta.url)
+    await runGameSupervisor()
     return
   }
 
