@@ -6,6 +6,7 @@ import { decodeClientMessage, MAX_CLIENT_MESSAGE_BYTES } from './clientMessageVa
 import {
   buildHealthPayload,
   isAdminAuthorized,
+  isHealthHttpRequest,
   isWebSocketOriginAllowed,
   readBoundedInteger,
   resolveAllowedOrigins,
@@ -37,6 +38,13 @@ describe('health and admin policy', () => {
     assert.equal(isAdminAuthorized('Basic correct', 'correct'), false)
     assert.equal(isAdminAuthorized('Bearer wrong', 'correct'), false)
     assert.equal(isAdminAuthorized('Bearer correct', 'correct'), true)
+  })
+
+  it('detects health probes from the first HTTP line', () => {
+    assert.equal(isHealthHttpRequest('GET /health HTTP/1.1\r\nHost: x'), true)
+    assert.equal(isHealthHttpRequest('HEAD /health HTTP/1.1\r\n'), true)
+    assert.equal(isHealthHttpRequest('GET / HTTP/1.1\r\n'), false)
+    assert.equal(isHealthHttpRequest('GET /play HTTP/1.1\r\n'), false)
   })
 })
 

@@ -117,6 +117,11 @@ export function isAdminAuthorized(authorization: string, expectedToken: string |
   return supplied.length === expected.length && timingSafeEqual(supplied, expected)
 }
 
+export function isHealthHttpRequest(head: string): boolean {
+  const line = head.split(/\r?\n/, 1)[0] || ''
+  return /^(GET|HEAD) \/health(\?| HTTP\/|$)/i.test(line)
+}
+
 export function readBoundedInteger(
   rawValue: string | undefined,
   fallback: number,
