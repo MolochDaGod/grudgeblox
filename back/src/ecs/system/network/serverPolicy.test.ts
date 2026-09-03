@@ -25,6 +25,11 @@ describe('health and admin policy', () => {
     assert.equal(JSON.stringify(health).includes('chat'), false)
   })
 
+  it('includes the island map on health when provided', () => {
+    const health = buildHealthPayload(true, 'islandSandboxScript.ts', 20, 1, 'alpine-mesh')
+    assert.equal(health.game.map, 'alpine-mesh')
+  })
+
   it('requires an exact bearer token for the optional admin feed', () => {
     assert.equal(isAdminAuthorized('', undefined), false)
     assert.equal(isAdminAuthorized('Bearer correct', undefined), false)

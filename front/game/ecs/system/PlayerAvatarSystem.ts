@@ -30,17 +30,22 @@ function appearanceSig(p: PlayerComponent): string {
     classId: p.classId,
     model3d: p.model3d,
     characterId: p.characterId,
+    gameEra: p.gameEra,
   })
 }
 
 function toFleetCharacter(p: PlayerComponent): FleetCharacter {
-  const raceId = normalizeKitRace(p.raceId)
+  const kitRace = normalizeKitRace(p.raceId)
+  const model3d = p.model3d?.startsWith('races/')
+    ? `/kit/4character/${p.model3d}`
+    : p.model3d
   return {
     id: p.characterId || `net-${p.entityId}`,
     name: p.name,
-    raceId,
-    classId: normalizeKitClass(p.classId),
-    model3d: p.model3d?.startsWith('races/') ? `/kit/4character/${p.model3d}` : p.model3d,
+    raceId: p.raceId || kitRace,
+    classId: p.classId || normalizeKitClass(p.classId),
+    model3d,
+    gameEra: p.gameEra,
   }
 }
 

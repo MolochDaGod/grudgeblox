@@ -10,7 +10,10 @@ export class PlayerComponent extends NetworkComponent {
     public characterId: string = '',
     public model3d: string = 'races/human.glb',
     public fx: string = '',
-    public fxSeq: number = 0
+    public fxSeq: number = 0,
+    public gameEra: string = 'voxel',
+    /** Server-only live island seat. Not replicated. */
+    public mapId: string = ''
   ) {
     super(entityId, SerializedComponentType.PLAYER)
   }
@@ -24,6 +27,7 @@ export class PlayerComponent extends NetworkComponent {
       m: this.model3d,
       fx: this.fx,
       fxn: this.fxSeq,
+      e: this.gameEra,
     }
   }
 
@@ -36,6 +40,7 @@ export class PlayerComponent extends NetworkComponent {
     if (data.m) this.model3d = data.m
     if (typeof data.fx === 'string') this.fx = data.fx
     if (typeof data.fxn === 'number') this.fxSeq = data.fxn
+    if (typeof data.e === 'string') this.gameEra = data.e
   }
 }
 
@@ -47,6 +52,7 @@ export interface SerializedPlayerComponent extends SerializedComponent {
   m?: string
   fx?: string
   fxn?: number
+  e?: string
 }
 
 

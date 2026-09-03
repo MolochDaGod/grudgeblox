@@ -1,7 +1,8 @@
 /**
  * Multi-era character policy for GrudgeBlox — same fleet SSOT as Mine-Loader.
  * One account · 4 slots per era · Railway `/api/characters?era=`.
- * Voxel play never unions Warlords heroes.
+ * Sandbox worlds union every era so Warlords, Voxel, Nexus, Armada, and Game
+ * heroes can play on the same island.
  * @see Mine-Loader docs/CHARACTER_ERAS.md
  */
 
@@ -73,6 +74,73 @@ export const CHARACTER_ERA_POLICIES: Record<FleetEraId, EraCharacterPolicy> = {
 
 export const VOXEL_ERA: FleetEraId = 'voxel'
 export const APP_CHARACTER_SYSTEM: FleetEraId = 'voxel'
+export const ALL_FLEET_ERAS: FleetEraId[] = ['voxel', 'warlords', 'nexus', 'armada', 'game']
+
+export type EraGeneration = {
+  id: FleetEraId
+  generation: number
+  label: string
+  tagline: string
+  blurb: string
+  playSlug: string
+  accent: string
+}
+
+/** Ordered generations of era — every generation plays the Super Terrain islands. */
+export const ERA_GENERATIONS: EraGeneration[] = [
+  {
+    id: 'voxel',
+    generation: 1,
+    label: 'Voxel / Realms',
+    tagline: 'First generation',
+    blurb: 'Mine-Loader Realms kits. Four slots. Mixamo races land on Harbor Atoll and every later island.',
+    playSlug: 'island-harbor-atoll',
+    accent: '#38bdf8',
+  },
+  {
+    id: 'warlords',
+    generation: 2,
+    label: 'Warlords',
+    tagline: 'Second generation',
+    blurb: 'grudge6 production heroes. Same account, four Warlords slots, Volcanic Ridge as the home island.',
+    playSlug: 'island-volcanic-ridge',
+    accent: '#f59e0b',
+  },
+  {
+    id: 'nexus',
+    generation: 3,
+    label: 'Nexus',
+    tagline: 'Third generation',
+    blurb: 'Open-studio Nexus characters. Alpine Mesh is the Super Terrain high-relief home world.',
+    playSlug: 'island-alpine-mesh',
+    accent: '#a78bfa',
+  },
+  {
+    id: 'armada',
+    generation: 4,
+    label: 'Armada',
+    tagline: 'Fourth generation',
+    blurb: 'Fleet Armada captains. Spline Forest grows Super Terrain stands around the landing.',
+    playSlug: 'island-spline-forest',
+    accent: '#34d399',
+  },
+  {
+    id: 'game',
+    generation: 5,
+    label: 'Game',
+    tagline: 'Fifth generation',
+    blurb: 'Game-era heroes. Granite CSG outcrops from the Super Terrain rock lab.',
+    playSlug: 'island-granite-csg',
+    accent: '#fb7185',
+  },
+]
+
+export function eraGeneration(id?: string): EraGeneration {
+  const key = (id || VOXEL_ERA).toLowerCase()
+  return ERA_GENERATIONS.find((era) => era.id === key) || ERA_GENERATIONS[0]
+}
+
+export type RosterMode = 'world-era' | 'all-eras'
 
 export function isFleetEra(id: string): id is FleetEraId {
   return id === 'warlords' || id === 'voxel' || id === 'nexus' || id === 'armada' || id === 'game'
@@ -85,12 +153,13 @@ export function getEraPolicy(id?: string): EraCharacterPolicy {
 }
 
 /**
- * GrudgeBlox worlds (test, combat, lobby, grudox, streets) are voxel play.
- * Mine + GRUDOX + Blox share era=voxel heroes. Warlords stay on warlords hosts.
+ * Sandbox worlds (`rosterMode=all-eras`) load every fleet era.
+ * Dedicated worlds still use that world's shareFrom list.
  */
-export function rosterErasForWorld(era?: string): FleetEraId[] {
+export function rosterErasForWorld(era?: string, rosterMode?: RosterMode | string): FleetEraId[] {
+  if (rosterMode === 'all-eras') return [...ALL_FLEET_ERAS]
   const key = (era || VOXEL_ERA).toLowerCase()
-  if (key === 'warlords') return CHARACTER_ERA_POLICIES.voxel.shareFrom
+  if (key === 'all' || key === 'sandbox') return [...ALL_FLEET_ERAS]
   return getEraPolicy(era).shareFrom
 }
 

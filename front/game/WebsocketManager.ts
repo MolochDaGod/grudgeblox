@@ -19,12 +19,13 @@ export class WebSocketManager {
   private serverUrl: string
 
   timeSinceLastServerUpdate: number = 0
-  constructor(game: Game, port: number = 8001) {
+  constructor(game: Game, port: number = 8001, roomUrl?: string) {
     // Production: NEXT_PUBLIC_SERVER_URL=wss://grudgeblox-production.up.railway.app (no extra port)
-    // Local: ws://127.0.0.1 → :8001. Explicit :port in env always wins.
+    // Local: ws://127.0.0.1 → world port. Per-room websocketUrl always wins.
     this.serverUrl = resolveWebSocketServerUrl(
       process.env.NEXT_PUBLIC_SERVER_URL || FLEET.ws,
       port,
+      roomUrl,
     )
 
     this.addMessageHandler(ServerMessageType.FIRST_CONNECTION, (message) => {

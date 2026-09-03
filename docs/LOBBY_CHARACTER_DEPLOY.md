@@ -14,9 +14,10 @@
 /play/test  (and /play/{slug})
   ├── Cover image + Online badge          ← Notblox
   ├── Display name                        ← Notblox playerName
-  ├── Fleet character roster              ← era of this world only
-  │     Blox + Mine + GRUDOX: era=voxel (never Warlords heroes)
+  ├── Fleet character roster              ← sandbox = every era
+  │     Voxel + Warlords + Nexus + Armada + Game
   │     SSOT: Railway /api/characters?era=
+  │     Island maps: baked Island Terrain World Engine
   ├── Enter world → WebSocket multiplayer ← Notblox ECS + Rapier
   ├── Local avatar mesh                   ← grudge6 CDN GLB (visual)
   └── Weapon skills 1–5                   ← windup → hit / projectile impact
@@ -45,12 +46,24 @@ Optional rewrite `/api/characters` → Railway game API (same as fleet satellite
 
 ## Worlds (`public/gameData.json`)
 
-| Slug | Era | Combat | Port |
-|------|-----|--------|------|
-| `test` | voxel | yes | 8001 |
-| `combat` | voxel | yes | 8002 |
-| `lobby` | voxel | no | 8003 |
-| `grudox` | voxel | yes | 8004 |
+Lobby sections: **Eras** `/eras` · **Islands** `/islands` · **Maps** `/maps`.
+
+| Slug | Section | Script / map | Port |
+|------|---------|--------------|------|
+| `island-harbor-atoll` (`island`) | islands | `ISLAND_MAP=harbor-atoll` | 8006 |
+| `island-volcanic-ridge` | islands | volcanic-ridge | 8007 |
+| `island-frozen-fjord` | islands | frozen-fjord | 8008 |
+| `island-alpine-mesh` | islands | Super Terrain alpine | 8009 |
+| `island-granite-csg` | islands | Super Terrain granite | 8010 |
+| `island-spline-forest` | islands | Super Terrain forest | 8011 |
+| `island-tunnel-cavern` | islands | Super Terrain cavern | 8012 |
+| `test` | maps | `gtaLobbyScript.ts` | 8001 |
+| `combat` | maps | `parkourScript.ts` | 8002 |
+| `lobby` | maps | lobby bridge | 8003 |
+| `grudox` | maps | GRUDOX sandbox | 8004 |
+| `streets` | maps | `dopebudzStreets.ts` | 8005 |
+
+Deploy: `docs/SANDBOX_DEPLOY.md`. Terrain: `docs/ISLAND_SANDBOX.md`. Super Terrain: https://github.com/vibe-stack/super-terrain
 
 ---
 

@@ -35,6 +35,9 @@ export class ServerMeshSystem {
     entity: Entity
   ): Promise<void> {
     const serverMeshComponent = event.component
+    if (serverMeshComponent.filePath.startsWith('island:')) {
+      return
+    }
 
     // Load the mesh from the serverMeshComponent
     const mesh = await LoadManager.glTFLoad(serverMeshComponent.filePath)

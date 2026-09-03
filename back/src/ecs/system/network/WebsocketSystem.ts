@@ -43,6 +43,8 @@ import { ChatComponent } from '../../component/tag/TagChatComponent.js'
 import { WebSocketComponent } from '../../component/WebsocketComponent.js'
 import { WorldActionEvent } from '../../component/events/WorldActionEvent.js'
 import { decodeClientMessage, MAX_CLIENT_MESSAGE_BYTES } from './clientMessageValidation.js'
+import { sanitizeAppearance } from '@shared/avatar/appearancePolicy.js'
+import { parseIslandMapId } from '@shared/maps/islandLive.js'
 import {
   buildHealthPayload,
   isAdminAuthorized,
@@ -137,7 +139,9 @@ export class WebsocketSystem {
       const healthData = buildHealthPayload(
         this.applicationReady,
         process.env.GAME_SCRIPT || 'Unknown',
-        config.SERVER_TICKRATE
+        config.SERVER_TICKRATE,
+        process.uptime(),
+        process.env.ISLAND_MAP
       )
       res.writeStatus(this.applicationReady ? '200 OK' : '503 Service Unavailable')
       res.writeHeader('Content-Type', 'application/json')
@@ -419,39 +423,29 @@ export class WebsocketSystem {
     message: SetPlayerNameMessage,
     serverMesh?: { filePath: string; updated: boolean }
   ) {
-    const allowedRace = new Set(['human', 'barbarian', 'dwarf', 'high_elf', 'orc', 'undead'])
-    const allowedClass = new Set(['warrior', 'ranger', 'mage', 'adventurer'])
-    let race = typeof message.raceId === 'string' ? message.raceId.toLowerCase().trim() : ''
-    if (race.includes('elf')) race = 'high_elf'
-    else if (race.includes('barb')) race = 'barbarian'
-    else if (race.includes('dwarf')) race = 'dwarf'
-    else if (race.includes('orc')) race = 'orc'
-    else if (race.includes('undead')) race = 'undead'
-    else if (race.includes('human') || race === 'wk') race = 'human'
-    if (!allowedRace.has(race)) race = playerComponent.raceId || 'human'
+    const appearance = sanitizeAppearance({
+      raceId: message.raceId,
+      classId: message.classId,
+      characterId: message.characterId,
+      model3d: message.model3d,
+      gameEra: message.gameEra,
+    })
 
-    let klass = typeof message.classId === 'string' ? message.classId.toLowerCase().trim() : ''
-    if (klass.includes('war') || klass.includes('sword')) klass = 'warrior'
-    else if (klass.includes('range') || klass.includes('bow')) klass = 'ranger'
-    else if (klass.includes('mage') || klass.includes('magic') || klass.includes('wiz')) klass = 'mage'
-    else if (klass.includes('advent')) klass = 'adventurer'
-    if (!allowedClass.has(klass)) klass = playerComponent.classId || 'adventurer'
-
-    let characterId = typeof message.characterId === 'string' ? message.characterId.trim() : ''
-    characterId = characterId.replace(/[^\w-]/g, '').substring(0, 64)
-
-    let model3d = typeof message.model3d === 'string' ? message.model3d.replace(/\\/g, '/') : ''
-    const modelMatch = model3d.match(/races\/(human|barbarian|dwarf|high_elf|orc|undead)\.glb$/i)
-    model3d = modelMatch ? `races/${modelMatch[1].toLowerCase()}.glb` : `races/${race}.glb`
-
-    playerComponent.raceId = race
-    playerComponent.classId = klass
-    playerComponent.characterId = characterId
-    playerComponent.model3d = model3d
+    playerComponent.raceId = appearance.raceId
+    playerComponent.classId = appearance.classId
+    playerComponent.characterId = appearance.characterId
+    playerComponent.model3d = appearance.model3d
+    playerComponent.gameEra = appearance.gameEra
+    if (typeof message.mapId === 'string') {
+      const mapId = parseIslandMapId(message.mapId)
+      if (mapId) {
+        playerComponent.mapId = mapId
+      }
+    }
     playerComponent.updated = true
 
     if (serverMesh) {
-      serverMesh.filePath = `/kit/4character/${model3d}`
+      serverMesh.filePath = appearance.serverMeshPath
       serverMesh.updated = true
     }
   }

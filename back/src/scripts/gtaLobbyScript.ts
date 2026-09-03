@@ -19,6 +19,7 @@ import { MapWorld } from '../ecs/entity/MapWorld.js'
 import { Mesh } from '../ecs/entity/Mesh.js'
 import { Sphere } from '../ecs/entity/Sphere.js'
 import { TriggerCube } from '../ecs/entity/TriggerCube.js'
+import { startIslandLiveRuntime } from './islandLiveRuntime.js'
 
 function randomHexColor() {
   const hex = Math.floor(Math.random() * 16777215).toString(16)
@@ -229,5 +230,20 @@ gate.entity.addNetworkComponent(
   new TextComponent(gate.entity.id, '🌆 GRUDGEBLOX CITY · E cars · 1-5 skills', 0, 5, 0, 48),
 )
 
+const islandSign = new Cube({
+  position: { x: 42, y: 3, z: 0 },
+  size: { width: 1, height: 6, depth: 10 },
+  color: '#e8c46a',
+})
+islandSign.entity.addNetworkComponent(
+  new TextComponent(islandSign.entity.id, '🏝️ Super Terrain islands → east', 0, 5, 0, 32),
+)
+
 console.log('[gtaLobby] GrudgeBlox GTA-like lobby world ready')
 console.log(`[gtaLobby] CDN hint ${CDN} (avatars client-side)`)
+
+startIslandLiveRuntime({
+  map: 'all',
+  besideCity: true,
+  defaultSpawn: { x: 0, y: 8, z: 0 },
+})

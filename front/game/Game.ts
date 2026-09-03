@@ -19,13 +19,15 @@ import {
   InvisibilitySystem,
   VehicleSystem,
   PlayerAvatarSystem,
+  IslandTerrainSystem,
 } from './ecs/system'
 import { Hud } from './Hud'
 import { Renderer } from './Renderer'
 import { EventSystem } from '@shared/system/EventSystem'
 import { MutableRefObject } from 'react'
 import { ClientMessageType, SetPlayerNameMessage, WorldActionMessage } from '@shared/network/client'
-import { kitModelKey, sanitizeKitModel3d } from '@/lib/fourCharacterKit'
+import { sanitizeModel3d } from '@shared/avatar/appearancePolicy'
+import { kitModelKey } from '@/lib/fourCharacterKit'
 
 export class Game {
   private static instance: Game | undefined
@@ -51,16 +53,17 @@ export class Game {
   private vehicleSystem: VehicleSystem
   private invisibilitySystem: InvisibilitySystem
   private playerAvatarSystem: PlayerAvatarSystem
+  private islandTerrainSystem: IslandTerrainSystem
   renderer: Renderer
   hud: Hud
   private identifyFollowedMeshSystem: IdentifyFollowedMeshSystem
-  private constructor(gameContainerRef: MutableRefObject<any>, port?: number) {
+  private constructor(gameContainerRef: MutableRefObject<any>, port?: number, websocketUrl?: string) {
     this.syncComponentSystem = new SyncComponentsSystem(this)
     this.syncPositionSystem = new SyncPositionSystem()
     this.syncRotationSystem = new SyncRotationSystem()
     this.syncColorSystem = new SyncColorSystem()
     this.syncSizeSystem = new SyncSizeSystem()
-    this.websocketManager = new WebSocketManager(this, port)
+    this.websocketManager = new WebSocketManager(this, port, websocketUrl)
     this.animationSystem = new AnimationSystem()
     this.sleepCheckSystem = new SleepCheckSystem()
     this.chatSystem = new ChatSystem()
@@ -73,18 +76,23 @@ export class Game {
     this.vehicleSystem = new VehicleSystem()
     this.invisibilitySystem = new InvisibilitySystem()
     this.playerAvatarSystem = new PlayerAvatarSystem()
+    this.islandTerrainSystem = new IslandTerrainSystem()
 
     this.renderer = new Renderer(gameContainerRef)
     this.inputManager = new InputManager(this.websocketManager, this.renderer.camera.controlSystem)
     this.hud = new Hud()
   }
 
-  static getInstance(port?: number, gameContainerRef?: MutableRefObject<any>): Game {
+  static getInstance(
+    port?: number,
+    gameContainerRef?: MutableRefObject<any>,
+    websocketUrl?: string
+  ): Game {
     if (!Game.instance) {
       if (!gameContainerRef) {
         throw new Error('Game instance not initialized with gameContainerRef')
       }
-      Game.instance = new Game(gameContainerRef, port)
+      Game.instance = new Game(gameContainerRef, port, websocketUrl)
     }
     return Game.instance
   }
@@ -106,6 +114,18 @@ export class Game {
     await this.websocketManager.connect()
     this.renderer.appendChild()
     this.renderer.setAnimationLoop(this.loopFunction)
+    this.joinLiveIsland()
+  }
+
+  /** Seat this client on a Super Terrain / Island Engine bake in the live room. */
+  joinLiveIsland() {
+    if (!this.worldMapId) return
+    const action = `island:${this.worldMapId}`.slice(0, 40)
+    const join: WorldActionMessage = {
+      t: ClientMessageType.WORLD_ACTION,
+      action,
+    }
+    this.websocketManager.send(join)
   }
 
   /**
@@ -124,12 +144,18 @@ export class Game {
     raceId?: string
     classId?: string
     model3d?: string
+    gameEra?: string
   } | null = null
 
   avatarWorldSlug: string | undefined
+  worldMapId: string | undefined
 
   setAvatarWorldSlug(worldSlug: string) {
     this.avatarWorldSlug = worldSlug
+  }
+
+  setWorldMapId(mapId?: string) {
+    this.worldMapId = mapId
   }
 
   setFleetCharacter(character: {
@@ -138,6 +164,7 @@ export class Game {
     raceId?: string
     classId?: string
     model3d?: string
+    gameEra?: string
   }) {
     this.fleetCharacter = character
     this.sendAppearance(character.name || 'Player')
@@ -151,9 +178,19 @@ export class Game {
       raceId: c?.raceId,
       classId: c?.classId,
       characterId: c?.id,
-      model3d: sanitizeKitModel3d(c?.model3d, c?.raceId) || kitModelKey(c?.raceId),
+      model3d: sanitizeModel3d(c?.model3d, c?.raceId) || kitModelKey(c?.raceId),
+      gameEra: c?.gameEra,
+      mapId: this.worldMapId,
     }
     this.websocketManager.send(message)
+    if (this.worldMapId) {
+      const action = `island:${this.worldMapId}`.slice(0, 40)
+      const join: WorldActionMessage = {
+        t: ClientMessageType.WORLD_ACTION,
+        action,
+      }
+      this.websocketManager.send(join)
+    }
   }
 
   sendPlayerFx(fxId: string) {
@@ -187,6 +224,7 @@ export class Game {
     this.identifyFollowedMeshSystem.update(entities, this)
     this.inputManager.update(entities, now - this.lastRenderTime)
     this.inputManager.sendInput(entities)
+    this.islandTerrainSystem.update(entities, this.renderer)
     this.destroySystem.update(entities, this.renderer)
     this.meshSystem.update(entities, this.renderer)
     this.vehicleSystem.update(entities)

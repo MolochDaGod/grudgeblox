@@ -38,3 +38,13 @@ export * from './network/server/index.js'
 // System
 export * from './system/EntityManager.js'
 export * from './system/EventSystem.js'
+
+// Maps + multi-era appearance
+export * from './maps/islandBake.js'
+export * from './maps/generateIsland.js'
+export * from './maps/islandMesh.js'
+export * from './maps/superTerrainBake.js'
+export * from './maps/sandboxRooms.js'
+export * from './maps/islandLive.js'
+export * from './avatar/appearancePolicy.js'
+export * from './avatar/characterTransformContract.js'

@@ -1,8 +1,202 @@
 [
   {
+    "title": "Island Sandbox",
+    "imageUrl": "/PreviewTestGame.webp",
+    "slug": "island",
+    "section": "islands",
+    "engine": "island-engine",
+    "images": [
+      {
+        "url": "/PreviewTestGame.webp",
+        "width": 1920,
+        "height": 1080,
+        "alt": "Island Sandbox",
+        "type": "image/webp"
+      }
+    ],
+    "websocketPort": 8006,
+    "era": "voxel",
+    "sandbox": true,
+    "rosterMode": "all-eras",
+    "mapId": "harbor-atoll",
+    "combatEnabled": true,
+    "metaDescription": "Live Harbor Atoll room. Super Terrain and Island Engine bakes, every fleet era in one sandbox.",
+    "markdown": "## Island Sandbox\n\nSame live room as **Harbor Atoll** (`/play/island-harbor-atoll`). Terrain is baked to `grudge-island-bake/v1` from [Super Terrain](https://github.com/vibe-stack/super-terrain) or Island Terrain World Engine.\n\n```bash\nGAME_SCRIPT=islandSandboxScript.ts ISLAND_MAP=harbor-atoll pnpm run dev:back\n```\n"
+  },
+  {
+    "title": "Harbor Atoll",
+    "imageUrl": "/PreviewTestGame.webp",
+    "slug": "island-harbor-atoll",
+    "section": "islands",
+    "engine": "island-engine",
+    "images": [
+      {
+        "url": "/PreviewTestGame.webp",
+        "width": 1920,
+        "height": 1080,
+        "alt": "Harbor Atoll",
+        "type": "image/webp"
+      }
+    ],
+    "websocketPort": 8006,
+    "era": "voxel",
+    "sandbox": true,
+    "rosterMode": "all-eras",
+    "mapId": "harbor-atoll",
+    "combatEnabled": true,
+    "metaDescription": "Tropical lagoon live sandbox. Voxel generation home island — all eras spawn on the beach.",
+    "markdown": "## Harbor Atoll\n\nLive room on host port **8006**. `ISLAND_MAP=harbor-atoll`.\n"
+  },
+  {
+    "title": "Volcanic Ridge",
+    "imageUrl": "/PreviewObbyGame.webp",
+    "slug": "island-volcanic-ridge",
+    "section": "islands",
+    "engine": "island-engine",
+    "images": [
+      {
+        "url": "/PreviewObbyGame.webp",
+        "width": 1920,
+        "height": 1080,
+        "alt": "Volcanic Ridge",
+        "type": "image/webp"
+      }
+    ],
+    "websocketPort": 8007,
+    "era": "warlords",
+    "sandbox": true,
+    "rosterMode": "all-eras",
+    "mapId": "volcanic-ridge",
+    "combatEnabled": true,
+    "metaDescription": "Basalt spine and lava rock. Warlords generation home island, live on port 8007.",
+    "markdown": "## Volcanic Ridge\n\nLive room on host port **8007**. `ISLAND_MAP=volcanic-ridge`.\n"
+  },
+  {
+    "title": "Frozen Fjord",
+    "imageUrl": "/PreviewPetSimGame.webp",
+    "slug": "island-frozen-fjord",
+    "section": "islands",
+    "engine": "island-engine",
+    "images": [
+      {
+        "url": "/PreviewPetSimGame.webp",
+        "width": 1920,
+        "height": 1080,
+        "alt": "Frozen Fjord",
+        "type": "image/webp"
+      }
+    ],
+    "websocketPort": 8008,
+    "era": "voxel",
+    "sandbox": true,
+    "rosterMode": "all-eras",
+    "mapId": "frozen-fjord",
+    "combatEnabled": true,
+    "metaDescription": "Ice-cut inlet and snow terraces. Dedicated live sandbox on port 8008.",
+    "markdown": "## Frozen Fjord\n\nLive room on host port **8008**. `ISLAND_MAP=frozen-fjord`.\n"
+  },
+  {
+    "title": "Alpine Mesh",
+    "imageUrl": "/PreviewFootballGame.webp",
+    "slug": "island-alpine-mesh",
+    "section": "islands",
+    "engine": "super-terrain",
+    "images": [
+      {
+        "url": "/PreviewFootballGame.webp",
+        "width": 1920,
+        "height": 1080,
+        "alt": "Alpine Mesh",
+        "type": "image/webp"
+      }
+    ],
+    "websocketPort": 8009,
+    "era": "nexus",
+    "sandbox": true,
+    "rosterMode": "all-eras",
+    "mapId": "alpine-mesh",
+    "combatEnabled": true,
+    "metaDescription": "Super Terrain alpine climate: high relief, valley floor, snow. Nexus generation home island.",
+    "markdown": "## Alpine Mesh\n\nBaked from [Super Terrain](https://github.com/vibe-stack/super-terrain) alpine scouting (4 km mesh world, 128 m sections). Live port **8009**.\n"
+  },
+  {
+    "title": "Granite CSG",
+    "imageUrl": "/PreviewObbyGame.webp",
+    "slug": "island-granite-csg",
+    "section": "islands",
+    "engine": "super-terrain",
+    "images": [
+      {
+        "url": "/PreviewObbyGame.webp",
+        "width": 1920,
+        "height": 1080,
+        "alt": "Granite CSG",
+        "type": "image/webp"
+      }
+    ],
+    "websocketPort": 8010,
+    "era": "game",
+    "sandbox": true,
+    "rosterMode": "all-eras",
+    "mapId": "granite-csg",
+    "combatEnabled": true,
+    "metaDescription": "Super Terrain granite rock lab — fractured CSG outcrops. Game generation home island.",
+    "markdown": "## Granite CSG\n\nHeightfield bake of Super Terrain granite formations. Live port **8010**.\n"
+  },
+  {
+    "title": "Spline Forest",
+    "imageUrl": "/PreviewPetSimGame.webp",
+    "slug": "island-spline-forest",
+    "section": "islands",
+    "engine": "super-terrain",
+    "images": [
+      {
+        "url": "/PreviewPetSimGame.webp",
+        "width": 1920,
+        "height": 1080,
+        "alt": "Spline Forest",
+        "type": "image/webp"
+      }
+    ],
+    "websocketPort": 8011,
+    "era": "armada",
+    "sandbox": true,
+    "rosterMode": "all-eras",
+    "mapId": "spline-forest",
+    "combatEnabled": true,
+    "metaDescription": "Super Terrain forest splines grown on demand. Armada generation home island.",
+    "markdown": "## Spline Forest\n\nForest fields from Super Terrain spline tools, flattened to a playable Rapier heightfield. Live port **8011**.\n"
+  },
+  {
+    "title": "Tunnel Cavern",
+    "imageUrl": "/PreviewFootballGame.webp",
+    "slug": "island-tunnel-cavern",
+    "section": "islands",
+    "engine": "super-terrain",
+    "images": [
+      {
+        "url": "/PreviewFootballGame.webp",
+        "width": 1920,
+        "height": 1080,
+        "alt": "Tunnel Cavern",
+        "type": "image/webp"
+      }
+    ],
+    "websocketPort": 8012,
+    "era": "voxel",
+    "sandbox": true,
+    "rosterMode": "all-eras",
+    "mapId": "tunnel-cavern",
+    "combatEnabled": true,
+    "metaDescription": "Super Terrain tunnel interiors as a crater-sink heightfield. Live port 8012.",
+    "markdown": "## Tunnel Cavern\n\nSuper Terrain caves cannot stay as overhangs on Rapier heightfields — this bake keeps the mouth and shaft as a playable sink. Live port **8012**.\n"
+  },
+  {
     "title": "GrudgeBlox Test World",
     "imageUrl": "/PreviewTestGame.webp",
     "slug": "test",
+    "section": "maps",
+    "engine": "grudgeblox",
     "images": [
       {
         "url": "/PreviewTestGame.webp",
@@ -14,14 +208,18 @@
     ],
     "websocketPort": 8001,
     "era": "voxel",
+    "sandbox": true,
+    "rosterMode": "all-eras",
     "combatEnabled": true,
-    "metaDescription": "Voxel-era test world \u2014 4-slot era=voxel roster, 4character Mixamo skins, Mine-Loader Codex icons, weapon skills 1\u20135.",
-    "markdown": "## GrudgeBlox Test World\n\nVoxel / Realms play on **blox.grudge-studio.com**. Roster is **era=voxel only** (Mine-Loader law \u2014 Warlords heroes do not appear here).\n\n### Stack\n- 4-slot select + create (Railway `?era=voxel`)\n- Avatar: 4character Mixamo races (replicated to other players)\n- Portraits + hotbar: Mine-Loader Codex / `ui-icons`\n- Skills: windup \u2192 active hit / projectile impact\n- Peers: [Mine-Loader Codex](https://mine.grudge-studio.com/#/defs) \u00b7 [GRUDOX](https://grudox.grudge-studio.com)\n\n### Controls\n- WASD move \u00b7 Space jump \u00b7 E interact \u00b7 1\u20135 skills \u00b7 Mouse look\n"
+    "metaDescription": "Sandbox test world — every fleet era can enter. 4character Mixamo skins, Mine-Loader Codex icons, weapon skills 1–5.",
+    "markdown": "## GrudgeBlox Test World\n\nSandbox play on **blox.grudge-studio.com**. Roster is **all eras** so Warlords, Voxel, Nexus, Armada, and Game heroes share the room.\n\n### Stack\n- 4-slot select per era + create (Railway `?era=`)\n- Avatar: kit or era CDN GLB (replicated to other players)\n- Portraits + hotbar: Mine-Loader Codex / `ui-icons`\n- Skills: windup → active hit / projectile impact\n\n### Controls\n- WASD move · Space jump · E interact · 1–5 skills · Mouse look\n"
   },
   {
     "title": "Combat Arena",
     "imageUrl": "/PreviewObbyGame.webp",
     "slug": "combat",
+    "section": "maps",
+    "engine": "grudgeblox",
     "images": [
       {
         "url": "/PreviewObbyGame.webp",
@@ -33,14 +231,18 @@
     ],
     "websocketPort": 8002,
     "era": "voxel",
+    "sandbox": true,
+    "rosterMode": "all-eras",
     "combatEnabled": true,
-    "metaDescription": "Voxel combat sandbox \u2014 same era=voxel heroes as Mine / GRUDOX. Skills 1\u20135 (not a Warlords roster).",
-    "markdown": "## Combat Arena\n\nThis is a **GrudgeBlox weapon-skill room**, not Warlords play. Roster is `?era=voxel` \u2014 Mine, GRUDOX, and Blox all share voxel characters.\n\n`combatEnabled` only means the 1\u20135 skill bar (windup \u2192 hit / projectile). It is not a product era.\n"
+    "metaDescription": "Combat sandbox — every fleet era can enter. Skills 1–5.",
+    "markdown": "## Combat Arena\n\nA **GrudgeBlox weapon-skill sandbox**. Roster is all eras — bring a Warlords, Voxel, Nexus, Armada, or Game hero.\n\n`combatEnabled` only means the 1–5 skill bar (windup → hit / projectile).\n"
   },
   {
     "title": "Voxel Lobby Bridge",
     "imageUrl": "/PreviewPetSimGame.webp",
     "slug": "lobby",
+    "section": "maps",
+    "engine": "grudgeblox",
     "images": [
       {
         "url": "/PreviewPetSimGame.webp",
@@ -52,14 +254,18 @@
     ],
     "websocketPort": 8003,
     "era": "voxel",
+    "sandbox": true,
+    "rosterMode": "all-eras",
     "combatEnabled": false,
-    "metaDescription": "Bridge room toward Mine-Loader lobby and GRUDOX hubs \u2014 character handoff test.",
-    "markdown": "## Voxel Lobby Bridge\n\nEra=voxel 4-slot handoff. Jump to [Mine-Loader lobby](https://mine.grudge-studio.com/#/lobby), [Codex defs](https://mine.grudge-studio.com/#/defs), or [GRUDOX](https://grudox.grudge-studio.com).\n"
+    "metaDescription": "Bridge room toward Mine-Loader lobby and GRUDOX hubs — all-era character handoff.",
+    "markdown": "## Voxel Lobby Bridge\n\nAll-era 4-slot handoff. Jump to [Mine-Loader lobby](https://mine.grudge-studio.com/#/lobby), [Codex defs](https://mine.grudge-studio.com/#/defs), or [GRUDOX](https://grudox.grudge-studio.com).\n"
   },
   {
     "title": "GRUDOX Sandbox",
     "imageUrl": "/PreviewFootballGame.webp",
     "slug": "grudox",
+    "section": "maps",
+    "engine": "grudgeblox",
     "images": [
       {
         "url": "/PreviewFootballGame.webp",
@@ -71,14 +277,18 @@
     ],
     "websocketPort": 8004,
     "era": "voxel",
+    "sandbox": true,
+    "rosterMode": "all-eras",
     "combatEnabled": true,
-    "metaDescription": "GRUDOX voxel-era sandbox \u2014 same era=voxel roster as Mine-Loader / Grudges.",
-    "markdown": "## GRUDOX Sandbox\n\n**GRUDOX = voxel.** Roster is `?era=voxel` (not nexus). Same 4character Mixamo kit as other voxel worlds so skins replicate.\n"
+    "metaDescription": "GRUDOX sandbox — Warlords, Voxel, Nexus, Armada, and Game heroes share the room.",
+    "markdown": "## GRUDOX Sandbox\n\nRoster is **all eras**. Same physics body as other GrudgeBlox worlds; avatars keep their era mesh.\n"
   },
   {
     "title": "Dope Budz Streets",
     "imageUrl": "/PreviewTestGame.webp",
     "slug": "streets",
+    "section": "maps",
+    "engine": "grudgeblox",
     "images": [
       {
         "url": "/PreviewTestGame.webp",
@@ -90,8 +300,10 @@
     ],
     "websocketPort": 8005,
     "era": "voxel",
+    "sandbox": true,
+    "rosterMode": "all-eras",
     "combatEnabled": true,
-    "metaDescription": "Integrated Dope Budz Streets ECS world \u2014 claim session lots, grow and harvest, run terminal routes, drive, and fight across six districts.",
-    "markdown": "## Dope Budz Streets\n\nThe primary Streets experience runs inside the GrudgeBlox ECS authority.\n\n- Six districts: Grove, Harbor, Neon, Mesa, Fogtown, Little Beach\n- Claimable session lots with BUDZ/SOL balances and owner labels\n- Timed plant and harvest cycles on grow benches\n- Terminal-to-terminal jobs with BUDZ and reputation rewards\n- Motor Row cars, street crews, jump pad, and weapon kits\n\nUse the in-game **Street status**, **Owned lots**, and **Current job** controls for live server state. Session progress resets on disconnect until an owner-managed persistence service is configured.\n\n### Controls\nWASD move/drive \u00b7 E enter, exit, or interact \u00b7 1\u20134 kits \u00b7 mouse look\n"
+    "metaDescription": "Integrated Dope Budz Streets ECS world — all-era sandbox lots, grow routes, driving, and fights across six districts.",
+    "markdown": "## Dope Budz Streets\n\nThe primary Streets experience runs inside the GrudgeBlox ECS authority. Any fleet-era hero can enter.\n\n- Six districts: Grove, Harbor, Neon, Mesa, Fogtown, Little Beach\n- Claimable session lots with BUDZ/SOL balances and owner labels\n- Timed plant and harvest cycles on grow benches\n- Terminal-to-terminal jobs with BUDZ and reputation rewards\n- Motor Row cars, street crews, jump pad, and weapon kits\n\nUse the in-game **Street status**, **Owned lots**, and **Current job** controls for live server state. Session progress resets on disconnect until an owner-managed persistence service is configured.\n\n### Controls\nWASD move/drive · E enter, exit, or interact · 1–4 kits · mouse look\n"
   }
 ]

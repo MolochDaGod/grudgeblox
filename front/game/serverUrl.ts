@@ -18,7 +18,20 @@ function isLoopbackHost(hostname: string): boolean {
  * docker-compose world ports 8001–8005 — that times out on Railway.
  * An explicit port in NEXT_PUBLIC_SERVER_URL always wins.
  */
-export function resolveWebSocketServerUrl(baseUrl: string | undefined, worldPort: number): string {
+export function resolveWebSocketServerUrl(
+  baseUrl: string | undefined,
+  worldPort: number,
+  roomUrl?: string
+): string {
+  const override = roomUrl?.trim()
+  if (override) {
+    const url = new URL(override)
+    if (url.protocol !== 'ws:' && url.protocol !== 'wss:') {
+      throw new Error('Room websocketUrl must use ws:// or wss://')
+    }
+    return url.toString().replace(/\/$/, '')
+  }
+
   const raw = (baseUrl && baseUrl.trim()) || (typeof window === 'undefined' ? 'ws://127.0.0.1' : DEFAULT_RAILWAY_WSS)
   const normalizedBaseUrl = raw.replace(/\/$/, '')
   const url = new URL(normalizedBaseUrl)

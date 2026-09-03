@@ -32,6 +32,7 @@ grudgeblox/
 │   └── src/
 │       ├── scripts/  # Game world scripts (THIS IS WHERE YOU ADD NEW GAMES)
 │       │   ├── gtaLobbyScript.ts      # Default GTA-style lobby (cars, districts)
+│       │   ├── islandSandboxScript.ts # Super Terrain + Island Engine baked maps
 │       │   ├── dopebudzStreets.ts     # Dope Budz Streets world
 │       │   ├── parkourScript.ts       # Parkour obby
 │       │   ├── footballScript.ts      # Football game
@@ -71,6 +72,7 @@ grudgeblox/
 ### Available ECS Entities
 
 - `MapWorld` – GLTF map with collision mesh
+- `IslandMapWorld` – baked Island Terrain World Engine heightfield
 - `Player` – Network-controlled player capsule (created automatically on connect)
 - `Cube`, `Sphere`, `Mesh` – Physics-enabled primitives
 - `Car` – Drivable vehicle with raycast wheels
@@ -162,6 +164,7 @@ GAME_SCRIPT=gtaLobbyScript.ts pnpm run dev
 ### Available Scripts
 
 - `gtaLobbyScript.ts` – GTA-style city lobby (cars, districts, NPCs)
+- `islandSandboxScript.ts` – Super Terrain / Island Engine baked sandboxes (all-era play)
 - `dopebudzStreets.ts` – Dope Budz Streets world
 - `parkourScript.ts` – Parkour obby course
 - `footballScript.ts` – Football field
@@ -177,6 +180,9 @@ GAME_SCRIPT=gtaLobbyScript.ts  # Which game to run
 GAME_TICKRATE=20               # Server tick rate (Hz)
 PORT=8001                      # Local dev port (Railway injects its own PORT)
 FRONTEND_URL=                  # CORS origin (optional, dev allows all)
+ISLAND_MAP=harbor-atoll        # islandSandboxScript.ts catalog id
+ISLAND_ENGINE_ROOT=            # optional path to Island-Terrain-World-Engine exports
+SUPER_TERRAIN_ROOT=            # optional Super Terrain Godot/source export
 ```
 
 **🚂 Railway Auto-Detection**:
@@ -246,7 +252,7 @@ Returns:
 
 5. **Health check**: Railway reads `/health` endpoint (configure in Railway dashboard or `railway.toml`)
 
-6. **Multiple rooms**: Deploy separate Railway services or use `docker-compose.yml` for multi-instance VPS
+6. **Multiple rooms**: Deploy separate Railway services or use `docker-compose.sandboxes.yml` (ports 8001–8012). See `docs/SANDBOX_DEPLOY.md`.
 
 #### Dockerfile Deployment
 
@@ -264,19 +270,14 @@ Railway will auto-detect the Dockerfile.
 For running multiple game servers on one VPS with nginx/Caddy TLS termination:
 
 ```bash
-docker-compose up -d
+docker compose -f docker-compose.sandboxes.yml up -d
 ```
 
-This starts:
-- `game_test_server` (port 8001, `defaultScript.ts`)
-- `game_obby_parkour` (port 8002, `parkourScript.ts`)
-- `game_football` (port 8003, `footballScript.ts`)
-- `game_pet_simulator` (port 8004, `petSimulatorScript.ts`)
-- `game_dopebudz_streets` (port 8005, `dopebudzStreets.ts`)
+This starts one live sandbox per lobby slug (maps 8001–8005, islands 8006–8012). Prefer this file over the legacy Notblox compose services when running GrudgeBlox.
 
 Each service listens on `http://localhost:PORT`. Put nginx/Caddy in front for TLS termination.
 
-**Note**: Ports 8001-8005 are hardcoded in `docker-compose.yml`. For Railway, the platform injects `PORT` dynamically.
+**Note**: Ports 8001–8012 are hardcoded in compose. For Railway, the platform injects `PORT` dynamically. One Railway service = one room (`GAME_SCRIPT` + `ISLAND_MAP`).
 
 ### Web Client (Vercel)
 

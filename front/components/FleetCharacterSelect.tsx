@@ -14,7 +14,14 @@ import {
   createBloxHero,
 } from '@/lib/fleetCharacters'
 import { buildFoundryCreateUrl, buildLoginUrl, FLEET, getAuthToken } from '@/lib/fleetConfig'
-import { getEraPolicy } from '@/lib/characterEras'
+import {
+  ALL_FLEET_ERAS,
+  CHARACTER_ERA_POLICIES,
+  getEraPolicy,
+  isFleetEra,
+  type FleetEraId,
+  type RosterMode,
+} from '@/lib/characterEras'
 import { CODEX, probeCodexSystems, voxelPortraitUrl } from '@/lib/voxelCodex'
 import {
   KIT_CLASSES,
@@ -32,6 +39,8 @@ export interface FleetCharacterSelectProps {
   onPlay: () => void
   gameTitle: string
   era?: string
+  rosterMode?: RosterMode | string
+  sandbox?: boolean
 }
 
 const SLOT_COUNT = 4
@@ -44,6 +53,8 @@ export default function FleetCharacterSelect({
   onPlay,
   gameTitle,
   era = 'voxel',
+  rosterMode = 'world-era',
+  sandbox = false,
 }: FleetCharacterSelectProps) {
   const [chars, setChars] = useState<FleetCharacter[]>([])
   const [status, setStatus] = useState<string>('loading')
@@ -55,11 +66,15 @@ export default function FleetCharacterSelect({
   const [createClass, setCreateClass] = useState<KitClassId>(KIT_CLASSES[0].id)
   const [createError, setCreateError] = useState<string | null>(null)
   const [codexNote, setCodexNote] = useState<string>('')
-  const policy = getEraPolicy(era)
+  const [eraFilter, setEraFilter] = useState<FleetEraId | 'all'>(
+    rosterMode === 'all-eras' && isFleetEra(era) ? era : rosterMode === 'all-eras' ? 'all' : (era as FleetEraId),
+  )
+  const allEras = rosterMode === 'all-eras' || sandbox
+  const policy = getEraPolicy(eraFilter === 'all' ? era : eraFilter)
 
   const refresh = async () => {
     setLoading(true)
-    const r = await loadFleetRoster(era)
+    const r = await loadFleetRoster(era, allEras ? 'all-eras' : 'world-era')
     setChars(r.characters)
     setStatus(r.status)
     const stored = getStoredCharacterId()
@@ -89,7 +104,7 @@ export default function FleetCharacterSelect({
       cancelled = true
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [era])
+  }, [era, rosterMode])
 
   const pick = (c: FleetCharacter) => {
     onSelect(c)
@@ -98,7 +113,15 @@ export default function FleetCharacterSelect({
   }
 
   const signedIn = !!getAuthToken()
-  const slots: Array<FleetCharacter | null> = Array.from({ length: SLOT_COUNT }, (_, i) => chars[i] || null)
+  const visibleChars =
+    eraFilter === 'all'
+      ? chars
+      : chars.filter((c) => (c.gameEra || 'voxel').toLowerCase() === eraFilter)
+  const slotCount = eraFilter === 'all' ? Math.max(SLOT_COUNT, visibleChars.length) : SLOT_COUNT
+  const slots: Array<FleetCharacter | null> = Array.from(
+    { length: slotCount },
+    (_, i) => visibleChars[i] || null,
+  )
 
   const onCreate = async () => {
     setCreateError(null)
@@ -114,7 +137,7 @@ export default function FleetCharacterSelect({
       setChars((prev) => {
         const next = prev.filter((c) => c.id !== 'guest-explorer')
         if (next.some((c) => c.id === result.character.id)) return next
-        return [...next, result.character].slice(0, SLOT_COUNT)
+        return [...next, result.character]
       })
       if (result.character.name) onPlayerNameChange(result.character.name)
       setCreateOpen(false)
@@ -147,10 +170,40 @@ export default function FleetCharacterSelect({
       <div className="space-y-2">
         <div className="flex items-center justify-between">
           <span className="text-sm font-medium text-amber-100/90">
-            Heroes · {policy.label} (4 slots)
+            Heroes · {allEras ? 'every era' : policy.label}
+            {eraFilter !== 'all' ? ` · 4 ${policy.label} slots` : ''}
           </span>
           <span className="text-[10px] uppercase tracking-wider text-stone-500">{status}</span>
         </div>
+        {allEras && (
+          <div className="flex flex-wrap gap-1">
+            <button
+              type="button"
+              onClick={() => setEraFilter('all')}
+              className={`px-2 py-1 rounded-md text-[10px] uppercase tracking-wider border ${
+                eraFilter === 'all'
+                  ? 'border-amber-500 bg-amber-950/60 text-amber-50'
+                  : 'border-stone-700 text-stone-400'
+              }`}
+            >
+              All eras
+            </button>
+            {ALL_FLEET_ERAS.map((id) => (
+              <button
+                key={id}
+                type="button"
+                onClick={() => setEraFilter(id)}
+                className={`px-2 py-1 rounded-md text-[10px] uppercase tracking-wider border ${
+                  eraFilter === id
+                    ? 'border-amber-500 bg-amber-950/60 text-amber-50'
+                    : 'border-stone-700 text-stone-400'
+                }`}
+              >
+                {CHARACTER_ERA_POLICIES[id].label}
+              </button>
+            ))}
+          </div>
+        )}
         {loading ? (
           <p className="text-xs text-stone-400">Loading heroes…</p>
         ) : (
@@ -196,7 +249,7 @@ export default function FleetCharacterSelect({
                     <div className="min-w-0">
                       <div className="font-semibold text-sm truncate">{c.name}</div>
                       <div className="text-[11px] text-stone-500 truncate">
-                        {race} · {c.classId || 'adventurer'}
+                        {c.gameEra || era} · {c.raceId || race} · {c.classId || 'adventurer'}
                       </div>
                     </div>
                   </div>
@@ -269,7 +322,7 @@ export default function FleetCharacterSelect({
             </div>
             <p className="text-[10px] text-stone-500">
               {signedIn
-                ? 'Signed in: new hero POSTs Railway /api/characters (era=voxel).'
+                ? `Signed in: new hero POSTs Railway /api/characters (era=${policy.apiEra}).`
                 : 'Guest look is local to this lobby. Sign in + Foundry for fleet roster.'}
             </p>
           </div>
@@ -312,8 +365,8 @@ export default function FleetCharacterSelect({
         Enter {gameTitle} →
       </button>
       <p className="text-[10px] text-stone-500 leading-relaxed">
-        Era={policy.apiEra}. 4character Mixamo skins replicate to other players. Codex portraits +
-        Mine-Loader UI icons ship in this build. {codexNote}
+        Era={allEras ? 'all sandboxes' : policy.apiEra}. Characters from every fleet era can enter
+        this world. Skins replicate to other players. {codexNote}
       </p>
     </div>
   )

@@ -3,9 +3,12 @@ import { ClientMessage, ClientMessageType } from './base.js'
 export interface SetPlayerNameMessage extends ClientMessage {
   t: ClientMessageType.SET_PLAYER_NAME
   name: string
-  /** 4character / fleet appearance — replicated on PlayerComponent */
+  /** Fleet appearance — replicated on PlayerComponent so every era can share a sandbox. */
   raceId?: string
   classId?: string
   characterId?: string
   model3d?: string
+  gameEra?: string
+  /** Live island id (harbor-atoll, alpine-mesh, …). */
+  mapId?: string
 }

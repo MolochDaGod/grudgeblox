@@ -12,7 +12,13 @@ import FleetCharacterSelect from './FleetCharacterSelect'
 import type { FleetCharacter } from '@/lib/fleetCharacters'
 import { STORAGE } from '@/lib/fleetConfig'
 
-export default function GameContent({ gameInfo }: { gameInfo: GameInfo }) {
+export default function GameContent({
+  gameInfo,
+  initialEra,
+}: {
+  gameInfo: GameInfo
+  initialEra?: string
+}) {
   const [isPlaying, setIsPlaying] = useState(false)
   const [playerName, setPlayerName] = useState<string>('')
   const [character, setCharacter] = useState<FleetCharacter | null>(null)
@@ -69,8 +75,18 @@ export default function GameContent({ gameInfo }: { gameInfo: GameInfo }) {
                   </div>
                   <div className="absolute bottom-4 left-4 right-4 flex flex-wrap gap-2">
                     <span className="text-[10px] uppercase tracking-wider px-2 py-1 rounded bg-black/60 border border-amber-800/40 text-amber-200/90">
-                      {gameInfo.era || 'voxel'}
+                      {gameInfo.rosterMode === 'all-eras' ? 'all eras' : gameInfo.era || 'voxel'}
                     </span>
+                    {gameInfo.sandbox && (
+                      <span className="text-[10px] uppercase tracking-wider px-2 py-1 rounded bg-black/60 border border-sky-800/40 text-sky-200/90">
+                        sandbox
+                      </span>
+                    )}
+                    {gameInfo.mapId && (
+                      <span className="text-[10px] uppercase tracking-wider px-2 py-1 rounded bg-black/60 border border-lime-800/40 text-lime-200/90">
+                        {gameInfo.mapId}
+                      </span>
+                    )}
                     {gameInfo.combatEnabled !== false && (
                       <span className="text-[10px] uppercase tracking-wider px-2 py-1 rounded bg-black/60 border border-red-800/40 text-red-200/90">
                         weapon skills
@@ -93,7 +109,9 @@ export default function GameContent({ gameInfo }: { gameInfo: GameInfo }) {
                   onSelect={setCharacter}
                   onPlay={handlePlayClick}
                   gameTitle={gameInfo.title}
-                  era={gameInfo.era || 'voxel'}
+                  era={initialEra || gameInfo.era || 'voxel'}
+                  rosterMode={gameInfo.rosterMode || (gameInfo.sandbox ? 'all-eras' : 'world-era')}
+                  sandbox={!!gameInfo.sandbox}
                 />
               </div>
             </div>
@@ -101,9 +119,12 @@ export default function GameContent({ gameInfo }: { gameInfo: GameInfo }) {
             <section className="w-full mb-10">
               <h2 className="text-xl font-bold text-amber-100/90 mb-4">More worlds</h2>
               <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
-                {gameData.map((game) => (
-                  <MiniGameCard {...game} key={game.slug} />
-                ))}
+                {gameData
+                  .filter((game) => game.slug !== gameInfo.slug && game.slug !== 'island')
+                  .slice(0, 8)
+                  .map((game) => (
+                    <MiniGameCard {...game} key={game.slug} />
+                  ))}
               </div>
             </section>
 

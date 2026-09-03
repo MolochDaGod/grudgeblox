@@ -9,6 +9,7 @@ export type HealthPayload = {
   game: {
     script: string
     tickrate: number
+    map?: string
   }
 }
 
@@ -64,7 +65,8 @@ export function buildHealthPayload(
   ready: boolean,
   script: string,
   tickrate: number,
-  uptime = process.uptime()
+  uptime = process.uptime(),
+  map?: string
 ): HealthPayload {
   return {
     status: ready ? 'ok' : 'starting',
@@ -73,6 +75,7 @@ export function buildHealthPayload(
     game: {
       script,
       tickrate,
+      ...(map ? { map } : {}),
     },
   }
 }
