@@ -159,7 +159,7 @@ export function startIslandLiveRuntime(options: IslandLiveOptions = {}): LiveIsl
     process.env.ISLAND_MAP = 'live-hub'
   }
 
-  catalog.forEach((entry, index) => {
+  function loadSlot(entry: (typeof catalog)[number], index: number) {
     const bake = resolveIslandBake(entry.id)
     const origin = single ? { x: 0, y: 0, z: 0 } : islandHubOrigin(index, besideCity)
     const world = new IslandMapWorld(bake, origin)
@@ -189,16 +189,36 @@ export function startIslandLiveRuntime(options: IslandLiveOptions = {}): LiveIsl
     console.log(
       `[island-live] ${bake.id} origin=${origin.x},${origin.z} spawn=${spawn.x.toFixed(1)},${spawn.y.toFixed(1)},${spawn.z.toFixed(1)} npcs=${npcs.length} engine=${bake.engine}`
     )
-  })
+  }
 
-  const defaultSpawn = options.defaultSpawn || slots[0]?.spawn || { x: 0, y: 8, z: 0 }
+  // Load one island per timer tick so /health keeps answering on small Railway VMs.
+  const loadIslands = async () => {
+    for (let index = 0; index < catalog.length; index++) {
+      try {
+        loadSlot(catalog[index], index)
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error)
+        console.error(`[island-live] failed ${catalog[index].id}: ${message}`)
+      }
+      await new Promise((resolve) => setTimeout(resolve, 50))
+    }
+    sendChat(
+      '🖥️ [SERVER]',
+      `Live sandbox online · ${slots.length} island(s) · NPCs, generative events, guide bot.`
+    )
+  }
+  void loadIslands()
+
   const seated = new Map<number, string>()
   let elapsed = 0
   // First generative event ~8s after a player is in the room, then on each event period.
   let eventTimer = 40
   let currentEvent: IslandEventSpec | undefined
   let supplyDrops = 0
-  const seed = slots[0]?.bake.seed || 1
+
+  function hubSpawn(): Vec3 {
+    return options.defaultSpawn || slots[0]?.spawn || { x: 0, y: 8, z: 0 }
+  }
 
   function slotForMap(mapId?: string): LiveIslandSlot | undefined {
     const id = parseIslandMapId(mapId)
@@ -208,7 +228,7 @@ export function startIslandLiveRuntime(options: IslandLiveOptions = {}): LiveIsl
 
   function seatPlayer(entity: Entity, mapId?: string) {
     const slot = slotForMap(mapId) || (options.defaultSpawn ? undefined : slots[0])
-    const dest = slot?.spawn || defaultSpawn
+    const dest = slot?.spawn || hubSpawn()
     teleport(entity, dest)
     const player = entity.getComponent(PlayerComponent)
     if (player) {
@@ -293,7 +313,7 @@ export function startIslandLiveRuntime(options: IslandLiveOptions = {}): LiveIsl
     const period = currentEvent?.periodSec || 48
     if (eventTimer >= period) {
       eventTimer = 0
-      currentEvent = nextIslandEvent(seed, elapsed)
+      currentEvent = nextIslandEvent(slots[0]?.bake.seed || 1, elapsed)
       const slot = slots[Math.floor(Math.random() * slots.length)] || slots[0]
       if (slot) {
         if (currentEvent.kind === 'supply-drop' && supplyDrops < 8) {
@@ -339,9 +359,5 @@ export function startIslandLiveRuntime(options: IslandLiveOptions = {}): LiveIsl
     }
   }
 
-  sendChat(
-    '🖥️ [SERVER]',
-    `Live sandbox online · ${slots.length} island(s) · NPCs, generative events, guide bot.`
-  )
   return slots
 }

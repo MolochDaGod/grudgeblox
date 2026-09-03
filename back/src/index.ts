@@ -171,9 +171,15 @@ async function gameLoop() {
 
   checkLag(deltaTime)
 
-  while (accumulator >= fixedTimestep) {
-    await updateGameState(fixedTimestep)
-    accumulator -= fixedTimestep
+  try {
+    while (accumulator >= fixedTimestep) {
+      await updateGameState(fixedTimestep)
+      accumulator -= fixedTimestep
+    }
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : String(error)
+    console.error(`[gameLoop] tick failed; continuing: ${message}`)
+    accumulator = 0
   }
 
   // Schedule the next loop iteration

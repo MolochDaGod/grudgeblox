@@ -31,6 +31,15 @@ describe('island bake generation', () => {
     assert.equal(field.scale.x, worldSizeMeters(bake))
   })
 
+  it('downsamples physics heightfields for the live server', () => {
+    const bake = generateIsland({ kind: 'alpine-mesh', seed: 4000128, size: 64 })
+    const field = heightfieldSamples(bake, 17)
+    assert.equal(field.nrows, 16)
+    assert.equal(field.ncols, 16)
+    assert.equal(field.heights.length, 17 * 17)
+    assert.equal(field.scale.x, worldSizeMeters(bake))
+  })
+
   it('coerces Island Terrain World Engine JSON and nested heightmaps', () => {
     const nested = coerceEngineBake({
       format: ISLAND_BAKE_FORMAT,
@@ -72,5 +81,13 @@ describe('island bake generation', () => {
     assert.equal(parseIslandMeshUrl('https://example/world.glb'), null)
     assert.equal(ISLAND_CATALOG.length, 7)
     assert.ok(ISLAND_CATALOG.some((entry) => entry.source === 'super-terrain'))
+  })
+
+  it('loads catalog bakes from JSON on disk', async () => {
+    const { loadIslandFromCatalog } = await import('@shared/maps/loadIsland.js')
+    const bake = loadIslandFromCatalog('alpine-mesh')
+    assert.equal(bake.id, 'alpine-mesh')
+    assert.equal(bake.size, 64)
+    assert.match(bake.engine, /super-terrain/)
   })
 })
