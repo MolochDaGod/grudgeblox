@@ -15,4 +15,3 @@ shared/package-lock.json
 !.env.example
 !**/.env.example
 /logs
-/back/ipc-child-*.mjs
