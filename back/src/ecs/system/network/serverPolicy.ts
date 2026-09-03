@@ -145,6 +145,10 @@ export function isHealthHttpRequest(head: string): boolean {
   return /^(GET|HEAD) \/health(\?| HTTP\/|$)/i.test(line)
 }
 
+export function isWebSocketHttpRequest(head: string): boolean {
+  return /^\s*GET\s/i.test(head) && /upgrade:\s*websocket/i.test(head)
+}
+
 export function readBoundedInteger(
   rawValue: string | undefined,
   fallback: number,

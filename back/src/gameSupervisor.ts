@@ -1,11 +1,9 @@
 /**
  * Public /health stays on Node net at $PORT so Railway's proxy can reach us.
- * Game traffic is proxied to in-process uWS on an internal port (same heap).
+ * In-process WebSocket upgrades are accepted on that same listener (no second
+ * bind). Railway never reaches an extra TCP/Unix port; a second Node heap OOMs.
  *
- * Binding that worker to 127.0.0.1 502'd on Railway even though Docker
- * loopback works. The worker listens on 0.0.0.0:<internal>; the supervisor
- * connects via 127.0.0.1 or ::1. Unix sockets and a second Node heap also 502'd.
- * Set GAME_SOCKET to force a Unix path. GAME_WORKER_FORK=1 restores spawn.
+ * GAME_WORKER_FORK=1 restores spawn + TCP proxy for local extra-listen debug.
  */
 import { existsSync, unlinkSync } from 'node:fs'
 import { connect, createServer, type Socket } from 'node:net'
@@ -15,10 +13,12 @@ import { fileURLToPath } from 'node:url'
 import {
   buildHealthPayload,
   isHealthHttpRequest,
+  isWebSocketHttpRequest,
   onRailwayRuntime,
   readBoundedInteger,
   resolveGameSocketPath,
 } from './ecs/system/network/serverPolicy.js'
+import { hasPublicUpgradeHandler, tryPublicUpgrade } from './ecs/system/network/publicUpgrade.js'
 
 const WORKER_CONNECT_MS = 15000
 const WORKER_RETRY_MS = 50
@@ -245,9 +245,28 @@ export async function runGameSupervisor(startGame?: () => Promise<void>): Promis
       socket.on('error', () => undefined)
       socket.once('data', (chunk) => {
         socket.pause()
-        const head = chunk.subarray(0, Math.min(chunk.length, 160)).toString('utf8')
+        const head = chunk.subarray(0, Math.min(chunk.length, 1024)).toString('utf8')
         if (isHealthHttpRequest(head)) {
           socket.end(healthResponse(/^\s*HEAD\s/i.test(head)))
+          return
+        }
+        if (tryPublicUpgrade(socket, chunk)) return
+        if (inProcess && isWebSocketHttpRequest(head)) {
+          const deadline = Date.now() + WORKER_CONNECT_MS
+          const retry = () => {
+            if (socket.destroyed) return
+            if (tryPublicUpgrade(socket, chunk)) return
+            if (hasPublicUpgradeHandler() || Date.now() >= deadline) {
+              rejectClient(socket)
+              return
+            }
+            setTimeout(retry, WORKER_RETRY_MS)
+          }
+          setTimeout(retry, WORKER_RETRY_MS)
+          return
+        }
+        if (inProcess) {
+          rejectClient(socket)
           return
         }
         if (workerAccepting) {
@@ -264,7 +283,11 @@ export async function runGameSupervisor(startGame?: () => Promise<void>): Promis
     })
     server.on('error', reject)
     server.listen(publicPort, listenHost, () => {
-      console.log(`[supervisor] public ${listenHost}:${publicPort} -> ${workerLabel}`)
+      console.log(
+        inProcess
+          ? `[supervisor] public ${listenHost}:${publicPort} (health + in-process websocket)`
+          : `[supervisor] public ${listenHost}:${publicPort} -> ${workerLabel}`
+      )
       resolve()
     })
   })
@@ -275,16 +298,9 @@ export async function runGameSupervisor(startGame?: () => Promise<void>): Promis
   }
 
   process.env.GAME_WORKER = '1'
-  if (unixPath) {
-    unlinkSocket(unixPath)
-    process.env.GAME_SOCKET = unixPath
-  } else {
-    delete process.env.GAME_SOCKET
-    process.env.LISTEN_HOST = internalHost
-    process.env.PORT = String(internalPort)
-    process.env.GAME_PORT = String(internalPort)
-  }
-  console.log(`[supervisor] in-process worker ${workerLabel}`)
+  process.env.GAME_NO_LISTEN = '1'
+  delete process.env.GAME_SOCKET
+  console.log(`[supervisor] public ${listenHost}:${publicPort} in-process websocket (no second bind)`)
   void startGame().catch((error: unknown) => {
     const message = error instanceof Error ? error.message : String(error)
     console.error(`[supervisor] game failed: ${message}`)

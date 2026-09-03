@@ -55,6 +55,10 @@ import {
   resolveServerListenHost,
   onRailwayRuntime,
 } from './serverPolicy.js'
+import { createNetUpgradeHandler, toArrayBuffer, wrapNodeWebSocket } from './nodeWebSocketTransport.js'
+import { setPublicUpgradeHandler } from './publicUpgrade.js'
+import type { IncomingMessage } from 'node:http'
+import type { WebSocket as NodeWebSocket } from 'ws'
 
 type PlayerData = { player?: Player; rateKey: string }
 type MessageHandler = (ws: WebSocket<PlayerData>, message: ClientMessage) => void
@@ -86,6 +90,18 @@ export class WebsocketSystem {
     })
     this.initializeMessageHandlers()
     this.initializeServer()
+  }
+
+  acceptNodeWebSocket(socket: NodeWebSocket, req: IncomingMessage) {
+    const wrapped = wrapNodeWebSocket(socket, req)
+    socket.on('error', (error) => {
+      console.error('WebSocket error', error)
+    })
+    socket.on('message', (data) => {
+      void this.processMessage(wrapped, toArrayBuffer(data))
+    })
+    socket.on('close', () => this.onClose(wrapped))
+    void this.onConnect(wrapped)
   }
 
   markReady() {
@@ -123,13 +139,26 @@ export class WebsocketSystem {
     }
     const unixPath = resolveGameSocketPath()
     console.log(`TLS in-process: ${useTls ? 'on' : 'off (edge proxy)'}`)
+    console.log('WebSocket origins: only accepting', [...allowedOrigins].join(', '))
+
+    if (process.env.GAME_NO_LISTEN === '1') {
+      console.log('PORT : WebSocket upgrades accepted on the public Node net listener')
+      setPublicUpgradeHandler(
+        createNetUpgradeHandler(
+          (socket, req) => this.acceptNodeWebSocket(socket, req),
+          isProduction,
+          allowedOrigins
+        )
+      )
+      this.resolveListening()
+      return
+    }
+
     console.log(
       unixPath
         ? `PORT : Listening on unix ${unixPath}`
         : `PORT : Listening on ${listenHost}:${this.port}`
     )
-
-    console.log('WebSocket origins: only accepting', [...allowedOrigins].join(', '))
 
     const app = useTls
       ? SSLApp({
