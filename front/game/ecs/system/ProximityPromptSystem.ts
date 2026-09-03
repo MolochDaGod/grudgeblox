@@ -88,6 +88,14 @@ export class ProximityPromptSystem {
     return interactionAccumulator < proximityPromptComponent.interactionCooldown + 100
   }
 
+  getPromptText(entities: Entity[]): string | null {
+    const currentPlayer = this.getCurrentPlayer(entities)
+    if (!currentPlayer) return null
+    const entity = this.findNearestProximityPromptEntity(currentPlayer, entities)
+    if (!entity) return null
+    return entity.getComponent(ProximityPromptComponent)?.textComponent.text ?? 'Interact'
+  }
+
   getMessage(entities: Entity[]): ProximityPromptInteractMessage | null {
     const currentPlayer = this.getCurrentPlayer(entities)
     if (!currentPlayer) return null

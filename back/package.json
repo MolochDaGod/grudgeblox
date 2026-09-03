@@ -10,7 +10,7 @@
     "dev": "tsx watch src/sandbox.ts",
     "build": "tsc --noEmit",
     "start": "node --import tsx/esm src/sandbox.ts",
-    "test": "tsx --test src/gameSupervisor.test.ts src/physics/colliderBudget.test.ts src/ecs/system/network/serverPolicy.test.ts src/ecs/system/network/nodeWebSocketTransport.test.ts src/ecs/system/network/nodeSocketAccept.test.ts src/ecs/system/network/appearancePolicy.test.ts src/ecs/entity/Player.test.ts src/maps/islandBake.test.ts src/maps/superTerrainBake.test.ts src/maps/islandLive.test.ts ../front/lib/avatarTransformContract.test.ts ../front/lib/characterEras.test.ts",
+    "test": "tsx --test src/gameSupervisor.test.ts src/physics/colliderBudget.test.ts src/ecs/system/network/serverPolicy.test.ts src/ecs/system/network/nodeWebSocketTransport.test.ts src/ecs/system/network/nodeSocketAccept.test.ts src/ecs/system/network/appearancePolicy.test.ts src/ecs/entity/Player.test.ts src/maps/islandBake.test.ts src/maps/superTerrainBake.test.ts src/maps/islandLive.test.ts ../front/lib/avatarTransformContract.test.ts ../front/lib/characterEras.test.ts ../front/game/thirdPersonCamera.test.ts ../front/game/gamepad.test.ts",
     "bake:islands": "tsx scripts/bakeIslands.ts",
     "smoke:network": "node scripts/networkSmoke.mjs",
     "lint": "eslint src/",

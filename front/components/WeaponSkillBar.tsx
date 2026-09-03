@@ -17,9 +17,14 @@ import { codexIconUrl } from '@/lib/voxelCodex'
 export interface WeaponSkillBarProps {
   enabled?: boolean
   onCast?: (skill: WeaponSkillDef, phase: 'windup' | 'active' | 'projectile') => void
+  consumeSkillSlot?: () => number | null
 }
 
-export default function WeaponSkillBar({ enabled = true, onCast }: WeaponSkillBarProps) {
+export default function WeaponSkillBar({
+  enabled = true,
+  onCast,
+  consumeSkillSlot,
+}: WeaponSkillBarProps) {
   const [state] = useState<SkillCastState>(() => createSkillState())
   const [, tick] = useState(0)
   const [banner, setBanner] = useState<string | null>(null)
@@ -57,6 +62,17 @@ export default function WeaponSkillBar({ enabled = true, onCast }: WeaponSkillBa
     },
     [enabled, onCast, state],
   )
+
+  useEffect(() => {
+    if (!enabled || !consumeSkillSlot) return
+    const id = window.setInterval(() => {
+      const slot = consumeSkillSlot()
+      if (!slot) return
+      const skill = BLOX_WEAPON_SKILLS.find((s) => s.key === String(slot))
+      if (skill) cast(skill)
+    }, 50)
+    return () => window.clearInterval(id)
+  }, [cast, consumeSkillSlot, enabled])
 
   useEffect(() => {
     if (!enabled) return

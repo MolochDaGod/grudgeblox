@@ -8,7 +8,7 @@ import { Joystick } from 'react-joystick-component'
 import { Game } from '@/game/Game'
 import { SerializedMessageType } from '@shared/network/server/serialized'
 import { MessageComponent } from '@shared/component/MessageComponent'
-import { Maximize, Car, Crosshair, MessageSquare, Map as MapIcon } from 'lucide-react'
+import { Maximize, Car, Crosshair, MessageSquare, Map as MapIcon, Gamepad2 } from 'lucide-react'
 import { MicroGameCard } from './GameCard'
 import { GameInfo } from '@/types'
 import gameData from '../public/gameData.json'
@@ -29,6 +29,9 @@ export interface MetaverseHudProps {
   softAim?: boolean
   fightLinks?: Record<string, string>
   worldSlug?: string
+  pointerLocked?: boolean
+  gamepadConnected?: boolean
+  prompt?: string | null
 }
 
 export default function MetaverseHud({
@@ -44,6 +47,9 @@ export default function MetaverseHud({
   softAim = false,
   fightLinks,
   worldSlug,
+  pointerLocked = false,
+  gamepadConnected = false,
+  prompt = null,
 }: MetaverseHudProps) {
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const [notifications, setNotifications] = useState<
@@ -195,6 +201,11 @@ export default function MetaverseHud({
             <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-sky-950/50 border border-sky-800/40 text-sky-200">
               <MapIcon className="w-3 h-3" /> Tab board
             </span>
+            {gamepadConnected && (
+              <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-violet-950/50 border border-violet-700/40 text-violet-200">
+                <Gamepad2 className="w-3 h-3" /> pad live
+              </span>
+            )}
           </div>
           {worldSlug === 'streets' && (
             <DopeBudzControls
@@ -258,10 +269,25 @@ export default function MetaverseHud({
             </button>
           </div>
           <p className="text-[10px] text-white/40 bg-black/40 px-2 py-1 rounded">
-            WASD · Space · RMB aim · E · 1–5 skills · Tab
+            WASD · look · Space · RMB aim · E · 1–5 · pad · Tab
           </p>
         </div>
       </div>
+
+      {!pointerLocked && (
+        <div className="hidden lg:flex pointer-events-none absolute top-1/2 left-1/2 z-[55] -translate-x-1/2 translate-y-10 rounded-lg bg-black/65 px-3 py-1.5 text-[11px] text-amber-100/90 border border-amber-800/40">
+          Click the world to look · Esc releases the mouse
+        </div>
+      )}
+
+      {prompt && (
+        <div className="pointer-events-none absolute bottom-28 left-1/2 z-[70] -translate-x-1/2 rounded-lg border border-emerald-700/50 bg-black/75 px-4 py-2 text-center shadow-xl">
+          <p className="text-[10px] uppercase tracking-widest text-emerald-400/80">Nearby</p>
+          <p className="text-sm font-semibold text-white">
+            {gamepadConnected ? '✕ / E' : 'E'} · {prompt}
+          </p>
+        </div>
+      )}
 
       {/* Scoreboard Tab */}
       {scoreboard && (
@@ -347,7 +373,7 @@ export default function MetaverseHud({
         </div>
       </div>
 
-      {/* Mobile joystick */}
+      {/* Mobile joystick + jump / interact */}
       <div className="flex lg:hidden pointer-events-auto">
         <div className="absolute bottom-12 left-8">
           <Joystick
@@ -357,6 +383,30 @@ export default function MetaverseHud({
             move={(props) => gameInstance?.inputManager.handleJoystickMove(props)}
             stop={(props) => gameInstance?.inputManager.handleJoystickStop(props)}
           />
+        </div>
+        <div className="absolute bottom-12 right-8 flex flex-col gap-3 items-end">
+          <button
+            type="button"
+            className="bg-emerald-700/40 text-white font-bold rounded-full shadow-lg w-16 h-16 flex items-center justify-center border border-emerald-500/40"
+            onTouchStart={() => gameInstance?.inputManager.setInteract(true)}
+            onMouseDown={() => gameInstance?.inputManager.setInteract(true)}
+            onTouchEnd={() => gameInstance?.inputManager.setInteract(false)}
+            onMouseUp={() => gameInstance?.inputManager.setInteract(false)}
+            onMouseOut={() => gameInstance?.inputManager.setInteract(false)}
+          >
+            E
+          </button>
+          <button
+            type="button"
+            className="bg-gray-500/30 text-white font-bold rounded-full shadow-lg w-20 h-20 flex items-center justify-center border border-white/20"
+            onTouchStart={() => gameInstance?.inputManager.setJump(true)}
+            onMouseDown={() => gameInstance?.inputManager.setJump(true)}
+            onTouchEnd={() => gameInstance?.inputManager.setJump(false)}
+            onMouseUp={() => gameInstance?.inputManager.setJump(false)}
+            onMouseOut={() => gameInstance?.inputManager.setJump(false)}
+          >
+            Jump
+          </button>
         </div>
       </div>
     </div>
