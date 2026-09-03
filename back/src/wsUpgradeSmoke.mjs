@@ -1,4 +1,5 @@
 import http from 'node:http'
+import process from 'node:process'
 import { randomBytes } from 'node:crypto'
 
 const port = Number(process.env.PORT || process.env.GAME_PORT || 8001)
