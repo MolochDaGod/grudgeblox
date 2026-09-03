@@ -135,7 +135,7 @@ export class WebsocketSystem {
       : App()
 
     // Health is deliberately operational-only: no player names, chat, notifications, or target IDs.
-    app.get('/health', (res) => {
+    const writeHealth = (res: HttpResponse, method: string) => {
       const healthData = buildHealthPayload(
         this.applicationReady,
         process.env.GAME_SCRIPT || 'Unknown',
@@ -147,7 +147,11 @@ export class WebsocketSystem {
       res.writeStatus('200 OK')
       res.writeHeader('Content-Type', 'application/json')
       res.writeHeader('Cache-Control', 'no-store')
-      res.end(JSON.stringify(healthData))
+      if (method === 'head') res.end()
+      else res.end(JSON.stringify(healthData))
+    }
+    app.any('/health', (res, req) => {
+      writeHealth(res, req.getMethod())
     })
 
     // Optional in-memory moderation view. It is unavailable until an admin token is configured.
