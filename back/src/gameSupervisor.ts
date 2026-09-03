@@ -51,6 +51,15 @@ export function workerScript(): string {
   return candidates.find((path) => existsSync(path)) || candidates[0]
 }
 
+export function workerThreadEntry(): string {
+  const candidates = [
+    fileURLToPath(new URL('./gameWorker.mjs', import.meta.url)),
+    resolve(process.cwd(), 'src/gameWorker.mjs'),
+    resolve(process.cwd(), 'back/src/gameWorker.mjs'),
+  ]
+  return candidates.find((path) => existsSync(path)) || candidates[0]
+}
+
 export function workerNodeArgs(
   script: string,
   execArgv: readonly string[] = process.execArgv
@@ -126,7 +135,7 @@ export async function runGameSupervisor(): Promise<void> {
   const listenHost = process.env.LISTEN_HOST || '0.0.0.0'
   const isProduction = process.env.NODE_ENV === 'production' || onRailwayRuntime()
   const allowedOrigins = resolveAllowedOrigins(isProduction)
-  const script = workerScript()
+  const script = workerThreadEntry()
 
   const server = http.createServer((req, res) => {
     const path = req.url?.split('?')[0] || '/'
@@ -266,7 +275,7 @@ export async function runGameSupervisor(): Promise<void> {
     workerListening = false
     worker = new Worker(script, {
       name: 'grudgeblox-game',
-      execArgv: workerNodeArgs(script).slice(0, -1),
+      execArgv: [],
       env: {
         ...process.env,
         GAME_WORKER: '1',
