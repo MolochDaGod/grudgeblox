@@ -12,7 +12,7 @@ import {
   chaseOffset,
   clampZoom,
   lookingYAngle,
-  pullCameraDistance,
+  pullAlongRay,
 } from '@/game/thirdPersonCamera'
 
 type SceneRenderer = THREE.WebGLRenderer & { scene?: THREE.Scene }
@@ -26,13 +26,14 @@ export class OrbitCameraFollowSystem {
 
   private readonly camera: Camera
   private readonly canvas: HTMLCanvasElement
-  private readonly scene: THREE.Scene | undefined
+  private readonly renderer: SceneRenderer
   private readonly raycaster = new THREE.Raycaster()
+  private colliderCache: THREE.Object3D[] = []
+  private colliderCacheFrame = 0
   private readonly lookTarget = new THREE.Vector3()
   private readonly desired = new THREE.Vector3()
   private readonly hitPoint = new THREE.Vector3()
   private readonly skip = new Set<THREE.Object3D>()
-  private readonly colliders: THREE.Object3D[] = []
   private dragging = false
   private lastX = 0
   private lastY = 0
@@ -42,8 +43,12 @@ export class OrbitCameraFollowSystem {
   constructor(camera: Camera, renderer: THREE.WebGLRenderer) {
     this.camera = camera
     this.canvas = renderer.domElement
-    this.scene = (renderer as SceneRenderer).scene
+    this.renderer = renderer as SceneRenderer
     this.bindPointer()
+  }
+
+  private getScene(): THREE.Scene | undefined {
+    return this.renderer.scene
   }
 
   applyLookDelta(movementX: number, movementY: number): void {
@@ -82,15 +87,8 @@ export class OrbitCameraFollowSystem {
       )
 
       const blocked = this.obstructionDistance(entity)
-      const pulled = pullCameraDistance(this.distance, blocked)
-      if (pulled < this.distance) {
-        const pulledOffset = chaseOffset(this.yaw, this.pitch, pulled)
-        this.desired.set(
-          this.lookTarget.x + pulledOffset.x,
-          this.lookTarget.y + pulledOffset.y,
-          this.lookTarget.z + pulledOffset.z
-        )
-      }
+      const pulled = pullAlongRay(this.lookTarget, this.desired, blocked)
+      this.desired.set(pulled.x, pulled.y, pulled.z)
 
       if (!this.snapped) {
         this.camera.position.copy(this.desired)
@@ -132,19 +130,22 @@ export class OrbitCameraFollowSystem {
   }
 
   private obstructionDistance(entity: Entity): number | null {
-    if (!this.scene) return null
+    const scene = this.getScene()
+    if (!scene) return null
     this.skip.clear()
     const meshComponent = entity.getComponent(MeshComponent)
     meshComponent?.mesh.traverse((object) => this.skip.add(object))
 
-    this.colliders.length = 0
-    this.scene.traverse((object) => {
-      if (!(object as THREE.Mesh).isMesh) return
-      if (!object.visible || object.userData.isHitbox) return
-      if (this.skip.has(object)) return
-      this.colliders.push(object)
-    })
-    if (!this.colliders.length) return null
+    this.colliderCacheFrame += 1
+    if (this.colliderCacheFrame % 8 === 1) {
+      this.colliderCache = []
+      scene.traverse((object) => {
+        if (!(object as THREE.Mesh).isMesh) return
+        if (!object.visible || object.userData.isHitbox) return
+        this.colliderCache.push(object)
+      })
+    }
+    if (!this.colliderCache.length) return null
 
     this.hitPoint.copy(this.desired).sub(this.lookTarget)
     const span = this.hitPoint.length()
@@ -152,8 +153,9 @@ export class OrbitCameraFollowSystem {
     this.hitPoint.normalize()
     this.raycaster.set(this.lookTarget, this.hitPoint)
     this.raycaster.far = span
-    const hits = this.raycaster.intersectObjects(this.colliders, false)
-    return hits[0]?.distance ?? null
+    const hits = this.raycaster.intersectObjects(this.colliderCache, false)
+    const hit = hits.find((entry) => !this.skip.has(entry.object))
+    return hit?.distance ?? null
   }
 
   private bindPointer(): void {

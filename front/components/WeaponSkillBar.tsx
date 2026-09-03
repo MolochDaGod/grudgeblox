@@ -3,7 +3,7 @@
  */
 'use client'
 
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import {
   BLOX_WEAPON_SKILLS,
   beginSkillCast,
@@ -63,16 +63,19 @@ export default function WeaponSkillBar({
     [enabled, onCast, state],
   )
 
+  const consumeSkillSlotRef = useRef(consumeSkillSlot)
+  consumeSkillSlotRef.current = consumeSkillSlot
+
   useEffect(() => {
-    if (!enabled || !consumeSkillSlot) return
+    if (!enabled) return
     const id = window.setInterval(() => {
-      const slot = consumeSkillSlot()
+      const slot = consumeSkillSlotRef.current?.()
       if (!slot) return
       const skill = BLOX_WEAPON_SKILLS.find((s) => s.key === String(slot))
       if (skill) cast(skill)
     }, 50)
     return () => window.clearInterval(id)
-  }, [cast, consumeSkillSlot, enabled])
+  }, [cast, enabled])
 
   useEffect(() => {
     if (!enabled) return

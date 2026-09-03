@@ -8,6 +8,7 @@ import {
   clampPitch,
   clampZoom,
   lookingYAngle,
+  pullAlongRay,
   pullCameraDistance,
 } from './thirdPersonCamera'
 
@@ -46,6 +47,21 @@ test('wall hit pulls the camera in without passing through', () => {
   const pulled = pullCameraDistance(4.6, 1.2)
   assert.ok(pulled < 4.6)
   assert.ok(pulled >= THIRD_PERSON.minDistance)
+})
+
+test('wall pull stays on the look-to-camera ray', () => {
+  const origin = { x: 0, y: 1.5, z: 0 }
+  const desired = { x: 2, y: 2.5, z: 4 }
+  const pulled = pullAlongRay(origin, desired, 1)
+  const ox = pulled.x - origin.x
+  const oy = pulled.y - origin.y
+  const oz = pulled.z - origin.z
+  const dx = desired.x - origin.x
+  const dy = desired.y - origin.y
+  const dz = desired.z - origin.z
+  const cross = Math.hypot(oy * dz - oz * dy, oz * dx - ox * dz, ox * dy - oy * dx)
+  assert.ok(cross < 1e-9, `left the ray: ${cross}`)
+  assert.ok(Math.hypot(ox, oy, oz) < Math.hypot(dx, dy, dz))
 })
 
 test('zoom stays in the chase range', () => {

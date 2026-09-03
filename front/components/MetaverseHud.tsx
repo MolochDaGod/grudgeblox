@@ -15,6 +15,7 @@ import gameData from '../public/gameData.json'
 import { FLEET } from '@/lib/fleetConfig'
 import type { FleetCharacter } from '@/lib/fleetCharacters'
 import DopeBudzControls from './DopeBudzControls'
+import { formatNearbyPrompt } from '@/game/playHud'
 
 export interface MetaverseHudProps {
   messages: MessageComponent[]
@@ -284,7 +285,7 @@ export default function MetaverseHud({
         <div className="pointer-events-none absolute bottom-28 left-1/2 z-[70] -translate-x-1/2 rounded-lg border border-emerald-700/50 bg-black/75 px-4 py-2 text-center shadow-xl">
           <p className="text-[10px] uppercase tracking-widest text-emerald-400/80">Nearby</p>
           <p className="text-sm font-semibold text-white">
-            {gamepadConnected ? '✕ / E' : 'E'} · {prompt}
+            {formatNearbyPrompt(prompt, gamepadConnected)}
           </p>
         </div>
       )}
@@ -388,22 +389,26 @@ export default function MetaverseHud({
           <button
             type="button"
             className="bg-emerald-700/40 text-white font-bold rounded-full shadow-lg w-16 h-16 flex items-center justify-center border border-emerald-500/40"
-            onTouchStart={() => gameInstance?.inputManager.setInteract(true)}
-            onMouseDown={() => gameInstance?.inputManager.setInteract(true)}
-            onTouchEnd={() => gameInstance?.inputManager.setInteract(false)}
-            onMouseUp={() => gameInstance?.inputManager.setInteract(false)}
-            onMouseOut={() => gameInstance?.inputManager.setInteract(false)}
+            onPointerDown={(event) => {
+              event.preventDefault()
+              gameInstance?.inputManager.setInteract(true)
+            }}
+            onPointerUp={() => gameInstance?.inputManager.setInteract(false)}
+            onPointerCancel={() => gameInstance?.inputManager.setInteract(false)}
+            onPointerLeave={() => gameInstance?.inputManager.setInteract(false)}
           >
             E
           </button>
           <button
             type="button"
             className="bg-gray-500/30 text-white font-bold rounded-full shadow-lg w-20 h-20 flex items-center justify-center border border-white/20"
-            onTouchStart={() => gameInstance?.inputManager.setJump(true)}
-            onMouseDown={() => gameInstance?.inputManager.setJump(true)}
-            onTouchEnd={() => gameInstance?.inputManager.setJump(false)}
-            onMouseUp={() => gameInstance?.inputManager.setJump(false)}
-            onMouseOut={() => gameInstance?.inputManager.setJump(false)}
+            onPointerDown={(event) => {
+              event.preventDefault()
+              gameInstance?.inputManager.setJump(true)
+            }}
+            onPointerUp={() => gameInstance?.inputManager.setJump(false)}
+            onPointerCancel={() => gameInstance?.inputManager.setJump(false)}
+            onPointerLeave={() => gameInstance?.inputManager.setJump(false)}
           >
             Jump
           </button>

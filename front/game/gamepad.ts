@@ -29,8 +29,14 @@ export type GamepadFrame = {
 }
 
 export type GamepadLike = {
+  connected?: boolean
   axes?: ArrayLike<number>
   buttons?: ArrayLike<{ pressed?: boolean; value?: number } | number>
+}
+
+export function isPadConnected(pad: GamepadLike | null | undefined): pad is GamepadLike {
+  if (!pad) return false
+  return pad.connected !== false
 }
 
 const EMPTY_BUTTONS: GamepadButtons = {
@@ -76,7 +82,7 @@ function buttonPressed(
 }
 
 export function readGamepad(pad: GamepadLike | null | undefined): GamepadFrame {
-  if (!pad) return emptyGamepadFrame()
+  if (!isPadConnected(pad)) return emptyGamepadFrame()
 
   const axes = pad.axes
   const leftX = applyDeadzone(axes && axes.length > 0 ? axes[0] : 0)
@@ -136,7 +142,7 @@ export function pollFirstGamepad(
   if (!pads) return emptyGamepadFrame()
   for (let i = 0; i < pads.length; i++) {
     const pad = pads[i]
-    if (pad) return readGamepad(pad)
+    if (isPadConnected(pad)) return readGamepad(pad)
   }
   return emptyGamepadFrame()
 }
