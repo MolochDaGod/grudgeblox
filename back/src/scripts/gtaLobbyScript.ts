@@ -19,6 +19,7 @@ import { MapWorld } from '../ecs/entity/MapWorld.js'
 import { Mesh } from '../ecs/entity/Mesh.js'
 import { Sphere } from '../ecs/entity/Sphere.js'
 import { TriggerCube } from '../ecs/entity/TriggerCube.js'
+import { serverLoadsGltfColliders } from '../physics/colliderBudget.js'
 
 function randomHexColor() {
   const hex = Math.floor(Math.random() * 16777215).toString(16)
@@ -240,6 +241,9 @@ islandSign.entity.addNetworkComponent(
 
 console.log('[gtaLobby] GrudgeBlox GTA-like lobby world ready')
 console.log(`[gtaLobby] CDN hint ${CDN} (avatars client-side)`)
+if (!serverLoadsGltfColliders()) {
+  console.log('[gtaLobby] city physics uses box colliders (set CITY_GLTF_COLLIDERS=1 for GLB hulls)')
+}
 
 const onRailway = Boolean(
   process.env.RAILWAY_SERVICE_ID ||

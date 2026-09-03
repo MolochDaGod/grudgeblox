@@ -12,6 +12,7 @@ import { EntityManager } from '../../../../../shared/system/EntityManager.js'
 import { KinematicRigidBodyComponent } from '../../component/physics/KinematicRigidBodyComponent.js'
 import { PositionComponent } from '../../../../../shared/component/PositionComponent.js'
 import { ColliderPropertiesComponent } from '../../component/physics/ColliderPropertiesComponent.js'
+import { serverLoadsGltfColliders } from '../../../physics/colliderBudget.js'
 
 export class TrimeshColliderSystem {
   async update(entities: Entity[], world: Rapier.World) {
@@ -41,6 +42,13 @@ export class TrimeshColliderSystem {
       // Initialize the colliders array for the TrimeshCollidersComponent
       const physicsTrimeshCollidersComponent = event.component
       physicsTrimeshCollidersComponent.colliders = []
+
+      if (!serverLoadsGltfColliders()) {
+        console.warn(
+          'TrimeshColliderSystem: skipping GLB trimesh (set CITY_GLTF_COLLIDERS=1 to force)'
+        )
+        continue
+      }
 
       // Load the model associated with the TrimeshCollidersComponent
       const model = await GLTFLoaderManager.loadGLTFModel(physicsTrimeshCollidersComponent.filePath)

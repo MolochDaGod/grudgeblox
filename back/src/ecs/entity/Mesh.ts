@@ -17,6 +17,9 @@ import {
   ColliderPropertiesComponentData,
 } from '../component/physics/ColliderPropertiesComponent.js'
 import { ConvexHullColliderComponent } from '../component/physics/ConvexHullColliderComponent.js'
+import { BoxColliderComponent } from '../component/physics/BoxColliderComponent.js'
+import { SizeComponent } from '@shared/component/SizeComponent.js'
+import { serverLoadsGltfColliders } from '../../physics/colliderBudget.js'
 
 export interface MeshParams {
   position: {
@@ -54,7 +57,7 @@ export class Mesh {
   entity: Entity
 
   constructor(params: MeshParams) {
-    const { position, meshUrl, physicsProperties, colliderProperties } = params
+    const { position, meshUrl, physicsProperties, colliderProperties, size } = params
 
     this.entity = EntityManager.createEntity(SerializedEntityType.CUBE)
 
@@ -78,12 +81,24 @@ export class Mesh {
     this.entity.addComponent(
       new ColliderPropertiesComponent(this.entity.id, colliderProperties ?? {})
     )
-    this.entity.addComponent(
-      new ConvexHullColliderComponent(
-        this.entity.id,
-        meshUrl ?? 'https://notbloxo.fra1.cdn.digitaloceanspaces.com/Notblox-Assets/base/Crate.glb'
+    if (serverLoadsGltfColliders()) {
+      this.entity.addComponent(
+        new ConvexHullColliderComponent(
+          this.entity.id,
+          meshUrl ?? 'https://notbloxo.fra1.cdn.digitaloceanspaces.com/Notblox-Assets/base/Crate.glb'
+        )
       )
-    )
+    } else {
+      this.entity.addComponent(
+        new SizeComponent(
+          this.entity.id,
+          size?.width ?? 1,
+          size?.height ?? 1,
+          size?.depth ?? 1
+        )
+      )
+      this.entity.addComponent(new BoxColliderComponent(this.entity.id))
+    }
     this.entity.addComponent(
       new PhysicsPropertiesComponent(this.entity.id, physicsProperties ?? {})
     )
