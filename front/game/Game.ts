@@ -19,13 +19,15 @@ import {
   InvisibilitySystem,
   VehicleSystem,
   PlayerAvatarSystem,
+  IslandTerrainSystem,
 } from './ecs/system'
 import { Hud } from './Hud'
 import { Renderer } from './Renderer'
 import { EventSystem } from '@shared/system/EventSystem'
 import { MutableRefObject } from 'react'
 import { ClientMessageType, SetPlayerNameMessage, WorldActionMessage } from '@shared/network/client'
-import { kitModelKey, sanitizeKitModel3d } from '@/lib/fourCharacterKit'
+import { sanitizeModel3d } from '@shared/avatar/appearancePolicy'
+import { kitModelKey } from '@/lib/fourCharacterKit'
 
 export class Game {
   private static instance: Game | undefined
@@ -51,6 +53,7 @@ export class Game {
   private vehicleSystem: VehicleSystem
   private invisibilitySystem: InvisibilitySystem
   private playerAvatarSystem: PlayerAvatarSystem
+  private islandTerrainSystem: IslandTerrainSystem
   renderer: Renderer
   hud: Hud
   private identifyFollowedMeshSystem: IdentifyFollowedMeshSystem
@@ -73,6 +76,7 @@ export class Game {
     this.vehicleSystem = new VehicleSystem()
     this.invisibilitySystem = new InvisibilitySystem()
     this.playerAvatarSystem = new PlayerAvatarSystem()
+    this.islandTerrainSystem = new IslandTerrainSystem()
 
     this.renderer = new Renderer(gameContainerRef)
     this.inputManager = new InputManager(this.websocketManager, this.renderer.camera.controlSystem)
@@ -124,6 +128,7 @@ export class Game {
     raceId?: string
     classId?: string
     model3d?: string
+    gameEra?: string
   } | null = null
 
   avatarWorldSlug: string | undefined
@@ -138,6 +143,7 @@ export class Game {
     raceId?: string
     classId?: string
     model3d?: string
+    gameEra?: string
   }) {
     this.fleetCharacter = character
     this.sendAppearance(character.name || 'Player')
@@ -151,7 +157,8 @@ export class Game {
       raceId: c?.raceId,
       classId: c?.classId,
       characterId: c?.id,
-      model3d: sanitizeKitModel3d(c?.model3d, c?.raceId) || kitModelKey(c?.raceId),
+      model3d: sanitizeModel3d(c?.model3d, c?.raceId) || kitModelKey(c?.raceId),
+      gameEra: c?.gameEra,
     }
     this.websocketManager.send(message)
   }
@@ -187,6 +194,7 @@ export class Game {
     this.identifyFollowedMeshSystem.update(entities, this)
     this.inputManager.update(entities, now - this.lastRenderTime)
     this.inputManager.sendInput(entities)
+    this.islandTerrainSystem.update(entities, this.renderer)
     this.destroySystem.update(entities, this.renderer)
     this.meshSystem.update(entities, this.renderer)
     this.vehicleSystem.update(entities)

@@ -1,0 +1,60 @@
+# Island maps + all-era sandboxes
+
+GrudgeBlox can play **baked** terrain from Island Terrain World Engine and lets **every fleet era** enter the same sandbox.
+
+## Island Terrain World Engine
+
+Local engine path:
+
+`C:\Users\nugye\Documents\Island-Terrain-World-Engine2\Island-Terrain-World-Engine`
+
+Export JSON as `grudge-island-bake/v1` into `exports/`, `bakes/`, `out/`, or `maps/` inside that folder.
+
+```json
+{
+  "format": "grudge-island-bake/v1",
+  "engine": "Island-Terrain-World-Engine",
+  "id": "harbor-atoll",
+  "title": "Harbor Atoll",
+  "seed": 1847291,
+  "size": 64,
+  "cellSize": 4,
+  "seaLevel": 0.2,
+  "maxHeight": 22,
+  "heights": [0, 12, 40],
+  "biomes": [0, 2, 3],
+  "spawns": [{ "x": 8, "y": 6, "z": -4, "label": "landing" }],
+  "pois": [{ "kind": "dock", "x": 12, "y": 3, "z": 2, "label": "dock" }]
+}
+```
+
+`heights` and `biomes` are row-major grids of `size * size`. Heights are 0–255 (quantized) or 0–1 / meters (auto-quantized on import). Nested `terrain.heightmap` 2D arrays are also accepted.
+
+## Bake
+
+```bash
+# Generate catalog bakes (Harbor Atoll, Volcanic Ridge, Frozen Fjord)
+pnpm --filter @notblox/back exec tsx scripts/bakeIslands.ts
+
+# Prefer live engine exports when the folder is mounted
+ISLAND_ENGINE_ROOT=/path/to/Island-Terrain-World-Engine \
+  pnpm --filter @notblox/back exec tsx scripts/bakeIslands.ts
+```
+
+Outputs land in `shared/maps/baked/*.json`. The game server loads those files, then falls back to the same deterministic generator if a bake is missing.
+
+## Run the sandbox
+
+```bash
+GAME_SCRIPT=islandSandboxScript.ts ISLAND_MAP=harbor-atoll pnpm run dev:back
+```
+
+Maps: `harbor-atoll` (default), `volcanic-ridge`, `frozen-fjord`, or any id imported from the engine.
+
+Client route: `/play/island`
+
+Physics uses a Rapier heightfield from the bake. The client rebuilds the colored terrain mesh from the same seed/catalog so collision and visuals stay aligned.
+
+## All-era characters
+
+Sandbox worlds set `rosterMode: "all-eras"`. Character select loads Voxel, Warlords, Nexus, Armada, and Game heroes (4 slots per era). Appearance replication accepts kit Mixamo paths and HTTPS GLBs on studio hosts (`assets.grudge-studio.com`, `grudgewarlords.com`, …).

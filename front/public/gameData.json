@@ -1,5 +1,27 @@
 [
   {
+    "title": "Island Sandbox",
+    "imageUrl": "/PreviewTestGame.webp",
+    "slug": "island",
+    "images": [
+      {
+        "url": "/PreviewTestGame.webp",
+        "width": 1920,
+        "height": 1080,
+        "alt": "Island Sandbox",
+        "type": "image/webp"
+      }
+    ],
+    "websocketPort": 8001,
+    "era": "voxel",
+    "sandbox": true,
+    "rosterMode": "all-eras",
+    "mapId": "harbor-atoll",
+    "combatEnabled": true,
+    "metaDescription": "Baked Island Terrain World Engine map. Warlords, Voxel, Nexus, Armada, and Game heroes share this sandbox.",
+    "markdown": "## Island Sandbox\n\nPlayable terrain is **baked** from Island Terrain World Engine (`grudge-island-bake/v1`). Default map is **Harbor Atoll**; switch with `ISLAND_MAP=volcanic-ridge` or `frozen-fjord`, or point `ISLAND_ENGINE_ROOT` at your engine export folder.\n\n### All-era play\nThis is a sandbox. Character select loads **every fleet era** (4 slots each). Voxel Mixamo kits, Warlords grudge6, Nexus, Armada, and Game heroes all replicate in the same room.\n\n### Run\n```bash\nGAME_SCRIPT=islandSandboxScript.ts ISLAND_MAP=harbor-atoll pnpm run dev:back\n```\n"
+  },
+  {
     "title": "GrudgeBlox Test World",
     "imageUrl": "/PreviewTestGame.webp",
     "slug": "test",
@@ -14,9 +36,11 @@
     ],
     "websocketPort": 8001,
     "era": "voxel",
+    "sandbox": true,
+    "rosterMode": "all-eras",
     "combatEnabled": true,
-    "metaDescription": "Voxel-era test world \u2014 4-slot era=voxel roster, 4character Mixamo skins, Mine-Loader Codex icons, weapon skills 1\u20135.",
-    "markdown": "## GrudgeBlox Test World\n\nVoxel / Realms play on **blox.grudge-studio.com**. Roster is **era=voxel only** (Mine-Loader law \u2014 Warlords heroes do not appear here).\n\n### Stack\n- 4-slot select + create (Railway `?era=voxel`)\n- Avatar: 4character Mixamo races (replicated to other players)\n- Portraits + hotbar: Mine-Loader Codex / `ui-icons`\n- Skills: windup \u2192 active hit / projectile impact\n- Peers: [Mine-Loader Codex](https://mine.grudge-studio.com/#/defs) \u00b7 [GRUDOX](https://grudox.grudge-studio.com)\n\n### Controls\n- WASD move \u00b7 Space jump \u00b7 E interact \u00b7 1\u20135 skills \u00b7 Mouse look\n"
+    "metaDescription": "Sandbox test world \u2014 every fleet era can enter. 4character Mixamo skins, Mine-Loader Codex icons, weapon skills 1\u20135.",
+    "markdown": "## GrudgeBlox Test World\n\nSandbox play on **blox.grudge-studio.com**. Roster is **all eras** so Warlords, Voxel, Nexus, Armada, and Game heroes share the room.\n\n### Stack\n- 4-slot select per era + create (Railway `?era=`)\n- Avatar: kit or era CDN GLB (replicated to other players)\n- Portraits + hotbar: Mine-Loader Codex / `ui-icons`\n- Skills: windup \u2192 active hit / projectile impact\n\n### Controls\n- WASD move \u00b7 Space jump \u00b7 E interact \u00b7 1\u20135 skills \u00b7 Mouse look\n"
   },
   {
     "title": "Combat Arena",
@@ -33,9 +57,11 @@
     ],
     "websocketPort": 8002,
     "era": "voxel",
+    "sandbox": true,
+    "rosterMode": "all-eras",
     "combatEnabled": true,
-    "metaDescription": "Voxel combat sandbox \u2014 same era=voxel heroes as Mine / GRUDOX. Skills 1\u20135 (not a Warlords roster).",
-    "markdown": "## Combat Arena\n\nThis is a **GrudgeBlox weapon-skill room**, not Warlords play. Roster is `?era=voxel` \u2014 Mine, GRUDOX, and Blox all share voxel characters.\n\n`combatEnabled` only means the 1\u20135 skill bar (windup \u2192 hit / projectile). It is not a product era.\n"
+    "metaDescription": "Combat sandbox \u2014 every fleet era can enter. Skills 1\u20135.",
+    "markdown": "## Combat Arena\n\nA **GrudgeBlox weapon-skill sandbox**. Roster is all eras \u2014 bring a Warlords, Voxel, Nexus, Armada, or Game hero.\n\n`combatEnabled` only means the 1\u20135 skill bar (windup \u2192 hit / projectile).\n"
   },
   {
     "title": "Voxel Lobby Bridge",
@@ -52,9 +78,11 @@
     ],
     "websocketPort": 8003,
     "era": "voxel",
+    "sandbox": true,
+    "rosterMode": "all-eras",
     "combatEnabled": false,
-    "metaDescription": "Bridge room toward Mine-Loader lobby and GRUDOX hubs \u2014 character handoff test.",
-    "markdown": "## Voxel Lobby Bridge\n\nEra=voxel 4-slot handoff. Jump to [Mine-Loader lobby](https://mine.grudge-studio.com/#/lobby), [Codex defs](https://mine.grudge-studio.com/#/defs), or [GRUDOX](https://grudox.grudge-studio.com).\n"
+    "metaDescription": "Bridge room toward Mine-Loader lobby and GRUDOX hubs \u2014 all-era character handoff.",
+    "markdown": "## Voxel Lobby Bridge\n\nAll-era 4-slot handoff. Jump to [Mine-Loader lobby](https://mine.grudge-studio.com/#/lobby), [Codex defs](https://mine.grudge-studio.com/#/defs), or [GRUDOX](https://grudox.grudge-studio.com).\n"
   },
   {
     "title": "GRUDOX Sandbox",
@@ -71,9 +99,11 @@
     ],
     "websocketPort": 8004,
     "era": "voxel",
+    "sandbox": true,
+    "rosterMode": "all-eras",
     "combatEnabled": true,
-    "metaDescription": "GRUDOX voxel-era sandbox \u2014 same era=voxel roster as Mine-Loader / Grudges.",
-    "markdown": "## GRUDOX Sandbox\n\n**GRUDOX = voxel.** Roster is `?era=voxel` (not nexus). Same 4character Mixamo kit as other voxel worlds so skins replicate.\n"
+    "metaDescription": "GRUDOX sandbox \u2014 Warlords, Voxel, Nexus, Armada, and Game heroes share the room.",
+    "markdown": "## GRUDOX Sandbox\n\nRoster is **all eras**. Same physics body as other GrudgeBlox worlds; avatars keep their era mesh.\n"
   },
   {
     "title": "Dope Budz Streets",
@@ -90,8 +120,10 @@
     ],
     "websocketPort": 8005,
     "era": "voxel",
+    "sandbox": true,
+    "rosterMode": "all-eras",
     "combatEnabled": true,
-    "metaDescription": "Integrated Dope Budz Streets ECS world \u2014 claim session lots, grow and harvest, run terminal routes, drive, and fight across six districts.",
-    "markdown": "## Dope Budz Streets\n\nThe primary Streets experience runs inside the GrudgeBlox ECS authority.\n\n- Six districts: Grove, Harbor, Neon, Mesa, Fogtown, Little Beach\n- Claimable session lots with BUDZ/SOL balances and owner labels\n- Timed plant and harvest cycles on grow benches\n- Terminal-to-terminal jobs with BUDZ and reputation rewards\n- Motor Row cars, street crews, jump pad, and weapon kits\n\nUse the in-game **Street status**, **Owned lots**, and **Current job** controls for live server state. Session progress resets on disconnect until an owner-managed persistence service is configured.\n\n### Controls\nWASD move/drive \u00b7 E enter, exit, or interact \u00b7 1\u20134 kits \u00b7 mouse look\n"
+    "metaDescription": "Integrated Dope Budz Streets ECS world \u2014 all-era sandbox lots, grow routes, driving, and fights across six districts.",
+    "markdown": "## Dope Budz Streets\n\nThe primary Streets experience runs inside the GrudgeBlox ECS authority. Any fleet-era hero can enter.\n\n- Six districts: Grove, Harbor, Neon, Mesa, Fogtown, Little Beach\n- Claimable session lots with BUDZ/SOL balances and owner labels\n- Timed plant and harvest cycles on grow benches\n- Terminal-to-terminal jobs with BUDZ and reputation rewards\n- Motor Row cars, street crews, jump pad, and weapon kits\n\nUse the in-game **Street status**, **Owned lots**, and **Current job** controls for live server state. Session progress resets on disconnect until an owner-managed persistence service is configured.\n\n### Controls\nWASD move/drive \u00b7 E enter, exit, or interact \u00b7 1\u20134 kits \u00b7 mouse look\n"
   }
 ]

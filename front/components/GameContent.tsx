@@ -69,8 +69,18 @@ export default function GameContent({ gameInfo }: { gameInfo: GameInfo }) {
                   </div>
                   <div className="absolute bottom-4 left-4 right-4 flex flex-wrap gap-2">
                     <span className="text-[10px] uppercase tracking-wider px-2 py-1 rounded bg-black/60 border border-amber-800/40 text-amber-200/90">
-                      {gameInfo.era || 'voxel'}
+                      {gameInfo.rosterMode === 'all-eras' ? 'all eras' : gameInfo.era || 'voxel'}
                     </span>
+                    {gameInfo.sandbox && (
+                      <span className="text-[10px] uppercase tracking-wider px-2 py-1 rounded bg-black/60 border border-sky-800/40 text-sky-200/90">
+                        sandbox
+                      </span>
+                    )}
+                    {gameInfo.mapId && (
+                      <span className="text-[10px] uppercase tracking-wider px-2 py-1 rounded bg-black/60 border border-lime-800/40 text-lime-200/90">
+                        {gameInfo.mapId}
+                      </span>
+                    )}
                     {gameInfo.combatEnabled !== false && (
                       <span className="text-[10px] uppercase tracking-wider px-2 py-1 rounded bg-black/60 border border-red-800/40 text-red-200/90">
                         weapon skills
@@ -94,6 +104,8 @@ export default function GameContent({ gameInfo }: { gameInfo: GameInfo }) {
                   onPlay={handlePlayClick}
                   gameTitle={gameInfo.title}
                   era={gameInfo.era || 'voxel'}
+                  rosterMode={gameInfo.rosterMode || (gameInfo.sandbox ? 'all-eras' : 'world-era')}
+                  sandbox={!!gameInfo.sandbox}
                 />
               </div>
             </div>

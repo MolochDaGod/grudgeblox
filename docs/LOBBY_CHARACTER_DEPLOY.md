@@ -14,9 +14,10 @@
 /play/test  (and /play/{slug})
   ├── Cover image + Online badge          ← Notblox
   ├── Display name                        ← Notblox playerName
-  ├── Fleet character roster              ← era of this world only
-  │     Blox + Mine + GRUDOX: era=voxel (never Warlords heroes)
+  ├── Fleet character roster              ← sandbox = every era
+  │     Voxel + Warlords + Nexus + Armada + Game
   │     SSOT: Railway /api/characters?era=
+  │     Island maps: baked Island Terrain World Engine
   ├── Enter world → WebSocket multiplayer ← Notblox ECS + Rapier
   ├── Local avatar mesh                   ← grudge6 CDN GLB (visual)
   └── Weapon skills 1–5                   ← windup → hit / projectile impact
@@ -45,12 +46,14 @@ Optional rewrite `/api/characters` → Railway game API (same as fleet satellite
 
 ## Worlds (`public/gameData.json`)
 
-| Slug | Era | Combat | Port |
-|------|-----|--------|------|
-| `test` | voxel | yes | 8001 |
-| `combat` | voxel | yes | 8002 |
-| `lobby` | voxel | no | 8003 |
-| `grudox` | voxel | yes | 8004 |
+| Slug | Era / roster | Combat | Port |
+|------|--------------|--------|------|
+| `island` | all-eras sandbox (Harbor Atoll bake) | yes | 8001 |
+| `test` | all-eras sandbox | yes | 8001 |
+| `combat` | all-eras sandbox | yes | 8002 |
+| `lobby` | all-eras sandbox | no | 8003 |
+| `grudox` | all-eras sandbox | yes | 8004 |
+| `streets` | all-eras sandbox | yes | 8005 |
 
 ---
 

@@ -137,12 +137,14 @@ export function avatarAppearanceSig(input: {
   model3d?: string
   id?: string
   characterId?: string
+  gameEra?: string
 }): string {
-  const race = normalizeKitRace(input.raceId)
-  const klass = normalizeKitClass(input.classId)
-  const model = sanitizeKitModel3d(input.model3d, race)
+  const race = input.raceId || normalizeKitRace(input.raceId)
+  const klass = input.classId || normalizeKitClass(input.classId)
+  const model = sanitizeKitModel3d(input.model3d, input.raceId)
   const id = input.characterId || input.id || ''
-  return `${race}|${klass}|${model}|${id}`
+  const era = (input.gameEra || '').toLowerCase()
+  return `${era}|${race}|${klass}|${model}|${id}`
 }
 
 export function sanitizeKitModel3d(raw?: string, raceId?: string): string {
@@ -150,5 +152,8 @@ export function sanitizeKitModel3d(raw?: string, raceId?: string): string {
   const cleaned = raw.trim().replace(/\\/g, '/')
   const m = cleaned.match(/races\/(human|barbarian|dwarf|high_elf|orc|undead)\.glb$/i)
   if (m) return `races/${m[1].toLowerCase()}.glb`
+  if (cleaned.startsWith('/kit/') || cleaned.startsWith('http://') || cleaned.startsWith('https://')) {
+    return cleaned
+  }
   return kitModelKey(raceId)
 }

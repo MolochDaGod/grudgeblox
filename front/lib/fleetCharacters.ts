@@ -10,7 +10,13 @@ import {
   type KitClassId,
   type KitRaceId,
 } from './fourCharacterKit'
-import { characterListPathsForEra, rosterErasForWorld, VOXEL_ERA, type FleetEraId } from './characterEras'
+import {
+  characterListPathsForEra,
+  rosterErasForWorld,
+  VOXEL_ERA,
+  type FleetEraId,
+  type RosterMode,
+} from './characterEras'
 
 const GUEST_SLOTS_KEY = 'grudge_blox_guest_slots'
 const MAX_SLOTS = 4
@@ -97,9 +103,13 @@ async function fetchEra(base: string, era: string, token: string | null): Promis
 }
 
 /**
- * Load roster for one world era. Voxel maps stay era=voxel (Mine-Loader law).
+ * Load roster for a world. Sandboxes (`all-eras`) union every fleet era
+ * so Warlords / Voxel / Nexus / Armada / Game heroes can enter together.
  */
-export async function loadFleetRoster(worldEra: string = VOXEL_ERA): Promise<{
+export async function loadFleetRoster(
+  worldEra: string = VOXEL_ERA,
+  rosterMode: RosterMode | string = 'world-era',
+): Promise<{
   characters: FleetCharacter[]
   status: 'ok' | 'guest' | 'unauthorized' | 'error'
 }> {
@@ -112,21 +122,23 @@ export async function loadFleetRoster(worldEra: string = VOXEL_ERA): Promise<{
     }
   }
 
-  const eras = rosterErasForWorld(worldEra)
+  const eras = rosterErasForWorld(worldEra, rosterMode)
   const out: FleetCharacter[] = []
   const seen = new Set<string>()
 
-  for (const base of API_BASES) {
-    for (const era of eras) {
+  for (const era of eras) {
+    for (const base of API_BASES) {
       const rows = await fetchEra(base, era, token)
+      let added = false
       for (const c of rows) {
         if (seen.has(c.id)) continue
         seen.add(c.id)
         if (!c.gameEra) c.gameEra = era
         out.push(c)
+        added = true
       }
+      if (added) break
     }
-    if (out.length) break
   }
 
   if (!out.length) {

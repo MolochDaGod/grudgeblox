@@ -32,6 +32,7 @@ grudgeblox/
 │   └── src/
 │       ├── scripts/  # Game world scripts (THIS IS WHERE YOU ADD NEW GAMES)
 │       │   ├── gtaLobbyScript.ts      # Default GTA-style lobby (cars, districts)
+│       │   ├── islandSandboxScript.ts # Baked Island Terrain World Engine maps
 │       │   ├── dopebudzStreets.ts     # Dope Budz Streets world
 │       │   ├── parkourScript.ts       # Parkour obby
 │       │   ├── footballScript.ts      # Football game
@@ -71,6 +72,7 @@ grudgeblox/
 ### Available ECS Entities
 
 - `MapWorld` – GLTF map with collision mesh
+- `IslandMapWorld` – baked Island Terrain World Engine heightfield
 - `Player` – Network-controlled player capsule (created automatically on connect)
 - `Cube`, `Sphere`, `Mesh` – Physics-enabled primitives
 - `Car` – Drivable vehicle with raycast wheels
@@ -162,6 +164,7 @@ GAME_SCRIPT=gtaLobbyScript.ts pnpm run dev
 ### Available Scripts
 
 - `gtaLobbyScript.ts` – GTA-style city lobby (cars, districts, NPCs)
+- `islandSandboxScript.ts` – Baked Island Terrain World Engine sandbox (all-era play)
 - `dopebudzStreets.ts` – Dope Budz Streets world
 - `parkourScript.ts` – Parkour obby course
 - `footballScript.ts` – Football field
@@ -177,6 +180,8 @@ GAME_SCRIPT=gtaLobbyScript.ts  # Which game to run
 GAME_TICKRATE=20               # Server tick rate (Hz)
 PORT=8001                      # Local dev port (Railway injects its own PORT)
 FRONTEND_URL=                  # CORS origin (optional, dev allows all)
+ISLAND_MAP=harbor-atoll        # islandSandboxScript.ts catalog id
+ISLAND_ENGINE_ROOT=            # optional path to Island-Terrain-World-Engine exports
 ```
 
 **🚂 Railway Auto-Detection**:
@@ -273,10 +278,12 @@ This starts:
 - `game_football` (port 8003, `footballScript.ts`)
 - `game_pet_simulator` (port 8004, `petSimulatorScript.ts`)
 - `game_dopebudz_streets` (port 8005, `dopebudzStreets.ts`)
+- `game_island_sandbox` (port 8006, `islandSandboxScript.ts`)
+- `game_island_sandbox` (port 8006, `islandSandboxScript.ts`)
 
 Each service listens on `http://localhost:PORT`. Put nginx/Caddy in front for TLS termination.
 
-**Note**: Ports 8001-8005 are hardcoded in `docker-compose.yml`. For Railway, the platform injects `PORT` dynamically.
+**Note**: Ports 8001-8006 are hardcoded in `docker-compose.yml`. For Railway, the platform injects `PORT` dynamically.
 
 ### Web Client (Vercel)
 

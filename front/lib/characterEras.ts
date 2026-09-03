@@ -1,7 +1,8 @@
 /**
  * Multi-era character policy for GrudgeBlox — same fleet SSOT as Mine-Loader.
  * One account · 4 slots per era · Railway `/api/characters?era=`.
- * Voxel play never unions Warlords heroes.
+ * Sandbox worlds union every era so Warlords, Voxel, Nexus, Armada, and Game
+ * heroes can play on the same island.
  * @see Mine-Loader docs/CHARACTER_ERAS.md
  */
 
@@ -73,6 +74,9 @@ export const CHARACTER_ERA_POLICIES: Record<FleetEraId, EraCharacterPolicy> = {
 
 export const VOXEL_ERA: FleetEraId = 'voxel'
 export const APP_CHARACTER_SYSTEM: FleetEraId = 'voxel'
+export const ALL_FLEET_ERAS: FleetEraId[] = ['voxel', 'warlords', 'nexus', 'armada', 'game']
+
+export type RosterMode = 'world-era' | 'all-eras'
 
 export function isFleetEra(id: string): id is FleetEraId {
   return id === 'warlords' || id === 'voxel' || id === 'nexus' || id === 'armada' || id === 'game'
@@ -85,12 +89,13 @@ export function getEraPolicy(id?: string): EraCharacterPolicy {
 }
 
 /**
- * GrudgeBlox worlds (test, combat, lobby, grudox, streets) are voxel play.
- * Mine + GRUDOX + Blox share era=voxel heroes. Warlords stay on warlords hosts.
+ * Sandbox worlds (`rosterMode=all-eras`) load every fleet era.
+ * Dedicated worlds still use that world's shareFrom list.
  */
-export function rosterErasForWorld(era?: string): FleetEraId[] {
+export function rosterErasForWorld(era?: string, rosterMode?: RosterMode | string): FleetEraId[] {
+  if (rosterMode === 'all-eras') return [...ALL_FLEET_ERAS]
   const key = (era || VOXEL_ERA).toLowerCase()
-  if (key === 'warlords') return CHARACTER_ERA_POLICIES.voxel.shareFrom
+  if (key === 'all' || key === 'sandbox') return [...ALL_FLEET_ERAS]
   return getEraPolicy(era).shareFrom
 }
 
