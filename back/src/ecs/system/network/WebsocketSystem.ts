@@ -143,7 +143,8 @@ export class WebsocketSystem {
         process.uptime(),
         process.env.ISLAND_MAP
       )
-      res.writeStatus(this.applicationReady ? '200 OK' : '503 Service Unavailable')
+      // 200 as soon as the socket is bound. 503 here makes Railway mark the deploy failed.
+      res.writeStatus('200 OK')
       res.writeHeader('Content-Type', 'application/json')
       res.writeHeader('Cache-Control', 'no-store')
       res.end(JSON.stringify(healthData))

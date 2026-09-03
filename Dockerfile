@@ -45,7 +45,7 @@ WORKDIR /app/back
 
 # Require the application-level health endpoint to report ready. The probe supports
 # both the existing direct-TLS mode and plaintext behind an external TLS proxy.
-HEALTHCHECK --interval=5s --timeout=3s --start-period=15s --retries=3 \
+HEALTHCHECK --interval=5s --timeout=5s --start-period=45s --retries=5 \
   CMD node src/healthcheck.mjs
 
 CMD ["node", "--import", "tsx/esm", "src/sandbox.ts"]

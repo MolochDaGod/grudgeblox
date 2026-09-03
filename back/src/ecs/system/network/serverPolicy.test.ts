@@ -42,7 +42,34 @@ describe('health and admin policy', () => {
 
 describe('origin policy', () => {
   it('fails closed when production has no configured origin', () => {
-    assert.throws(() => resolveAllowedOrigins(true, undefined, undefined), /requires/)
+    const railwayVars = ['RAILWAY_SERVICE_ID', 'RAILWAY_ENVIRONMENT_ID', 'RAILWAY_ENVIRONMENT_NAME']
+    const previous = Object.fromEntries(railwayVars.map((key) => [key, process.env[key]]))
+    for (const key of railwayVars) delete process.env[key]
+    try {
+      assert.throws(() => resolveAllowedOrigins(true, undefined, undefined), /requires/)
+    } finally {
+      for (const key of railwayVars) {
+        if (previous[key] === undefined) delete process.env[key]
+        else process.env[key] = previous[key]
+      }
+    }
+  })
+
+  it('defaults to the live blox origin on Railway when none are configured', () => {
+    const previous = process.env.RAILWAY_SERVICE_ID
+    process.env.RAILWAY_SERVICE_ID = 'test-service'
+    try {
+      const origins = resolveAllowedOrigins(true, undefined, undefined)
+      assert.equal(isWebSocketOriginAllowed('https://blox.grudge-studio.com', true, origins), true)
+    } finally {
+      if (previous === undefined) delete process.env.RAILWAY_SERVICE_ID
+      else process.env.RAILWAY_SERVICE_ID = previous
+    }
+  })
+
+  it('accepts a websocket FRONTEND_URL as the matching https origin', () => {
+    const origins = resolveAllowedOrigins(true, undefined, 'wss://blox.grudge-studio.com')
+    assert.equal(isWebSocketOriginAllowed('https://blox.grudge-studio.com', true, origins), true)
   })
 
   it('supports explicit comma-separated origins and the legacy frontend value', () => {
