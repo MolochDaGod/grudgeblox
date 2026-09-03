@@ -12,15 +12,28 @@ async function loadGameLogic() {
   await import(pathToFileURL(codePath).href)
 }
 
+async function bindGameSocket() {
+  const { NetworkSystem } = await import('./ecs/system/network/NetworkSystem.js')
+  const network = new NetworkSystem()
+  await network.waitUntilListening()
+  network.markReady()
+  return network
+}
+
 async function runGame() {
-  const { startGameRuntime } = await import('./index.js')
-  await startGameRuntime()
-  await new Promise((resolve) => setTimeout(resolve, 250))
+  console.log(
+    `[worker] bind ${process.env.LISTEN_HOST || 'default'}:${process.env.PORT ?? process.env.GAME_PORT}`
+  )
+  const network = await bindGameSocket()
+  console.log('[worker] socket bound; loading physics')
   try {
+    const { startGameRuntime } = await import('./index.js')
+    await startGameRuntime(network)
+    await new Promise((resolve) => setTimeout(resolve, 250))
     await loadGameLogic()
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : String(error)
-    console.error(`Game logic failed to load; keeping the worker alive: ${message}`)
+    console.error(`Game logic failed to load; keeping the socket bound: ${message}`)
   }
 }
 

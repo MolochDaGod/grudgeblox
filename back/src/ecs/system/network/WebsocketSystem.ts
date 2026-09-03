@@ -30,7 +30,7 @@ import {
 import { EventSystem } from '@shared/system/EventSystem.js'
 
 import { MessageEvent } from '../../component/events/MessageEvent.js'
-import { Player } from '../../entity/Player.js'
+import type { Player } from '../../entity/Player.js'
 import { InputProcessingSystem } from '../InputProcessingSystem.js'
 import { NetworkSystem } from './NetworkSystem.js'
 import { ProximityPromptInteractEvent } from '../../component/events/ProximityPromptInteractEvent.js'
@@ -312,6 +312,7 @@ export class WebsocketSystem {
       // Respond to the client indicating that the connection is rate limited
       return ws.end(1008, 'Connection rate limit exceeded')
     }
+    const { Player } = await import('../../entity/Player.js')
     const player = new Player(ws, Math.random() * 5, 5, Math.random() * 5)
     const connectionMessage: ConnectionMessage = {
       t: ServerMessageType.FIRST_CONNECTION,
