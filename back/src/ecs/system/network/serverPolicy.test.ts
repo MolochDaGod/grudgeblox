@@ -5,7 +5,6 @@ import { ClientMessageType } from '@shared/network/client/index.js'
 import { decodeClientMessage, MAX_CLIENT_MESSAGE_BYTES } from './clientMessageValidation.js'
 import {
   buildHealthPayload,
-  DEFAULT_GAME_SOCKET,
   isAdminAuthorized,
   isHealthHttpRequest,
   isWebSocketOriginAllowed,
@@ -116,10 +115,10 @@ describe('origin policy', () => {
     assert.equal(onRailwayRuntime(), Boolean(process.env.RAILWAY_SERVICE_ID || process.env.RAILWAY_ENVIRONMENT_ID || process.env.RAILWAY_ENVIRONMENT_NAME))
   })
 
-  it('binds the worker to a unix socket when GAME_WORKER=1', () => {
-    assert.equal(resolveGameSocketPath('/tmp/custom.sock', '0'), '/tmp/custom.sock')
-    assert.equal(resolveGameSocketPath(undefined, '1'), DEFAULT_GAME_SOCKET)
-    assert.equal(resolveGameSocketPath(undefined, undefined), undefined)
+  it('binds the worker to a unix socket only when GAME_SOCKET is set', () => {
+    assert.equal(resolveGameSocketPath('/tmp/custom.sock'), '/tmp/custom.sock')
+    assert.equal(resolveGameSocketPath(undefined), undefined)
+    assert.equal(resolveGameSocketPath(''), undefined)
   })
 })
 
