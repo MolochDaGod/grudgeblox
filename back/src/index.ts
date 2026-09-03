@@ -191,11 +191,13 @@ function startGameLoop() {
   gameLoop()
 }
 
-export async function startGameRuntime() {
+export async function startGameRuntime(existing?: NetworkSystem) {
   if (networkSystem) throw new Error('Game runtime has already been started')
 
-  networkSystem = new NetworkSystem()
-  await networkSystem.waitUntilListening()
-  networkSystem.markReady()
+  networkSystem = existing ?? new NetworkSystem()
+  if (!existing) {
+    await networkSystem.waitUntilListening()
+    networkSystem.markReady()
+  }
   startGameLoop()
 }
