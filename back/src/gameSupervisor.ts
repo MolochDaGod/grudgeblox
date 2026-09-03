@@ -1,8 +1,10 @@
 /**
  * Public /health stays on Node net at $PORT so Railway's proxy can reach us.
  * In-process WebSocket upgrades are accepted on that same listener (no second
- * bind). Accumulate a complete HTTP head before upgrading: Hikari can split
- * the request across TCP packets, and LF-only heads fail a CRLF-only parse.
+ * bind). The upgrade handler is registered before Rapier/uWS load so Hikari
+ * does not wait 15s for a handler that never appears. Accumulate a complete
+ * HTTP head before upgrading: Hikari can split the request across TCP packets,
+ * and LF-only heads fail a CRLF-only parse.
  * Railway never reaches an extra TCP/Unix port; a second Node heap OOMs.
  *
  * GAME_WORKER_FORK=1 restores spawn + TCP proxy for local extra-listen debug.
@@ -18,10 +20,12 @@ import {
   isWebSocketHttpRequest,
   onRailwayRuntime,
   readBoundedInteger,
+  resolveAllowedOrigins,
   resolveGameSocketPath,
 } from './ecs/system/network/serverPolicy.js'
-import { collectHttpHead } from './ecs/system/network/nodeWebSocketTransport.js'
-import { hasPublicUpgradeHandler, tryPublicUpgrade } from './ecs/system/network/publicUpgrade.js'
+import { collectHttpHead, createNetUpgradeHandler } from './ecs/system/network/nodeWebSocketTransport.js'
+import { deliverNodeSocket } from './ecs/system/network/nodeSocketAccept.js'
+import { hasPublicUpgradeHandler, setPublicUpgradeHandler, tryPublicUpgrade } from './ecs/system/network/publicUpgrade.js'
 
 const WORKER_CONNECT_MS = 15000
 const WORKER_RETRY_MS = 50
@@ -77,15 +81,16 @@ export function shouldSupervise(): boolean {
 }
 
 function healthResponse(headOnly = false): Buffer {
-  const body = JSON.stringify(
-    buildHealthPayload(
+  const body = JSON.stringify({
+    ...buildHealthPayload(
       true,
       process.env.GAME_SCRIPT || 'gtaLobbyScript.ts',
       20,
       process.uptime(),
       process.env.ISLAND_MAP || 'live-hub'
-    )
-  )
+    ),
+    upgrade: hasPublicUpgradeHandler(),
+  })
   const payload = headOnly ? '' : body
   return Buffer.from(
     `HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nCache-Control: no-store\r\nContent-Length: ${Buffer.byteLength(body)}\r\nConnection: close\r\n\r\n${payload}`
@@ -312,7 +317,13 @@ export async function runGameSupervisor(startGame?: () => Promise<void>): Promis
   process.env.GAME_WORKER = '1'
   process.env.GAME_NO_LISTEN = '1'
   delete process.env.GAME_SOCKET
-  console.log(`[supervisor] public ${listenHost}:${publicPort} in-process websocket (no second bind)`)
+  const isProduction = process.env.NODE_ENV === 'production' || onRailwayRuntime()
+  setPublicUpgradeHandler(
+    createNetUpgradeHandler(deliverNodeSocket, isProduction, resolveAllowedOrigins(isProduction))
+  )
+  console.log(
+    `[supervisor] public ${listenHost}:${publicPort} in-process websocket (handler registered before physics)`
+  )
   void startGame().catch((error: unknown) => {
     const message = error instanceof Error ? error.message : String(error)
     console.error(`[supervisor] game failed: ${message}`)

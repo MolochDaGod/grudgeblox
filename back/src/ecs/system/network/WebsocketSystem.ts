@@ -1,10 +1,7 @@
 import { existsSync, unlinkSync } from 'node:fs'
-import {
-  App,
-  DEDICATED_COMPRESSOR_3KB,
+import type {
   HttpRequest,
   HttpResponse,
-  SSLApp,
   WebSocket,
   us_listen_socket,
   us_socket_context_t,
@@ -55,8 +52,8 @@ import {
   resolveServerListenHost,
   onRailwayRuntime,
 } from './serverPolicy.js'
-import { createNetUpgradeHandler, toArrayBuffer, wrapNodeWebSocket } from './nodeWebSocketTransport.js'
-import { setPublicUpgradeHandler } from './publicUpgrade.js'
+import { toArrayBuffer, wrapNodeWebSocket } from './nodeWebSocketTransport.js'
+import { setNodeSocketAcceptor } from './nodeSocketAccept.js'
 import type { IncomingMessage } from 'node:http'
 import type { WebSocket as NodeWebSocket } from 'ws'
 
@@ -143,13 +140,7 @@ export class WebsocketSystem {
 
     if (process.env.GAME_NO_LISTEN === '1') {
       console.log('PORT : WebSocket upgrades accepted on the public Node net listener')
-      setPublicUpgradeHandler(
-        createNetUpgradeHandler(
-          (socket, req) => this.acceptNodeWebSocket(socket, req),
-          isProduction,
-          allowedOrigins
-        )
-      )
+      setNodeSocketAcceptor((socket, req) => this.acceptNodeWebSocket(socket, req))
       this.resolveListening()
       return
     }
@@ -159,6 +150,40 @@ export class WebsocketSystem {
         ? `PORT : Listening on unix ${unixPath}`
         : `PORT : Listening on ${listenHost}:${this.port}`
     )
+
+    void this.bindUws({
+      isProduction,
+      listenHost,
+      allowedOrigins,
+      useTls,
+      sslKeyFile,
+      sslCertFile,
+      unixPath,
+    }).catch((error: unknown) => {
+      const message = error instanceof Error ? error.message : String(error)
+      this.rejectListening(new Error(`uWS bind failed: ${message}`))
+    })
+  }
+
+  private async bindUws(options: {
+    isProduction: boolean
+    listenHost: string
+    allowedOrigins: ReadonlySet<string>
+    useTls: boolean
+    sslKeyFile: string
+    sslCertFile: string
+    unixPath: string | undefined
+  }) {
+    const { App, SSLApp, DEDICATED_COMPRESSOR_3KB } = await import('uWebSockets.js')
+    const {
+      isProduction,
+      listenHost,
+      allowedOrigins,
+      useTls,
+      sslKeyFile,
+      sslCertFile,
+      unixPath,
+    } = options
 
     const app = useTls
       ? SSLApp({
