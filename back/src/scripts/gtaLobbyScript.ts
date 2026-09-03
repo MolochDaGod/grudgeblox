@@ -19,7 +19,6 @@ import { MapWorld } from '../ecs/entity/MapWorld.js'
 import { Mesh } from '../ecs/entity/Mesh.js'
 import { Sphere } from '../ecs/entity/Sphere.js'
 import { TriggerCube } from '../ecs/entity/TriggerCube.js'
-import { startIslandLiveRuntime } from './islandLiveRuntime.js'
 
 function randomHexColor() {
   const hex = Math.floor(Math.random() * 16777215).toString(16)
@@ -242,15 +241,29 @@ islandSign.entity.addNetworkComponent(
 console.log('[gtaLobby] GrudgeBlox GTA-like lobby world ready')
 console.log(`[gtaLobby] CDN hint ${CDN} (avatars client-side)`)
 
-setImmediate(() => {
-  try {
-    startIslandLiveRuntime({
-      map: 'all',
-      besideCity: true,
-      defaultSpawn: { x: 0, y: 8, z: 0 },
-    })
-  } catch (error) {
-    const message = error instanceof Error ? error.message : String(error)
-    console.error(`[gtaLobby] island live layer failed to start: ${message}`)
-  }
-})
+const onRailway = Boolean(
+  process.env.RAILWAY_SERVICE_ID ||
+    process.env.RAILWAY_ENVIRONMENT_ID ||
+    process.env.RAILWAY_ENVIRONMENT_NAME
+)
+const liveIslands =
+  process.env.ISLAND_LIVE === '1' || (!onRailway && process.env.ISLAND_LIVE !== '0')
+
+if (!liveIslands) {
+  console.log('[gtaLobby] island layer off (set ISLAND_LIVE=1 after raising replica memory)')
+} else {
+  setImmediate(() => {
+    void import('./islandLiveRuntime.js')
+      .then(({ startIslandLiveRuntime }) => {
+        startIslandLiveRuntime({
+          map: 'all',
+          besideCity: true,
+          defaultSpawn: { x: 0, y: 8, z: 0 },
+        })
+      })
+      .catch((error: unknown) => {
+        const message = error instanceof Error ? error.message : String(error)
+        console.error(`[gtaLobby] island live layer failed to start: ${message}`)
+      })
+  })
+}
