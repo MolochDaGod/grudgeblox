@@ -1,4 +1,4 @@
-import { existsSync } from 'node:fs'
+import { existsSync, unlinkSync } from 'node:fs'
 import {
   App,
   DEDICATED_COMPRESSOR_3KB,
@@ -51,6 +51,7 @@ import {
   isWebSocketOriginAllowed,
   readBoundedInteger,
   resolveAllowedOrigins,
+  resolveGameSocketPath,
   resolveServerListenHost,
   onRailwayRuntime,
 } from './serverPolicy.js'
@@ -120,8 +121,13 @@ export class WebsocketSystem {
     } else {
       console.log('NODE_ENV : development')
     }
+    const unixPath = resolveGameSocketPath()
     console.log(`TLS in-process: ${useTls ? 'on' : 'off (edge proxy)'}`)
-    console.log(`PORT : Listening on ${listenHost}:${this.port}`)
+    console.log(
+      unixPath
+        ? `PORT : Listening on unix ${unixPath}`
+        : `PORT : Listening on ${listenHost}:${this.port}`
+    )
 
     console.log('WebSocket origins: only accepting', [...allowedOrigins].join(', '))
 
@@ -198,8 +204,18 @@ export class WebsocketSystem {
       upgrade: this.upgradeHandler.bind(this, isProduction, allowedOrigins),
     })
 
+    if (unixPath) {
+      try {
+        unlinkSync(unixPath)
+      } catch (error) {
+        if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error
+      }
+      app.listen_unix((listenSocket) => this.listenHandler(listenSocket, unixPath), unixPath)
+      return
+    }
+
     app.listen(listenHost, this.port, (listenSocket) =>
-      this.listenHandler(listenSocket, listenHost)
+      this.listenHandler(listenSocket, `${listenHost}:${this.port}`)
     )
   }
   private upgradeHandler(
@@ -224,12 +240,12 @@ export class WebsocketSystem {
     )
   }
 
-  private listenHandler(listenSocket: us_listen_socket, listenHost: string) {
+  private listenHandler(listenSocket: us_listen_socket, target: string) {
     if (listenSocket) {
-      console.log(`WebSocket server listening on ${listenHost}:${this.port}`)
+      console.log(`WebSocket server listening on ${target}`)
       this.resolveListening()
     } else {
-      const error = new Error(`Failed to listen on ${listenHost}:${this.port}`)
+      const error = new Error(`Failed to listen on ${target}`)
       console.error(error.message)
       this.rejectListening(error)
     }
