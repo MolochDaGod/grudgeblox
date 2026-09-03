@@ -2,8 +2,9 @@
  * Island sandbox — baked Island Terrain World Engine maps, all-era play.
  *
  * GAME_SCRIPT=islandSandboxScript.ts
- * ISLAND_MAP=harbor-atoll|volcanic-ridge|frozen-fjord
+ * ISLAND_MAP=harbor-atoll|volcanic-ridge|frozen-fjord|alpine-mesh|granite-csg|spline-forest|tunnel-cavern
  * ISLAND_ENGINE_ROOT=/path/to/Island-Terrain-World-Engine  (optional live export)
+ * SUPER_TERRAIN_ROOT=/path/to/super-terrain export (meshterrain-world.json)
  */
 import { EntityManager } from '@shared/system/EntityManager.js'
 import { EventSystem } from '@shared/system/EventSystem.js'

@@ -18,6 +18,7 @@ import {
   ALL_FLEET_ERAS,
   CHARACTER_ERA_POLICIES,
   getEraPolicy,
+  isFleetEra,
   type FleetEraId,
   type RosterMode,
 } from '@/lib/characterEras'
@@ -66,7 +67,7 @@ export default function FleetCharacterSelect({
   const [createError, setCreateError] = useState<string | null>(null)
   const [codexNote, setCodexNote] = useState<string>('')
   const [eraFilter, setEraFilter] = useState<FleetEraId | 'all'>(
-    rosterMode === 'all-eras' ? 'all' : (era as FleetEraId),
+    rosterMode === 'all-eras' && isFleetEra(era) ? era : rosterMode === 'all-eras' ? 'all' : (era as FleetEraId),
   )
   const allEras = rosterMode === 'all-eras' || sandbox
   const policy = getEraPolicy(eraFilter === 'all' ? era : eraFilter)

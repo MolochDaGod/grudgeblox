@@ -5,6 +5,7 @@
  * Usage:
  *   pnpm --filter @notblox/back exec tsx scripts/bakeIslands.ts
  *   ISLAND_ENGINE_ROOT=/path/to/Island-Terrain-World-Engine pnpm --filter @notblox/back exec tsx scripts/bakeIslands.ts
+ *   SUPER_TERRAIN_ROOT=/path/to/super-terrain-export pnpm --filter @notblox/back exec tsx scripts/bakeIslands.ts
  */
 import { mkdirSync, writeFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
@@ -19,7 +20,12 @@ const publicDir = join(here, '../../front/public/maps/islands')
 mkdirSync(outDir, { recursive: true })
 mkdirSync(publicDir, { recursive: true })
 
-const engineRoot = process.env.ISLAND_ENGINE_ROOT || process.env.ISLAND_TERRAIN_ENGINE || ''
+const engineRoot =
+  process.env.ISLAND_ENGINE_ROOT ||
+  process.env.ISLAND_TERRAIN_ENGINE ||
+  process.env.SUPER_TERRAIN_ROOT ||
+  process.env.SUPER_TERRAIN_ENGINE ||
+  ''
 const imported = engineRoot ? loadIslandsFromEngineRoot(engineRoot) : []
 const byId = new Map(imported.map((bake) => [bake.id, bake]))
 
@@ -32,8 +38,12 @@ for (const entry of ISLAND_CATALOG) {
       kind: entry.kind,
       seed: entry.seed,
       engine: imported.length
-        ? 'Island-Terrain-World-Engine (catalog fill-in)'
-        : 'Island-Terrain-World-Engine (generated bake)',
+        ? entry.source === 'super-terrain'
+          ? 'super-terrain (catalog fill-in)'
+          : 'Island-Terrain-World-Engine (catalog fill-in)'
+        : entry.source === 'super-terrain'
+          ? 'super-terrain (generated bake)'
+          : 'Island-Terrain-World-Engine (generated bake)',
     })
   const path = join(outDir, `${entry.id}.json`)
   writeFileSync(path, `${JSON.stringify(bake)}\n`)

@@ -70,6 +70,7 @@ describe('island bake generation', () => {
     assert.equal(parseIslandMeshUrl('island:harbor-atoll'), 'harbor-atoll')
     assert.equal(parseIslandMeshUrl('/maps/islands/frozen-fjord.json'), 'frozen-fjord')
     assert.equal(parseIslandMeshUrl('https://example/world.glb'), null)
-    assert.equal(ISLAND_CATALOG.length, 3)
+    assert.equal(ISLAND_CATALOG.length, 7)
+    assert.ok(ISLAND_CATALOG.some((entry) => entry.source === 'super-terrain'))
   })
 })

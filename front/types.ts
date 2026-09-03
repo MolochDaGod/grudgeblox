@@ -14,6 +14,12 @@ export interface GameInfo {
   sandbox?: boolean
   /** `all-eras` unions Warlords, Voxel, Nexus, Armada, and Game rosters. */
   rosterMode?: string
-  /** Baked Island Terrain World Engine map id. */
+  /** Baked Island Terrain World Engine / Super Terrain map id. */
   mapId?: string
+  /** Lobby grouping. */
+  section?: string
+  /** Terrain or world authoring engine. */
+  engine?: string
+  /** Dedicated live room WSS (Railway/VPS per sandbox). */
+  websocketUrl?: string
 }

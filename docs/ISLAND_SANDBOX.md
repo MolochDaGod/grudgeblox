@@ -1,6 +1,23 @@
 # Island maps + all-era sandboxes
 
-GrudgeBlox can play **baked** terrain from Island Terrain World Engine and lets **every fleet era** enter the same sandbox.
+GrudgeBlox plays **baked** terrain from [Super Terrain](https://github.com/vibe-stack/super-terrain) and Island Terrain World Engine. **Every fleet era** enters the same sandbox. The lobby splits this into **Eras**, **Islands**, and **Maps**; deployment is one live room per island — see `docs/SANDBOX_DEPLOY.md`.
+
+## Super Terrain
+
+Repo: https://github.com/vibe-stack/super-terrain
+
+Mesh Terrain Lab is a 4 km × 4 km WebGPU editor (128 m sections, sculpt layers, forest splines, granite CSG, tunnels). Export `source/meshterrain-world.json` (Godot zip) or a height grid. GrudgeBlox rasterizes vertex Y onto `grudge-island-bake/v1` or fills a catalog island:
+
+| Id | Live slug | Port |
+|----|-----------|------|
+| `alpine-mesh` | `/play/island-alpine-mesh` | 8009 |
+| `granite-csg` | `/play/island-granite-csg` | 8010 |
+| `spline-forest` | `/play/island-spline-forest` | 8011 |
+| `tunnel-cavern` | `/play/island-tunnel-cavern` | 8012 |
+
+```bash
+SUPER_TERRAIN_ROOT=/path/to/meshterrain-export pnpm run bake:islands
+```
 
 ## Island Terrain World Engine
 
@@ -30,14 +47,17 @@ Export JSON as `grudge-island-bake/v1` into `exports/`, `bakes/`, `out/`, or `ma
 
 `heights` and `biomes` are row-major grids of `size * size`. Heights are 0–255 (quantized) or 0–1 / meters (auto-quantized on import). Nested `terrain.heightmap` 2D arrays are also accepted.
 
+Catalog islands from this engine: `harbor-atoll` (8006), `volcanic-ridge` (8007), `frozen-fjord` (8008).
+
 ## Bake
 
 ```bash
-# Generate catalog bakes (Harbor Atoll, Volcanic Ridge, Frozen Fjord)
+# Generate catalog bakes (7 islands)
 pnpm --filter @notblox/back exec tsx scripts/bakeIslands.ts
 
-# Prefer live engine exports when the folder is mounted
+# Prefer live engine / Super Terrain exports when the folder is mounted
 ISLAND_ENGINE_ROOT=/path/to/Island-Terrain-World-Engine \
+SUPER_TERRAIN_ROOT=/path/to/super-terrain-export \
   pnpm --filter @notblox/back exec tsx scripts/bakeIslands.ts
 ```
 
@@ -46,15 +66,17 @@ Outputs land in `shared/maps/baked/*.json`. The game server loads those files, t
 ## Run the sandbox
 
 ```bash
-GAME_SCRIPT=islandSandboxScript.ts ISLAND_MAP=harbor-atoll pnpm run dev:back
+GAME_SCRIPT=islandSandboxScript.ts ISLAND_MAP=alpine-mesh pnpm run dev:back
 ```
 
-Maps: `harbor-atoll` (default), `volcanic-ridge`, `frozen-fjord`, or any id imported from the engine.
+Maps: catalog ids above, or any id imported from the engines.
 
-Client route: `/play/island`
+Client routes: `/play/island-{id}` (Harbor also at `/play/island`).
 
 Physics uses a Rapier heightfield from the bake. The client rebuilds the colored terrain mesh from the same seed/catalog so collision and visuals stay aligned.
 
 ## All-era characters
 
 Sandbox worlds set `rosterMode: "all-eras"`. Character select loads Voxel, Warlords, Nexus, Armada, and Game heroes (4 slots per era). Appearance replication accepts kit Mixamo paths and HTTPS GLBs on studio hosts (`assets.grudge-studio.com`, `grudgewarlords.com`, …).
+
+Era pages (`/eras/warlords`) open a home island with `?era=warlords` so the roster tab starts on that generation.

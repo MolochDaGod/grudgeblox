@@ -30,6 +30,15 @@ export default function Navbar() {
         </div>
 
         <div className="hidden md:flex items-center space-x-4 text-sm">
+          <Link href="/eras" className="text-amber-200/80 hover:text-amber-100">
+            Eras
+          </Link>
+          <Link href="/islands" className="text-amber-200/80 hover:text-amber-100">
+            Islands
+          </Link>
+          <Link href="/maps" className="text-amber-200/80 hover:text-amber-100">
+            Maps
+          </Link>
           <a
             href={FLEET.mineLobby}
             className="text-sky-400/90 hover:text-sky-300"

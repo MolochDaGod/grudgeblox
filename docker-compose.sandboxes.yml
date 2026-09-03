@@ -1,0 +1,126 @@
+# GrudgeBlox live sandbox fleet — one WebSocket process per room.
+# Local: docker compose -f docker-compose.sandboxes.yml up -d
+# Client: NEXT_PUBLIC_SERVER_URL=ws://127.0.0.1  (no port — world ports 8001–8012 apply)
+#
+# Production: one Railway/Docker service per slug, then set gameData websocketUrl
+# or a dedicated WSS hostname in front of that port.
+
+x-sandbox: &sandbox
+  build: .
+  labels:
+    - com.centurylinklabs.watchtower.enable=true
+  restart: unless-stopped
+  logging:
+    driver: 'json-file'
+    options:
+      max-size: '10m'
+      max-file: '3'
+
+x-env: &live-env
+  GAME_TICKRATE: '20'
+  NODE_ENV: production
+  FRONTEND_URL: https://blox.grudge-studio.com
+
+services:
+  game_test_world:
+    <<: *sandbox
+    environment:
+      <<: *live-env
+      GAME_SCRIPT: gtaLobbyScript.ts
+    ports:
+      - '8001:8001'
+
+  game_combat_arena:
+    <<: *sandbox
+    environment:
+      <<: *live-env
+      GAME_SCRIPT: parkourScript.ts
+    ports:
+      - '8002:8001'
+
+  game_lobby_bridge:
+    <<: *sandbox
+    environment:
+      <<: *live-env
+      GAME_SCRIPT: gtaLobbyScript.ts
+    ports:
+      - '8003:8001'
+
+  game_grudox_sandbox:
+    <<: *sandbox
+    environment:
+      <<: *live-env
+      GAME_SCRIPT: gtaLobbyScript.ts
+    ports:
+      - '8004:8001'
+
+  game_dopebudz_streets:
+    <<: *sandbox
+    environment:
+      <<: *live-env
+      GAME_SCRIPT: dopebudzStreets.ts
+    ports:
+      - '8005:8001'
+
+  game_island_harbor_atoll:
+    <<: *sandbox
+    environment:
+      <<: *live-env
+      GAME_SCRIPT: islandSandboxScript.ts
+      ISLAND_MAP: harbor-atoll
+    ports:
+      - '8006:8001'
+
+  game_island_volcanic_ridge:
+    <<: *sandbox
+    environment:
+      <<: *live-env
+      GAME_SCRIPT: islandSandboxScript.ts
+      ISLAND_MAP: volcanic-ridge
+    ports:
+      - '8007:8001'
+
+  game_island_frozen_fjord:
+    <<: *sandbox
+    environment:
+      <<: *live-env
+      GAME_SCRIPT: islandSandboxScript.ts
+      ISLAND_MAP: frozen-fjord
+    ports:
+      - '8008:8001'
+
+  game_island_alpine_mesh:
+    <<: *sandbox
+    environment:
+      <<: *live-env
+      GAME_SCRIPT: islandSandboxScript.ts
+      ISLAND_MAP: alpine-mesh
+    ports:
+      - '8009:8001'
+
+  game_island_granite_csg:
+    <<: *sandbox
+    environment:
+      <<: *live-env
+      GAME_SCRIPT: islandSandboxScript.ts
+      ISLAND_MAP: granite-csg
+    ports:
+      - '8010:8001'
+
+  game_island_spline_forest:
+    <<: *sandbox
+    environment:
+      <<: *live-env
+      GAME_SCRIPT: islandSandboxScript.ts
+      ISLAND_MAP: spline-forest
+    ports:
+      - '8011:8001'
+
+  game_island_tunnel_cavern:
+    <<: *sandbox
+    environment:
+      <<: *live-env
+      GAME_SCRIPT: islandSandboxScript.ts
+      ISLAND_MAP: tunnel-cavern
+    ports:
+      - '8012:8001'

@@ -56,8 +56,8 @@ export default function GamePlayer({
     async function initializeGame() {
       setIsLoading(true)
       setConnectionError(null)
-      if (connectionAttempt > 0) Game.resetInstance()
-      const game = Game.getInstance(gameInfo.websocketPort, refContainer)
+      Game.resetInstance()
+      const game = Game.getInstance(gameInfo.websocketPort, refContainer, gameInfo.websocketUrl)
       game.setAvatarWorldSlug(gameInfo.slug)
       game.hud.passChatState(setMessages)
       setGameInstance(game)
@@ -84,7 +84,7 @@ export default function GamePlayer({
     return () => {
       active = false
     }
-  }, [gameInfo.websocketPort, gameInfo.slug, playerName, character, connectionAttempt])
+  }, [gameInfo.websocketPort, gameInfo.websocketUrl, gameInfo.slug, playerName, character, connectionAttempt])
 
   const retryConnection = useCallback(() => {
     setConnectionAttempt((attempt) => attempt + 1)

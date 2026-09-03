@@ -147,6 +147,132 @@ services:
         max-size: '10m'
         max-file: '3'
 
+  game_island_volcanic_ridge:
+    build: .
+    labels:
+      - com.centurylinklabs.watchtower.enable=true
+    environment:
+      - GAME_SCRIPT=islandSandboxScript.ts
+      - ISLAND_MAP=volcanic-ridge
+      - GAME_TICKRATE=20
+      - NODE_ENV=production
+      - FRONTEND_URL=https://blox.grudge-studio.com
+    ports:
+      - '8007:8001'
+    volumes:
+      - /etc/letsencrypt:/etc/letsencrypt
+    restart: unless-stopped
+    logging:
+      driver: 'json-file'
+      options:
+        max-size: '10m'
+        max-file: '3'
+
+  game_island_frozen_fjord:
+    build: .
+    labels:
+      - com.centurylinklabs.watchtower.enable=true
+    environment:
+      - GAME_SCRIPT=islandSandboxScript.ts
+      - ISLAND_MAP=frozen-fjord
+      - GAME_TICKRATE=20
+      - NODE_ENV=production
+      - FRONTEND_URL=https://blox.grudge-studio.com
+    ports:
+      - '8008:8001'
+    volumes:
+      - /etc/letsencrypt:/etc/letsencrypt
+    restart: unless-stopped
+    logging:
+      driver: 'json-file'
+      options:
+        max-size: '10m'
+        max-file: '3'
+
+  game_island_alpine_mesh:
+    build: .
+    labels:
+      - com.centurylinklabs.watchtower.enable=true
+    environment:
+      - GAME_SCRIPT=islandSandboxScript.ts
+      - ISLAND_MAP=alpine-mesh
+      - GAME_TICKRATE=20
+      - NODE_ENV=production
+      - FRONTEND_URL=https://blox.grudge-studio.com
+    ports:
+      - '8009:8001'
+    volumes:
+      - /etc/letsencrypt:/etc/letsencrypt
+    restart: unless-stopped
+    logging:
+      driver: 'json-file'
+      options:
+        max-size: '10m'
+        max-file: '3'
+
+  game_island_granite_csg:
+    build: .
+    labels:
+      - com.centurylinklabs.watchtower.enable=true
+    environment:
+      - GAME_SCRIPT=islandSandboxScript.ts
+      - ISLAND_MAP=granite-csg
+      - GAME_TICKRATE=20
+      - NODE_ENV=production
+      - FRONTEND_URL=https://blox.grudge-studio.com
+    ports:
+      - '8010:8001'
+    volumes:
+      - /etc/letsencrypt:/etc/letsencrypt
+    restart: unless-stopped
+    logging:
+      driver: 'json-file'
+      options:
+        max-size: '10m'
+        max-file: '3'
+
+  game_island_spline_forest:
+    build: .
+    labels:
+      - com.centurylinklabs.watchtower.enable=true
+    environment:
+      - GAME_SCRIPT=islandSandboxScript.ts
+      - ISLAND_MAP=spline-forest
+      - GAME_TICKRATE=20
+      - NODE_ENV=production
+      - FRONTEND_URL=https://blox.grudge-studio.com
+    ports:
+      - '8011:8001'
+    volumes:
+      - /etc/letsencrypt:/etc/letsencrypt
+    restart: unless-stopped
+    logging:
+      driver: 'json-file'
+      options:
+        max-size: '10m'
+        max-file: '3'
+
+  game_island_tunnel_cavern:
+    build: .
+    labels:
+      - com.centurylinklabs.watchtower.enable=true
+    environment:
+      - GAME_SCRIPT=islandSandboxScript.ts
+      - ISLAND_MAP=tunnel-cavern
+      - GAME_TICKRATE=20
+      - NODE_ENV=production
+      - FRONTEND_URL=https://blox.grudge-studio.com
+    ports:
+      - '8012:8001'
+    volumes:
+      - /etc/letsencrypt:/etc/letsencrypt
+    restart: unless-stopped
+    logging:
+      driver: 'json-file'
+      options:
+        max-size: '10m'
+        max-file: '3'
+
   monitor-logs:
     build: ./monitor
     environment:

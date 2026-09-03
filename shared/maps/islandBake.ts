@@ -4,6 +4,8 @@
  * The Windows engine at
  * `C:\Users\nugye\Documents\Island-Terrain-World-Engine2\Island-Terrain-World-Engine`
  * should export `grudge-island-bake/v1` JSON (see docs/ISLAND_SANDBOX.md).
+ * Super Terrain (https://github.com/vibe-stack/super-terrain) Godot/source
+ * exports are coerced through `superTerrainBake.ts` into this same schema.
  * GrudgeBlox also generates deterministic bakes from the same schema when the
  * engine folder is not mounted.
  */
@@ -23,7 +25,19 @@ export const ISLAND_BIOMES = [
 
 export type IslandBiomeId = (typeof ISLAND_BIOMES)[number]
 
-export type IslandKind = 'harbor-atoll' | 'volcanic-ridge' | 'frozen-fjord'
+export const ISLAND_KINDS = [
+  'harbor-atoll',
+  'volcanic-ridge',
+  'frozen-fjord',
+  'alpine-mesh',
+  'granite-csg',
+  'spline-forest',
+  'tunnel-cavern',
+] as const
+
+export type IslandKind = (typeof ISLAND_KINDS)[number]
+
+export type IslandTerrainSource = 'island-engine' | 'super-terrain'
 
 export type IslandSpawn = {
   x: number
@@ -69,6 +83,7 @@ export type IslandCatalogEntry = {
   seed: number
   kind: IslandKind
   description: string
+  source: IslandTerrainSource
 }
 
 export const ISLAND_CATALOG: IslandCatalogEntry[] = [
@@ -77,6 +92,7 @@ export const ISLAND_CATALOG: IslandCatalogEntry[] = [
     title: 'Harbor Atoll',
     seed: 1847291,
     kind: 'harbor-atoll',
+    source: 'island-engine',
     description: 'Tropical lagoon, sandy beaches, and a low green ridge.',
   },
   {
@@ -84,6 +100,7 @@ export const ISLAND_CATALOG: IslandCatalogEntry[] = [
     title: 'Volcanic Ridge',
     seed: 9021744,
     kind: 'volcanic-ridge',
+    source: 'island-engine',
     description: 'Steep basalt spine, lava rock, and a high lookout.',
   },
   {
@@ -91,9 +108,51 @@ export const ISLAND_CATALOG: IslandCatalogEntry[] = [
     title: 'Frozen Fjord',
     seed: 4410088,
     kind: 'frozen-fjord',
+    source: 'island-engine',
     description: 'Deep inlet, snow terraces, and an ice-cut landing.',
   },
+  {
+    id: 'alpine-mesh',
+    title: 'Alpine Mesh',
+    seed: 4000128,
+    kind: 'alpine-mesh',
+    source: 'super-terrain',
+    description:
+      'Super Terrain alpine climate: high relief, a valley floor in front, snow terraces.',
+  },
+  {
+    id: 'granite-csg',
+    title: 'Granite CSG',
+    seed: 7712390,
+    kind: 'granite-csg',
+    source: 'super-terrain',
+    description: 'Fractured granite from the Super Terrain rock lab — steep CSG outcrops.',
+  },
+  {
+    id: 'spline-forest',
+    title: 'Spline Forest',
+    seed: 2288144,
+    kind: 'spline-forest',
+    source: 'super-terrain',
+    description: 'Forest fields grown from Super Terrain splines, needle duff fading into hillside.',
+  },
+  {
+    id: 'tunnel-cavern',
+    title: 'Tunnel Cavern',
+    seed: 6155002,
+    kind: 'tunnel-cavern',
+    source: 'super-terrain',
+    description: 'Cave mouth and tunnel sink — Super Terrain interiors flattened to a playable heightfield.',
+  },
 ]
+
+export function isIslandKind(id: string): id is IslandKind {
+  return (ISLAND_KINDS as readonly string[]).includes(id)
+}
+
+export function islandPlaySlug(id: string): string {
+  return `island-${id}`
+}
 
 export function islandMeshUrl(id: string): string {
   return `island:${id}`
@@ -272,7 +331,9 @@ export function coerceEngineBake(raw: unknown, fallbackId = 'harbor-atoll'): Isl
     engine:
       typeof nested.engine === 'string'
         ? nested.engine
-        : 'Island-Terrain-World-Engine',
+        : typeof rec.format === 'string' && String(rec.format).startsWith('meshterrain')
+          ? 'super-terrain'
+          : 'Island-Terrain-World-Engine',
     id,
     title: typeof nested.title === 'string' ? nested.title : id,
     seed: Math.round(asFiniteNumber(nested.seed, 1)),

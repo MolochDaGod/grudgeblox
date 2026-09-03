@@ -1,13 +1,15 @@
 import { readFileSync, readdirSync, existsSync } from 'node:fs'
-import { join } from 'node:path'
+import { join, basename } from 'node:path'
 import {
   ISLAND_CATALOG,
   assertIslandBake,
   coerceEngineBake,
+  isIslandKind,
   type IslandBake,
   type IslandKind,
 } from './islandBake.js'
 import { generateIsland } from './generateIsland.js'
+import { coerceSuperTerrainBake, isSuperTerrainDocument } from './superTerrainBake.js'
 
 export function bakedIslandPath(id: string, root = new URL('./baked', import.meta.url).pathname): string {
   return join(root, `${id}.json`)
@@ -15,7 +17,9 @@ export function bakedIslandPath(id: string, root = new URL('./baked', import.met
 
 export function loadBakedIslandJson(json: string, fallbackId: string): IslandBake {
   const parsed = JSON.parse(json) as unknown
-  const bake = coerceEngineBake(parsed, fallbackId)
+  const bake = isSuperTerrainDocument(parsed)
+    ? coerceSuperTerrainBake(parsed, isIslandKind(fallbackId) ? fallbackId : 'alpine-mesh')
+    : coerceEngineBake(parsed, fallbackId) || coerceSuperTerrainBake(parsed)
   if (!bake) throw new Error(`Could not parse island bake ${fallbackId}`)
   assertIslandBake(bake)
   return bake
@@ -53,12 +57,12 @@ function collectJsonFiles(dir: string, out: string[] = []): string[] {
 }
 
 /**
- * Import maps exported by Island Terrain World Engine.
- * Looks for `grudge-island-bake/v1` JSON under the engine root
- * (exports/, bakes/, out/, maps/).
+ * Import maps exported by Island Terrain World Engine or Super Terrain.
+ * Looks for `grudge-island-bake/v1` JSON and `meshterrain-world.json`
+ * under exports/, bakes/, out/, maps/, source/, dist/.
  */
 export function loadIslandsFromEngineRoot(engineRoot: string): IslandBake[] {
-  const search = ['exports', 'bakes', 'out', 'maps', 'dist', ''].map((part) =>
+  const search = ['exports', 'bakes', 'out', 'maps', 'source', 'dist', ''].map((part) =>
     part ? join(engineRoot, part) : engineRoot
   )
   const files = new Set<string>()
@@ -71,14 +75,20 @@ export function loadIslandsFromEngineRoot(engineRoot: string): IslandBake[] {
       const json = readFileSync(file, 'utf8')
       const parsed = JSON.parse(json) as unknown
       const rec = parsed as Record<string, unknown>
+      const name = basename(file).toLowerCase()
       const looksLikeBake =
         rec &&
         (rec.format === 'grudge-island-bake/v1' ||
           rec.heights ||
           rec.heightmap ||
-          rec.terrain)
+          rec.terrain ||
+          isSuperTerrainDocument(parsed) ||
+          name === 'meshterrain-world.json')
       if (!looksLikeBake) continue
-      const bake = coerceEngineBake(parsed, rec.id ? String(rec.id) : 'engine-island')
+      const fallbackId = rec.id ? String(rec.id) : name.replace(/\.json$/, '') || 'engine-island'
+      const bake = isSuperTerrainDocument(parsed)
+        ? coerceSuperTerrainBake(parsed, isIslandKind(fallbackId) ? fallbackId : 'alpine-mesh')
+        : coerceEngineBake(parsed, fallbackId) || coerceSuperTerrainBake(parsed)
       if (bake) {
         assertIslandBake(bake)
         bakes.push(bake)
@@ -95,6 +105,8 @@ export function resolveIslandBake(id?: string): IslandBake {
   const engineRoot =
     process.env.ISLAND_ENGINE_ROOT ||
     process.env.ISLAND_TERRAIN_ENGINE ||
+    process.env.SUPER_TERRAIN_ROOT ||
+    process.env.SUPER_TERRAIN_ENGINE ||
     ''
   if (engineRoot && existsSync(engineRoot)) {
     const imported = loadIslandsFromEngineRoot(engineRoot)

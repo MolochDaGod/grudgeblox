@@ -46,14 +46,24 @@ Optional rewrite `/api/characters` → Railway game API (same as fleet satellite
 
 ## Worlds (`public/gameData.json`)
 
-| Slug | Era / roster | Combat | Port |
-|------|--------------|--------|------|
-| `island` | all-eras sandbox (Harbor Atoll bake) | yes | 8001 |
-| `test` | all-eras sandbox | yes | 8001 |
-| `combat` | all-eras sandbox | yes | 8002 |
-| `lobby` | all-eras sandbox | no | 8003 |
-| `grudox` | all-eras sandbox | yes | 8004 |
-| `streets` | all-eras sandbox | yes | 8005 |
+Lobby sections: **Eras** `/eras` · **Islands** `/islands` · **Maps** `/maps`.
+
+| Slug | Section | Script / map | Port |
+|------|---------|--------------|------|
+| `island-harbor-atoll` (`island`) | islands | `ISLAND_MAP=harbor-atoll` | 8006 |
+| `island-volcanic-ridge` | islands | volcanic-ridge | 8007 |
+| `island-frozen-fjord` | islands | frozen-fjord | 8008 |
+| `island-alpine-mesh` | islands | Super Terrain alpine | 8009 |
+| `island-granite-csg` | islands | Super Terrain granite | 8010 |
+| `island-spline-forest` | islands | Super Terrain forest | 8011 |
+| `island-tunnel-cavern` | islands | Super Terrain cavern | 8012 |
+| `test` | maps | `gtaLobbyScript.ts` | 8001 |
+| `combat` | maps | `parkourScript.ts` | 8002 |
+| `lobby` | maps | lobby bridge | 8003 |
+| `grudox` | maps | GRUDOX sandbox | 8004 |
+| `streets` | maps | `dopebudzStreets.ts` | 8005 |
+
+Deploy: `docs/SANDBOX_DEPLOY.md`. Terrain: `docs/ISLAND_SANDBOX.md`. Super Terrain: https://github.com/vibe-stack/super-terrain
 
 ---
 

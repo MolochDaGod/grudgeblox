@@ -138,7 +138,9 @@ export class WebsocketSystem {
       const healthData = buildHealthPayload(
         this.applicationReady,
         process.env.GAME_SCRIPT || 'Unknown',
-        config.SERVER_TICKRATE
+        config.SERVER_TICKRATE,
+        process.uptime(),
+        process.env.ISLAND_MAP
       )
       res.writeStatus(this.applicationReady ? '200 OK' : '503 Service Unavailable')
       res.writeHeader('Content-Type', 'application/json')

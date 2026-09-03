@@ -88,6 +88,42 @@ const PROFILES: Record<IslandKind, KindProfile> = {
     snowStart: 0.58,
     warp: 0.42,
   },
+  'alpine-mesh': {
+    title: 'Alpine Mesh',
+    seaLevel: 0.12,
+    maxHeight: 48,
+    ridge: 0.92,
+    lagoon: 0.08,
+    snowStart: 0.52,
+    warp: 0.48,
+  },
+  'granite-csg': {
+    title: 'Granite CSG',
+    seaLevel: 0.1,
+    maxHeight: 36,
+    ridge: 0.78,
+    lagoon: 0.05,
+    snowStart: 0.94,
+    warp: 0.62,
+  },
+  'spline-forest': {
+    title: 'Spline Forest',
+    seaLevel: 0.14,
+    maxHeight: 26,
+    ridge: 0.28,
+    lagoon: 0.18,
+    snowStart: 1.1,
+    warp: 0.4,
+  },
+  'tunnel-cavern': {
+    title: 'Tunnel Cavern',
+    seaLevel: 0.08,
+    maxHeight: 34,
+    ridge: 0.7,
+    lagoon: 0,
+    snowStart: 0.9,
+    warp: 0.3,
+  },
 }
 
 function profileFor(kind: string): KindProfile {
@@ -138,7 +174,24 @@ export function generateIsland(options: GenerateIslandOptions = {}): IslandBake 
         const inlet = clamp01(1 - Math.abs(px) * 2.8) * clamp01(pz + 0.15)
         h -= inlet * 0.42
       }
-      h = clamp01(h * radial)
+      if (kind === 'alpine-mesh') {
+        const valley = clamp01(1 - Math.abs(px) * 2.2) * clamp01(pz + 0.35)
+        h = h * 0.7 + ridgeNoise * 0.45 - valley * 0.38
+      }
+      if (kind === 'granite-csg') {
+        const blocks = Math.abs(fbm(nx * 8, nz * 8, seed + 41, 2) * 2 - 1)
+        h = clamp01(h * 0.55 + ridge * 0.5 + blocks * 0.35)
+      }
+      if (kind === 'spline-forest') {
+        const stands = fbm(nx * 5.5, nz * 5.5, seed + 13, 4)
+        h = radial * (0.34 + stands * 0.5) + ridge * 0.18
+      }
+      if (kind === 'tunnel-cavern') {
+        const mouth = clamp01(1 - r / 0.28)
+        const rim = clamp01(1 - Math.abs(r - 0.38) * 4)
+        h = rim * 0.72 + ridge * 0.25 + n * 0.12 - mouth * 0.55
+      }
+      h = clamp01(h * (kind === 'tunnel-cavern' ? 1 : radial))
       const q = Math.round(h * 255)
       heights.push(q)
       const t = q / 255
@@ -151,6 +204,14 @@ export function generateIsland(options: GenerateIslandOptions = {}): IslandBake 
       else if (t < profile.snowStart) biome = 5
       else biome = 6
       if (kind === 'volcanic-ridge' && t > 0.72 && ridgeNoise > 0.55) biome = 7
+      if (kind === 'granite-csg') {
+        if (t < profile.seaLevel) biome = 0
+        else if (t < 0.22) biome = 2
+        else biome = t > 0.84 ? 6 : 5
+      }
+      if (kind === 'spline-forest' && t >= profile.seaLevel + 0.09 && t < 0.78) biome = 4
+      if (kind === 'tunnel-cavern' && r < 0.32) biome = t < 0.28 ? 5 : 5
+      if (kind === 'alpine-mesh' && t > profile.snowStart) biome = 6
       biomes.push(biome)
     }
   }
@@ -187,7 +248,15 @@ export function generateIsland(options: GenerateIslandOptions = {}): IslandBake 
       ? ['lookout', 'crater', 'ruin']
       : kind === 'frozen-fjord'
         ? ['camp', 'ice-cave', 'ruin']
-        : ['dock', 'grove', 'ruin']
+        : kind === 'alpine-mesh'
+          ? ['scout', 'saddle', 'ruin']
+          : kind === 'granite-csg'
+            ? ['outcrop', 'quarry', 'ruin']
+            : kind === 'spline-forest'
+              ? ['grove', 'stand', 'ruin']
+              : kind === 'tunnel-cavern'
+                ? ['mouth', 'shaft', 'ruin']
+                : ['dock', 'grove', 'ruin']
   extra.forEach((p, i) => {
     pois.push({
       kind: poiKinds[i % poiKinds.length],
@@ -206,7 +275,14 @@ export function generateIsland(options: GenerateIslandOptions = {}): IslandBake 
 
   return {
     format: ISLAND_BAKE_FORMAT,
-    engine: options.engine || 'Island-Terrain-World-Engine (generated)',
+    engine:
+      options.engine ||
+      (kind === 'alpine-mesh' ||
+      kind === 'granite-csg' ||
+      kind === 'spline-forest' ||
+      kind === 'tunnel-cavern'
+        ? 'super-terrain (generated bake)'
+        : 'Island-Terrain-World-Engine (generated)'),
     id: options.id || kind,
     title: profile.title,
     seed,
