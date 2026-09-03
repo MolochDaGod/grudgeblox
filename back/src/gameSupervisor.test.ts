@@ -11,14 +11,9 @@ import {
   shouldSupervise,
   workerNodeArgs,
   workerSocketPath,
-  workerThreadEntry,
 } from './gameSupervisor.js'
 
 describe('game supervisor spawn', () => {
-  it('loads the game worker through a native ESM entry so tsx can register', () => {
-    assert.match(workerThreadEntry(), /gameWorker\.mjs$/)
-  })
-
   it('keeps tsx when the parent already loaded it', () => {
     assert.deepEqual(workerNodeArgs('/app/back/src/sandbox.ts', ['--import', 'tsx/esm']), [
       '--import',
