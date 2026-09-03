@@ -59,6 +59,72 @@ export function toArrayBuffer(data: Buffer | ArrayBuffer | Buffer[] | string): A
   return copy.buffer
 }
 
+export function httpHeaderEnd(chunk: Buffer): number {
+  const crlf = chunk.indexOf('\r\n\r\n')
+  const lf = chunk.indexOf('\n\n')
+  if (crlf < 0) return lf < 0 ? -1 : lf + 2
+  if (lf < 0) return crlf + 4
+  const crlfEnd = crlf + 4
+  const lfEnd = lf + 2
+  return crlfEnd <= lfEnd ? crlfEnd : lfEnd
+}
+
+export function httpHeadersComplete(chunk: Buffer): boolean {
+  return httpHeaderEnd(chunk) >= 0
+}
+
+function headerLine(headers: IncomingHttpHeaders, name: string): string {
+  const value = headers[name]
+  if (Array.isArray(value)) return value.join(', ')
+  return value ? String(value) : ''
+}
+
+export function collectHttpHead(
+  socket: Socket,
+  timeoutMs = 10_000,
+  maxBytes = 64 * 1024
+): Promise<Buffer> {
+  return new Promise((resolve, reject) => {
+    let buf: Buffer = Buffer.alloc(0)
+    let settled = false
+    const timer = setTimeout(() => fail(new Error('http headers timeout')), timeoutMs)
+    function fail(error: Error) {
+      if (settled) return
+      settled = true
+      cleanup()
+      reject(error)
+    }
+    function onData(chunk: Buffer) {
+      buf = Buffer.concat([buf, chunk])
+      if (buf.length > maxBytes) {
+        fail(new Error('http headers too large'))
+        return
+      }
+      if (!httpHeadersComplete(buf)) return
+      if (settled) return
+      settled = true
+      socket.pause()
+      cleanup()
+      resolve(buf)
+    }
+    function onError(error: Error) {
+      fail(error)
+    }
+    function onEnd() {
+      fail(new Error('socket ended before headers'))
+    }
+    function cleanup() {
+      clearTimeout(timer)
+      socket.off('data', onData)
+      socket.off('error', onError)
+      socket.off('end', onEnd)
+    }
+    socket.on('data', onData)
+    socket.once('error', onError)
+    socket.once('end', onEnd)
+  })
+}
+
 export function parseHttpHead(chunk: Buffer): {
   method: string
   url: string
@@ -66,15 +132,17 @@ export function parseHttpHead(chunk: Buffer): {
   headers: IncomingHttpHeaders
   leftover: Buffer
 } | undefined {
-  const separator = chunk.indexOf('\r\n\r\n')
-  if (separator < 0) return undefined
-  const text = chunk.subarray(0, separator).toString('utf8')
-  const lines = text.split('\r\n')
-  const requestLine = lines.shift() || ''
-  const match = /^(GET)\s+(\S+)\s+HTTP\/(\d\.\d)$/i.exec(requestLine)
+  const end = httpHeaderEnd(chunk)
+  if (end < 0) return undefined
+  const text = chunk.subarray(0, end).toString('utf8')
+  const lines = text.split(/\r?\n/)
+  while (lines.length && lines[lines.length - 1] === '') lines.pop()
+  const requestLine = (lines.shift() || '').trim()
+  const match = /^(GET)\s+(\S+)\s+HTTP\/(\d+(?:\.\d+)?)$/i.exec(requestLine)
   if (!match) return undefined
   const headers: IncomingHttpHeaders = {}
   for (const line of lines) {
+    if (!line) continue
     const index = line.indexOf(':')
     if (index < 0) continue
     const name = line.slice(0, index).trim().toLowerCase()
@@ -89,7 +157,7 @@ export function parseHttpHead(chunk: Buffer): {
     url: match[2],
     httpVersion: match[3],
     headers,
-    leftover: chunk.subarray(separator + 4),
+    leftover: chunk.subarray(end),
   }
 }
 
@@ -115,11 +183,11 @@ export function createNetUpgradeHandler(
   return (socket, chunk) => {
     const parsed = parseHttpHead(chunk)
     if (!parsed) return false
-    const connection = String(parsed.headers.connection || '')
-    const upgrade = String(parsed.headers.upgrade || '')
-    if (!/upgrade/i.test(connection) || !/^websocket$/i.test(upgrade)) return false
+    const connection = headerLine(parsed.headers, 'connection')
+    const upgrade = headerLine(parsed.headers, 'upgrade')
+    if (!/upgrade/i.test(connection) || !/^websocket$/i.test(upgrade.trim())) return false
 
-    const origin = typeof parsed.headers.origin === 'string' ? parsed.headers.origin : ''
+    const origin = headerLine(parsed.headers, 'origin')
     if (!isWebSocketOriginAllowed(origin, isProduction, allowedOrigins)) {
       writePlain(socket, 403, 'Forbidden', 'Forbidden\n')
       return true
