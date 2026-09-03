@@ -44,6 +44,8 @@ COPY back/src ./back/src
 # Run from back/ so Node resolves tsx from back/node_modules
 WORKDIR /app/back
 
+ENV NODE_ENV=production
+
 # Require the application-level health endpoint to report ready. The probe supports
 # both the existing direct-TLS mode and plaintext behind an external TLS proxy.
 HEALTHCHECK --interval=10s --timeout=8s --start-period=120s --retries=6 \
