@@ -4,6 +4,7 @@ import { describe, it } from 'node:test'
 import {
   connectWorkerPort,
   internalPortFor,
+  shouldSupervise,
   workerNodeArgs,
 } from './gameSupervisor.js'
 
@@ -23,6 +24,32 @@ describe('game supervisor spawn', () => {
       '--max-old-space-size=512',
       'src/sandbox.ts',
     ])
+  })
+
+  it('does not auto-supervise on Railway; that path 502s WebSockets', () => {
+    const keys = [
+      'GAME_WORKER',
+      'GAME_SUPERVISOR',
+      'RAILWAY_SERVICE_ID',
+      'RAILWAY_ENVIRONMENT_ID',
+      'RAILWAY_ENVIRONMENT_NAME',
+    ]
+    const previous = Object.fromEntries(keys.map((key) => [key, process.env[key]]))
+    try {
+      for (const key of keys) delete process.env[key]
+      process.env.RAILWAY_SERVICE_ID = 'prod'
+      process.env.RAILWAY_ENVIRONMENT_NAME = 'production'
+      assert.equal(shouldSupervise(), false)
+      process.env.GAME_SUPERVISOR = '1'
+      assert.equal(shouldSupervise(), true)
+      process.env.GAME_WORKER = '1'
+      assert.equal(shouldSupervise(), false)
+    } finally {
+      for (const key of keys) {
+        if (previous[key] === undefined) delete process.env[key]
+        else process.env[key] = previous[key]
+      }
+    }
   })
 
   it('derives an internal port away from the public one', () => {
