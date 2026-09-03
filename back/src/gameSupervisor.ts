@@ -90,6 +90,8 @@ function healthResponse(headOnly = false): Buffer {
       process.env.ISLAND_MAP || 'live-hub'
     ),
     upgrade: hasPublicUpgradeHandler(),
+    fork: process.env.GAME_WORKER_FORK === '1',
+    noListen: process.env.GAME_NO_LISTEN === '1',
   })
   const payload = headOnly ? '' : body
   return Buffer.from(
@@ -173,8 +175,29 @@ export async function runGameSupervisor(startGame?: () => Promise<void>): Promis
   const internalPort = internalPortFor(publicPort)
   const internalHost = workerListenHost()
   const workerLabel = unixPath || `${internalHost}:${internalPort}`
-  const inProcess = process.env.GAME_WORKER_FORK !== '1' && Boolean(startGame)
+  if (onRailwayRuntime() && process.env.GAME_WORKER_FORK === '1') {
+    console.warn('[supervisor] ignoring GAME_WORKER_FORK on Railway; extra-listen is unreachable')
+  }
+  const inProcess = Boolean(startGame) && (onRailwayRuntime() || process.env.GAME_WORKER_FORK !== '1')
   const script = workerScript()
+  const registerUpgrade = () => {
+    const isProduction = process.env.NODE_ENV === 'production' || onRailwayRuntime()
+    process.env.GAME_WORKER = '1'
+    process.env.GAME_NO_LISTEN = '1'
+    delete process.env.GAME_SOCKET
+    setPublicUpgradeHandler(
+      createNetUpgradeHandler(deliverNodeSocket, isProduction, resolveAllowedOrigins(isProduction))
+    )
+    console.log(`[supervisor] upgrade handler registered=${hasPublicUpgradeHandler()}`)
+  }
+  if (inProcess) {
+    try {
+      registerUpgrade()
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : String(error)
+      console.error(`[supervisor] upgrade handler failed: ${message}`)
+    }
+  }
   let child: ChildProcess | undefined
   let restarting = false
   let workerAccepting = false
@@ -314,13 +337,14 @@ export async function runGameSupervisor(startGame?: () => Promise<void>): Promis
     return
   }
 
-  process.env.GAME_WORKER = '1'
-  process.env.GAME_NO_LISTEN = '1'
-  delete process.env.GAME_SOCKET
-  const isProduction = process.env.NODE_ENV === 'production' || onRailwayRuntime()
-  setPublicUpgradeHandler(
-    createNetUpgradeHandler(deliverNodeSocket, isProduction, resolveAllowedOrigins(isProduction))
-  )
+  if (!hasPublicUpgradeHandler()) {
+    try {
+      registerUpgrade()
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : String(error)
+      console.error(`[supervisor] upgrade handler failed: ${message}`)
+    }
+  }
   console.log(
     `[supervisor] public ${listenHost}:${publicPort} in-process websocket (handler registered before physics)`
   )

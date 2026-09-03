@@ -92,7 +92,21 @@ export function resolveAllowedOrigins(
       : onRailway
         ? DEFAULT_LIVE_ORIGINS
         : DEFAULT_LOCAL_ORIGINS
-  return new Set(origins.map((origin) => normalizeOrigin(coerceBrowserOrigin(origin))))
+  const normalized: string[] = []
+  for (const origin of origins) {
+    try {
+      normalized.push(normalizeOrigin(coerceBrowserOrigin(origin)))
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error)
+      console.error(`[origins] skipping invalid origin ${origin}: ${message}`)
+    }
+  }
+  if (normalized.length === 0) {
+    if (onRailway) return new Set(DEFAULT_LIVE_ORIGINS)
+    if (isProduction) throw new Error('Production requires ALLOWED_ORIGINS or FRONTEND_URL')
+    return new Set(DEFAULT_LOCAL_ORIGINS)
+  }
+  return new Set(normalized)
 }
 
 export function isWebSocketOriginAllowed(
