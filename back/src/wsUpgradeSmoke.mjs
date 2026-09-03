@@ -35,7 +35,7 @@ request.on('error', (error) => {
   console.error(error.message)
   process.exit(1)
 })
-request.setTimeout(5000, () => {
+request.setTimeout(20000, () => {
   request.destroy(new Error('upgrade timed out'))
 })
 request.end()
