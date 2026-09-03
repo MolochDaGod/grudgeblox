@@ -1,11 +1,12 @@
 /**
- * Public /health stays on Node net at $PORT so Railway's proxy can reach us.
- * Game traffic is proxied to in-process uWS on an internal port (same heap).
+ * Optional extra-listen for local GAME_SUPERVISOR=1: public Node /health on
+ * $PORT, game uWS on an internal port. Railway's image CMD is
+ * publicSupervisor.mjs (vanilla Node parent, IPC socket handoff) because a
+ * second TCP bind 502s and Rapier on the public event loop hangs /health.
  *
  * Binding that worker to 127.0.0.1 502'd on Railway even though Docker
- * loopback works. The worker listens on 0.0.0.0:<internal>; the supervisor
- * connects via 127.0.0.1 or ::1. Unix sockets and a second Node heap also 502'd.
- * Set GAME_SOCKET to force a Unix path. GAME_WORKER_FORK=1 restores spawn.
+ * loopback works. Set GAME_SOCKET to force a Unix path. GAME_WORKER_FORK=1
+ * restores spawn.
  */
 import { existsSync, unlinkSync } from 'node:fs'
 import { connect, createServer, type Socket } from 'node:net'
