@@ -1,7 +1,9 @@
 /**
  * Public /health stays on Node net at $PORT so Railway's proxy can reach us.
  * In-process WebSocket upgrades are accepted on that same listener (no second
- * bind). Railway never reaches an extra TCP/Unix port; a second Node heap OOMs.
+ * bind). Accumulate a complete HTTP head before upgrading: Hikari can split
+ * the request across TCP packets, and LF-only heads fail a CRLF-only parse.
+ * Railway never reaches an extra TCP/Unix port; a second Node heap OOMs.
  *
  * GAME_WORKER_FORK=1 restores spawn + TCP proxy for local extra-listen debug.
  */
@@ -18,10 +20,12 @@ import {
   readBoundedInteger,
   resolveGameSocketPath,
 } from './ecs/system/network/serverPolicy.js'
+import { collectHttpHead } from './ecs/system/network/nodeWebSocketTransport.js'
 import { hasPublicUpgradeHandler, tryPublicUpgrade } from './ecs/system/network/publicUpgrade.js'
 
 const WORKER_CONNECT_MS = 15000
 const WORKER_RETRY_MS = 50
+const HEADER_WAIT_MS = 10_000
 const STARTING_BODY = 'Game server starting\n'
 
 export function internalPortFor(publicPort: number): number {
@@ -243,43 +247,51 @@ export async function runGameSupervisor(startGame?: () => Promise<void>): Promis
   await new Promise<void>((resolve, reject) => {
     const server = createServer((socket) => {
       socket.on('error', () => undefined)
-      socket.once('data', (chunk) => {
-        socket.pause()
-        const head = chunk.subarray(0, Math.min(chunk.length, 1024)).toString('utf8')
-        if (isHealthHttpRequest(head)) {
-          socket.end(healthResponse(/^\s*HEAD\s/i.test(head)))
-          return
-        }
-        if (tryPublicUpgrade(socket, chunk)) return
-        if (inProcess && isWebSocketHttpRequest(head)) {
-          const deadline = Date.now() + WORKER_CONNECT_MS
-          const retry = () => {
-            if (socket.destroyed) return
-            if (tryPublicUpgrade(socket, chunk)) return
-            if (hasPublicUpgradeHandler() || Date.now() >= deadline) {
-              rejectClient(socket)
-              return
+      void collectHttpHead(socket, HEADER_WAIT_MS).then(
+        (leftover) => {
+          const head = leftover.subarray(0, Math.min(leftover.length, 2048)).toString('utf8')
+          if (isHealthHttpRequest(head)) {
+            socket.end(healthResponse(/^\s*HEAD\s/i.test(head)))
+            return
+          }
+          if (tryPublicUpgrade(socket, leftover)) return
+          if (inProcess && isWebSocketHttpRequest(head)) {
+            const deadline = Date.now() + WORKER_CONNECT_MS
+            const retry = () => {
+              if (socket.destroyed) return
+              if (tryPublicUpgrade(socket, leftover)) return
+              if (hasPublicUpgradeHandler() || Date.now() >= deadline) {
+                console.warn(
+                  `[supervisor] 502 websocket ${leftover.length}b handler=${hasPublicUpgradeHandler()}`
+                )
+                rejectClient(socket)
+                return
+              }
+              setTimeout(retry, WORKER_RETRY_MS)
             }
             setTimeout(retry, WORKER_RETRY_MS)
+            return
           }
-          setTimeout(retry, WORKER_RETRY_MS)
-          return
-        }
-        if (inProcess) {
-          rejectClient(socket)
-          return
-        }
-        if (workerAccepting) {
-          const game = openWorker()
-          game.once('connect', () => pipeToWorker(socket, chunk, game))
-          game.once('error', () => rejectClient(socket))
-          return
-        }
-        void waitForWorker().then(
-          (game) => pipeToWorker(socket, chunk, game),
-          () => rejectClient(socket)
-        )
-      })
+          if (inProcess) {
+            console.warn(
+              `[supervisor] 502 ${leftover.length}b ws=${isWebSocketHttpRequest(head)}`
+            )
+            rejectClient(socket)
+            return
+          }
+          if (workerAccepting) {
+            const game = openWorker()
+            game.once('connect', () => pipeToWorker(socket, leftover, game))
+            game.once('error', () => rejectClient(socket))
+            return
+          }
+          void waitForWorker().then(
+            (game) => pipeToWorker(socket, leftover, game),
+            () => rejectClient(socket)
+          )
+        },
+        () => rejectClient(socket)
+      )
     })
     server.on('error', reject)
     server.listen(publicPort, listenHost, () => {
