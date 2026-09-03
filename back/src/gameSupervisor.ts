@@ -13,6 +13,7 @@ import { fileURLToPath } from 'node:url'
 import {
   buildHealthPayload,
   isHealthHttpRequest,
+  onRailwayRuntime,
   readBoundedInteger,
 } from './ecs/system/network/serverPolicy.js'
 
@@ -46,9 +47,10 @@ export function workerNodeArgs(
 
 export function shouldSupervise(): boolean {
   if (process.env.GAME_WORKER === '1') return false
-  // Railway must not auto-spawn a second Node process. Two heaps leave the
-  // worker dead (public /health 200, WebSocket 502 Game server starting).
-  return process.env.GAME_SUPERVISOR === '1'
+  if (process.env.GAME_SUPERVISOR === '0') return false
+  // Railway: public /health on Node net so probes stay up while the
+  // listen-first slim worker binds and loads Rapier. GAME_SUPERVISOR=0 opts out.
+  return process.env.GAME_SUPERVISOR === '1' || onRailwayRuntime()
 }
 
 function healthResponse(): Buffer {
