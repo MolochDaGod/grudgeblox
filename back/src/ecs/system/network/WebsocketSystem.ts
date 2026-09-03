@@ -1,14 +1,12 @@
 import { existsSync, unlinkSync } from 'node:fs'
-import {
-  App,
-  DEDICATED_COMPRESSOR_3KB,
+import type {
   HttpRequest,
   HttpResponse,
-  SSLApp,
   WebSocket,
   us_listen_socket,
   us_socket_context_t,
 } from 'uWebSockets.js'
+import { parentPort } from 'node:worker_threads'
 import { randomUUID } from 'node:crypto'
 import { RateLimiterMemory } from 'rate-limiter-flexible'
 import { config } from '@shared/network/config.js'
@@ -55,8 +53,9 @@ import {
   resolveServerListenHost,
   onRailwayRuntime,
 } from './serverPolicy.js'
+import { isMainToWorker, toArrayBuffer, wrapThreadSocket, type ThreadPlayerData } from './threadIo.js'
 
-type PlayerData = { player?: Player; rateKey: string }
+type PlayerData = ThreadPlayerData
 type MessageHandler = (ws: WebSocket<PlayerData>, message: ClientMessage) => void
 
 export class WebsocketSystem {
@@ -92,6 +91,41 @@ export class WebsocketSystem {
     this.applicationReady = true
   }
 
+  private setupThreadIo() {
+    const port = parentPort
+    if (!port) {
+      this.rejectListening(new Error('GAME_NO_LISTEN requires worker_threads parentPort'))
+      return
+    }
+    const sockets = new Map<string, WebSocket<PlayerData>>()
+    port.on('message', (raw) => {
+      if (!isMainToWorker(raw)) return
+      if (raw.t === 'open') {
+        const wrapped = wrapThreadSocket(port, raw.remote, {
+          rateKey: randomUUID(),
+          id: raw.id,
+        })
+        sockets.set(raw.id, wrapped)
+        void this.onConnect(wrapped)
+        return
+      }
+      if (raw.t === 'message') {
+        const ws = sockets.get(raw.id)
+        if (ws) void this.processMessage(ws, toArrayBuffer(raw.data))
+        return
+      }
+      const ws = sockets.get(raw.id)
+      sockets.delete(raw.id)
+      if (ws) this.onClose(ws)
+    })
+    port.on('messageerror', (error) => {
+      console.error('Thread I/O port error', error)
+    })
+    console.log('PORT : WebSocket I/O on parent thread; this worker does not listen')
+    this.resolveListening()
+    port.postMessage({ t: 'listening' })
+  }
+
   private async isConnectionRateLimited(ip: string): Promise<boolean> {
     try {
       await this.connectionLimiter.consume(ip)
@@ -123,13 +157,42 @@ export class WebsocketSystem {
     }
     const unixPath = resolveGameSocketPath()
     console.log(`TLS in-process: ${useTls ? 'on' : 'off (edge proxy)'}`)
+    console.log('WebSocket origins: only accepting', [...allowedOrigins].join(', '))
+
+    if (process.env.GAME_NO_LISTEN === '1') {
+      this.setupThreadIo()
+      return
+    }
+
     console.log(
       unixPath
         ? `PORT : Listening on unix ${unixPath}`
         : `PORT : Listening on ${listenHost}:${this.port}`
     )
 
-    console.log('WebSocket origins: only accepting', [...allowedOrigins].join(', '))
+    void this.bindUwsServer({
+      unixPath,
+      listenHost,
+      useTls,
+      sslKeyFile,
+      sslCertFile,
+      isProduction,
+      allowedOrigins,
+    }).catch((error) => this.rejectListening(error))
+  }
+
+  private async bindUwsServer(options: {
+    unixPath: string | undefined
+    listenHost: string
+    useTls: boolean
+    sslKeyFile: string
+    sslCertFile: string
+    isProduction: boolean
+    allowedOrigins: ReadonlySet<string>
+  }) {
+    const { App, SSLApp, DEDICATED_COMPRESSOR_3KB } = await import('uWebSockets.js')
+    const { unixPath, listenHost, useTls, sslKeyFile, sslCertFile, isProduction, allowedOrigins } =
+      options
 
     const app = useTls
       ? SSLApp({

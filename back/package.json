@@ -10,7 +10,7 @@
     "dev": "tsx watch src/sandbox.ts",
     "build": "tsc --noEmit",
     "start": "node --import tsx/esm src/sandbox.ts",
-    "test": "tsx --test src/gameSupervisor.test.ts src/physics/colliderBudget.test.ts src/ecs/system/network/serverPolicy.test.ts src/ecs/system/network/appearancePolicy.test.ts src/ecs/entity/Player.test.ts src/maps/islandBake.test.ts src/maps/superTerrainBake.test.ts src/maps/islandLive.test.ts ../front/lib/avatarTransformContract.test.ts ../front/lib/characterEras.test.ts",
+    "test": "tsx --test src/gameSupervisor.test.ts src/physics/colliderBudget.test.ts src/ecs/system/network/serverPolicy.test.ts src/ecs/system/network/appearancePolicy.test.ts src/ecs/system/network/threadIo.test.ts src/ecs/entity/Player.test.ts src/maps/islandBake.test.ts src/maps/superTerrainBake.test.ts src/maps/islandLive.test.ts ../front/lib/avatarTransformContract.test.ts ../front/lib/characterEras.test.ts",
     "bake:islands": "tsx scripts/bakeIslands.ts",
     "smoke:network": "node scripts/networkSmoke.mjs",
     "lint": "eslint src/",
@@ -35,7 +35,8 @@
     "rate-limiter-flexible": "^5.0.3",
     "three": "^0.183.0",
     "tsx": "^4.0.0",
-    "uWebSockets.js": "github:uNetworking/uWebSockets.js#v20.57.0"
+    "uWebSockets.js": "github:uNetworking/uWebSockets.js#v20.57.0",
+    "ws": "^8.18.3"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
@@ -43,6 +44,7 @@
     "@types/pako": "^2.0.3",
     "@types/three": "^0.183.0",
     "@types/uws": "^0.13.6",
+    "@types/ws": "^8.18.1",
     "@typescript-eslint/eslint-plugin": "latest",
     "@typescript-eslint/parser": "latest",
     "eslint": "latest",
