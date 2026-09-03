@@ -1,5 +1,6 @@
 import { readFileSync, readdirSync, existsSync } from 'node:fs'
-import { join, basename } from 'node:path'
+import { dirname, join, basename } from 'node:path'
+import { fileURLToPath } from 'node:url'
 import {
   ISLAND_CATALOG,
   assertIslandBake,
@@ -11,8 +12,20 @@ import {
 import { generateIsland } from './generateIsland.js'
 import { coerceSuperTerrainBake, isSuperTerrainDocument } from './superTerrainBake.js'
 
-export function bakedIslandPath(id: string, root = new URL('./baked', import.meta.url).pathname): string {
-  return join(root, `${id}.json`)
+export function bakedIslandCandidates(id: string): string[] {
+  const here = dirname(fileURLToPath(import.meta.url))
+  return [
+    join(here, 'baked', `${id}.json`),
+    join(here, '../maps/baked', `${id}.json`),
+    join(here, '../../maps/baked', `${id}.json`),
+    join(process.cwd(), 'maps/baked', `${id}.json`),
+    join(process.cwd(), '../shared/maps/baked', `${id}.json`),
+    join(process.cwd(), 'shared/maps/baked', `${id}.json`),
+  ]
+}
+
+export function bakedIslandPath(id: string, root = join(dirname(fileURLToPath(import.meta.url)), 'baked')): string {
+  return bakedIslandCandidates(id).find((file) => existsSync(file)) || join(root, `${id}.json`)
 }
 
 export function loadBakedIslandJson(json: string, fallbackId: string): IslandBake {
@@ -27,10 +40,9 @@ export function loadBakedIslandJson(json: string, fallbackId: string): IslandBak
 
 export function loadIslandFromCatalog(id: string = 'harbor-atoll'): IslandBake {
   const entry = ISLAND_CATALOG.find((item) => item.id === id) || ISLAND_CATALOG[0]
-  const dir = new URL('./baked/', import.meta.url)
-  const fileUrl = new URL(`${entry.id}.json`, dir)
+  const file = bakedIslandPath(entry.id)
   try {
-    const json = readFileSync(fileUrl, 'utf8')
+    const json = readFileSync(file, 'utf8')
     return loadBakedIslandJson(json, entry.id)
   } catch {
     return generateIsland({

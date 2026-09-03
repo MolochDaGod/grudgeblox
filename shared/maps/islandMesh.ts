@@ -110,18 +110,24 @@ export function buildIslandMeshData(bake: IslandBake): IslandMeshData {
   }
 }
 
-export function heightfieldSamples(bake: IslandBake): {
+export function heightfieldSamples(
+  bake: IslandBake,
+  maxVertices = 33
+): {
   nrows: number
   ncols: number
   heights: number[]
   scale: { x: number; y: number; z: number }
 } {
-  const n = bake.size
+  const src = bake.size
+  const n = Math.max(2, Math.min(src, maxVertices))
   const heights: number[] = []
   // Rapier stores column-major: index = col * (nrows + 1) + row
   for (let ix = 0; ix < n; ix++) {
     for (let iz = 0; iz < n; iz++) {
-      heights.push(heightAt(bake, iz * n + ix))
+      const sx = Math.round((ix / Math.max(1, n - 1)) * (src - 1))
+      const sz = Math.round((iz / Math.max(1, n - 1)) * (src - 1))
+      heights.push(heightAt(bake, sz * src + sx))
     }
   }
   const extent = worldSizeMeters(bake)

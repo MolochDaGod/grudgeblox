@@ -47,12 +47,19 @@ export class HeightfieldColliderSystem {
       return
     }
 
-    const colliderDesc = Rapier.ColliderDesc.heightfield(
-      field.nrows,
-      field.ncols,
-      new Float32Array(field.heights),
-      new Rapier.Vector3(field.scale.x, field.scale.y, field.scale.z)
-    )
+    let colliderDesc: Rapier.ColliderDesc
+    try {
+      colliderDesc = Rapier.ColliderDesc.heightfield(
+        field.nrows,
+        field.ncols,
+        new Float32Array(field.heights),
+        new Rapier.Vector3(field.scale.x, field.scale.y, field.scale.z)
+      )
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error)
+      console.error(`HeightfieldColliderSystem: Rapier rejected heightfield: ${message}`)
+      return
+    }
 
     const colliderProperties = entity.getComponent(ColliderPropertiesComponent)
     if (colliderProperties) {

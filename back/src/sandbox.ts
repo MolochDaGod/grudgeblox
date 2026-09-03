@@ -17,11 +17,22 @@ async function loadGameLogic() {
 async function main() {
   // Bind /health before loading worlds so Railway/Docker probes succeed.
   await startGameRuntime()
-  await loadGameLogic()
+  // Yield so the first health probes can complete before tsx compiles the world script.
+  await new Promise((resolve) => setTimeout(resolve, 500))
+  try {
+    await loadGameLogic()
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : String(error)
+    console.error(`Game logic failed to load; keeping /health and WebSocket alive: ${message}`)
+  }
 }
+
+process.on('unhandledRejection', (reason) => {
+  console.error('Unhandled rejection (server stays up):', reason)
+})
 
 main().catch((error: unknown) => {
   const message = error instanceof Error ? error.message : String(error)
-  console.error(`Startup failed: ${message}`)
+  console.error(`Listen failed: ${message}`)
   process.exit(1)
 })

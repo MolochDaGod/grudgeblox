@@ -33,6 +33,7 @@ RUN pnpm install --frozen-lockfile --prod
 #   dist/ is needed for @notblox/shared package resolution
 #   source is needed for relative imports inside scripts (e.g. ../../../shared/system/...)
 COPY --from=build /app/shared ./shared/
+RUN mkdir -p /app/shared/dist/maps && cp -a /app/shared/maps/baked /app/shared/dist/maps/baked
 
 # Copy back source + tsconfig so tsx can resolve @shared/* path aliases at runtime.
 # To swap a script without rebuilding the image, volume-mount the scripts directory:
@@ -45,7 +46,7 @@ WORKDIR /app/back
 
 # Require the application-level health endpoint to report ready. The probe supports
 # both the existing direct-TLS mode and plaintext behind an external TLS proxy.
-HEALTHCHECK --interval=5s --timeout=5s --start-period=45s --retries=5 \
+HEALTHCHECK --interval=10s --timeout=8s --start-period=120s --retries=6 \
   CMD node src/healthcheck.mjs
 
 CMD ["node", "--import", "tsx/esm", "src/sandbox.ts"]

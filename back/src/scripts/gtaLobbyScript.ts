@@ -242,13 +242,15 @@ islandSign.entity.addNetworkComponent(
 console.log('[gtaLobby] GrudgeBlox GTA-like lobby world ready')
 console.log(`[gtaLobby] CDN hint ${CDN} (avatars client-side)`)
 
-try {
-  startIslandLiveRuntime({
-    map: 'all',
-    besideCity: true,
-    defaultSpawn: { x: 0, y: 8, z: 0 },
-  })
-} catch (error) {
-  const message = error instanceof Error ? error.message : String(error)
-  console.error(`[gtaLobby] island live layer failed to start: ${message}`)
-}
+setImmediate(() => {
+  try {
+    startIslandLiveRuntime({
+      map: 'all',
+      besideCity: true,
+      defaultSpawn: { x: 0, y: 8, z: 0 },
+    })
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error)
+    console.error(`[gtaLobby] island live layer failed to start: ${message}`)
+  }
+})
