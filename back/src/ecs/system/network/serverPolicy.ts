@@ -1,6 +1,20 @@
 import { timingSafeEqual } from 'node:crypto'
 
 const DEFAULT_LOCAL_ORIGINS = ['http://127.0.0.1:4000', 'http://localhost:4000']
+const DEFAULT_LIVE_ORIGINS = [
+  'https://blox.grudge-studio.com',
+  'https://grudgeblox.vercel.app',
+  'https://grudgeblox-grudgenexus.vercel.app',
+  'https://blox-grudge-studio.vercel.app',
+  'https://blox-grudge-studio-grudgenexus.vercel.app',
+]
+
+function coerceBrowserOrigin(raw: string): string {
+  const value = raw.trim()
+  if (value.startsWith('wss://')) return `https://${value.slice(6)}`
+  if (value.startsWith('ws://')) return `http://${value.slice(5)}`
+  return value
+}
 
 export type HealthPayload = {
   status: 'starting' | 'ok'
@@ -39,12 +53,23 @@ export function resolveAllowedOrigins(
     .map((origin) => origin.trim())
     .filter(Boolean)
 
-  if (isProduction && configuredOrigins.length === 0) {
+  const onRailway = Boolean(
+    process.env.RAILWAY_ENVIRONMENT_NAME ||
+      process.env.RAILWAY_ENVIRONMENT_ID ||
+      process.env.RAILWAY_SERVICE_ID
+  )
+
+  if (isProduction && configuredOrigins.length === 0 && !onRailway) {
     throw new Error('Production requires ALLOWED_ORIGINS or FRONTEND_URL')
   }
 
-  const origins = configuredOrigins.length > 0 ? configuredOrigins : DEFAULT_LOCAL_ORIGINS
-  return new Set(origins.map(normalizeOrigin))
+  const origins =
+    configuredOrigins.length > 0
+      ? configuredOrigins
+      : onRailway
+        ? DEFAULT_LIVE_ORIGINS
+        : DEFAULT_LOCAL_ORIGINS
+  return new Set(origins.map((origin) => normalizeOrigin(coerceBrowserOrigin(origin))))
 }
 
 export function isWebSocketOriginAllowed(

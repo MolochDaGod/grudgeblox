@@ -7,7 +7,6 @@ import { EntityManager } from '@shared/system/EntityManager.js'
 import { EventSystem } from '@shared/system/EventSystem.js'
 import { PlayerComponent } from '@shared/component/PlayerComponent.js'
 import { PositionComponent } from '@shared/component/PositionComponent.js'
-import { ColorComponent } from '@shared/component/ColorComponent.js'
 import { ProximityPromptComponent } from '@shared/component/ProximityPromptComponent.js'
 import { TextComponent } from '@shared/component/TextComponent.js'
 import { SerializedMessageType } from '@shared/network/server/serialized.js'
@@ -33,7 +32,6 @@ import { DynamicRigidBodyComponent } from '../ecs/component/physics/DynamicRigid
 import { ChatComponent } from '../ecs/component/tag/TagChatComponent.js'
 import { ScriptableSystem } from '../ecs/system/ScriptableSystem.js'
 import { Cube } from '../ecs/entity/Cube.js'
-import { Mesh } from '../ecs/entity/Mesh.js'
 import { IslandMapWorld } from '../ecs/entity/IslandMapWorld.js'
 import { Entity } from '@shared/entity/Entity.js'
 
@@ -105,19 +103,21 @@ function landPoints(bake: IslandBake, origin: Vec3): Vec3[] {
 }
 
 function spawnNpc(spec: IslandNpcSpec) {
-  const mesh = new Mesh({
+  // Box collider on the server (no convex-hull GLB fetch). Client still draws MiniCharacter.
+  const npc = new Cube({
     position: { x: spec.x, y: spec.y, z: spec.z },
+    size: { width: 1.1, height: 2.2, depth: 1.1 },
+    color: spec.color,
     meshUrl: `${ASSETS}/character/MiniCharacter.glb`,
     physicsProperties: { mass: 1, angularDamping: 0.7, enableCcd: true },
     colliderProperties: { restitution: 0.2 },
   })
-  mesh.entity.addNetworkComponent(new ColorComponent(mesh.entity.id, spec.color))
-  mesh.entity.addNetworkComponent(
-    new TextComponent(mesh.entity.id, spec.name, 0, 2.2, 0, 28)
+  npc.entity.addNetworkComponent(
+    new TextComponent(npc.entity.id, spec.name, 0, 2.2, 0, 28)
   )
-  mesh.entity.addComponent(
+  npc.entity.addComponent(
     new IslandNpcComponent(
-      mesh.entity.id,
+      npc.entity.id,
       spec.role,
       spec.behavior,
       spec.islandId,
@@ -127,10 +127,10 @@ function spawnNpc(spec: IslandNpcSpec) {
     )
   )
   if (spec.behavior === 'hunt') {
-    mesh.entity.addComponent(new ZombieComponent(mesh.entity.id))
+    npc.entity.addComponent(new ZombieComponent(npc.entity.id))
   }
-  mesh.entity.addNetworkComponent(
-    new ProximityPromptComponent(mesh.entity.id, {
+  npc.entity.addNetworkComponent(
+    new ProximityPromptComponent(npc.entity.id, {
       text: `Talk · ${spec.name}`,
       maxInteractDistance: 8,
       interactionCooldown: 2500,
@@ -143,7 +143,7 @@ function spawnNpc(spec: IslandNpcSpec) {
       },
     })
   )
-  return mesh
+  return npc
 }
 
 export function startIslandLiveRuntime(options: IslandLiveOptions = {}): LiveIslandSlot[] {

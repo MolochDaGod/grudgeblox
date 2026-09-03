@@ -15,8 +15,9 @@ async function loadGameLogic() {
 }
 
 async function main() {
-  await loadGameLogic()
+  // Bind /health before loading worlds so Railway/Docker probes succeed.
   await startGameRuntime()
+  await loadGameLogic()
 }
 
 main().catch((error: unknown) => {
