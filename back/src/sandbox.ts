@@ -22,12 +22,16 @@ async function bindGameSocket() {
 }
 
 async function runGame() {
-  const socket = process.env.GAME_SOCKET
-  console.log(
-    socket
-      ? `[worker] bind unix ${socket}`
-      : `[worker] bind ${process.env.LISTEN_HOST || 'default'}:${process.env.PORT ?? process.env.GAME_PORT}`
-  )
+  if (process.env.GAME_NO_LISTEN === '1') {
+    console.log('[worker] no listen; WebSockets accepted on the public Node server')
+  } else {
+    const socket = process.env.GAME_SOCKET
+    console.log(
+      socket
+        ? `[worker] bind unix ${socket}`
+        : `[worker] bind ${process.env.LISTEN_HOST || 'default'}:${process.env.PORT ?? process.env.GAME_PORT}`
+    )
+  }
   const network = await bindGameSocket()
   console.log('[worker] socket bound; loading physics')
   try {
@@ -48,6 +52,9 @@ async function runGame() {
 
 process.on('unhandledRejection', (reason) => {
   console.error('Unhandled rejection (server stays up):', reason)
+})
+process.on('uncaughtException', (error) => {
+  console.error('Uncaught exception (server stays up):', error)
 })
 
 async function main() {
