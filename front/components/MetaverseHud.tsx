@@ -384,7 +384,7 @@ export default function MetaverseHud({
             stop={(props) => gameInstance?.inputManager.handleJoystickStop(props)}
           />
         </div>
-        <div className="absolute bottom-12 right-8 flex flex-col gap-3 items-end">
+        <div className="absolute bottom-32 right-4 flex flex-col-reverse gap-3 items-end">
           <button
             type="button"
             className="bg-emerald-700/40 text-white font-bold rounded-full shadow-lg w-16 h-16 flex items-center justify-center border border-emerald-500/40"
