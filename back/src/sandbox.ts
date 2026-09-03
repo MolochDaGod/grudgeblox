@@ -23,15 +23,11 @@ async function bindGameSocket() {
 
 async function runGame() {
   const socket = process.env.GAME_SOCKET
-  if (process.env.GAME_NO_LISTEN === '1') {
-    console.log('[worker] no listen; accepting sockets over IPC')
-  } else {
-    console.log(
-      socket
-        ? `[worker] bind unix ${socket}`
-        : `[worker] bind ${process.env.LISTEN_HOST || 'default'}:${process.env.PORT ?? process.env.GAME_PORT}`
-    )
-  }
+  console.log(
+    socket
+      ? `[worker] bind unix ${socket}`
+      : `[worker] bind ${process.env.LISTEN_HOST || 'default'}:${process.env.PORT ?? process.env.GAME_PORT}`
+  )
   const network = await bindGameSocket()
   console.log('[worker] socket bound; loading physics')
   try {
