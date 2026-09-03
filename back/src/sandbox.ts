@@ -1,7 +1,6 @@
 import 'dotenv/config'
 import { resolve } from 'path'
 import { pathToFileURL } from 'url'
-import { shouldSupervise, startHealthProxy } from './gameSupervisor.js'
 
 async function loadGameLogic() {
   // Production default: GTA-like metaverse lobby (cars, districts, thugs)
@@ -20,7 +19,7 @@ async function runGame() {
     await loadGameLogic()
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : String(error)
-    console.error(`Game logic failed to load; keeping the worker alive: ${message}`)
+    console.error(`Game logic failed to load; keeping /health alive: ${message}`)
   }
 }
 
@@ -29,12 +28,6 @@ process.on('unhandledRejection', (reason) => {
 })
 
 async function main() {
-  if (shouldSupervise()) {
-    startHealthProxy()
-    // Yield so the health thread can bind PORT before this thread compiles Rapier.
-    await new Promise((resolve) => setTimeout(resolve, 250))
-  }
-
   try {
     await runGame()
   } catch (error: unknown) {
