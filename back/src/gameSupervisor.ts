@@ -1,26 +1,25 @@
 /**
- * Public /health stays on Node net at $PORT so Railway's proxy can reach us.
- * Game traffic is proxied to in-process uWS on 127.0.0.1 (same heap).
- *
- * Unix sockets and a second Node heap both 502'd on Railway.
- * Set GAME_SOCKET to force a Unix path. GAME_WORKER_FORK=1 restores spawn.
+ * Public /health and WebSockets share one Node http.Server on $PORT.
+ * Railway could reach that bind; every extra uWS listen 502'd.
  */
-import { existsSync, unlinkSync } from 'node:fs'
-import { connect, createServer, type Socket } from 'node:net'
-import { spawn, type ChildProcess } from 'node:child_process'
+import { existsSync } from 'node:fs'
+import http from 'node:http'
+import { connect, type Socket } from 'node:net'
 import { resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { WebSocketServer } from 'ws'
 import {
   buildHealthPayload,
-  isHealthHttpRequest,
+  isWebSocketOriginAllowed,
   onRailwayRuntime,
   readBoundedInteger,
+  resolveAllowedOrigins,
   resolveGameSocketPath,
 } from './ecs/system/network/serverPolicy.js'
+import { getGameWebsocketSystem } from './ecs/system/network/nodeWebSocketTransport.js'
 
 const WORKER_CONNECT_MS = 5000
 const WORKER_RETRY_MS = 50
-const STARTING_BODY = 'Game server starting\n'
 
 export function internalPortFor(publicPort: number): number {
   const configured = process.env.GAME_INTERNAL_PORT
@@ -53,42 +52,11 @@ export function workerNodeArgs(
 export function shouldSupervise(): boolean {
   if (process.env.GAME_WORKER === '1') return false
   if (process.env.GAME_SUPERVISOR === '0') return false
-  // Railway: public /health on Node net so probes stay up while the
-  // listen-first slim worker binds and loads Rapier. GAME_SUPERVISOR=0 opts out.
   return process.env.GAME_SUPERVISOR === '1' || onRailwayRuntime()
-}
-
-function healthResponse(): Buffer {
-  const body = JSON.stringify(
-    buildHealthPayload(
-      true,
-      process.env.GAME_SCRIPT || 'gtaLobbyScript.ts',
-      20,
-      process.uptime(),
-      process.env.ISLAND_MAP || 'live-hub'
-    )
-  )
-  return Buffer.from(
-    `HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nCache-Control: no-store\r\nContent-Length: ${Buffer.byteLength(body)}\r\nConnection: close\r\n\r\n${body}`
-  )
-}
-
-function startingResponse(): Buffer {
-  return Buffer.from(
-    `HTTP/1.1 502 Bad Gateway\r\nContent-Type: text/plain\r\nContent-Length: ${Buffer.byteLength(STARTING_BODY)}\r\nConnection: close\r\n\r\n${STARTING_BODY}`
-  )
 }
 
 function workerConnectOptions(port: number) {
   return { host: '127.0.0.1', port, family: 4 as const }
-}
-
-function unlinkSocket(path: string) {
-  try {
-    unlinkSync(path)
-  } catch (error) {
-    if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error
-  }
 }
 
 export function connectWorkerPort(
@@ -138,117 +106,75 @@ function connectWorker(
 export async function runGameSupervisor(startGame?: () => Promise<void>): Promise<void> {
   const publicPort = readBoundedInteger(process.env.PORT ?? process.env.GAME_PORT, 8001, 1, 65535)
   const listenHost = process.env.LISTEN_HOST || '0.0.0.0'
-  const unixPath = resolveGameSocketPath()
-  const internalPort = internalPortFor(publicPort)
-  const workerLabel = unixPath || `127.0.0.1:${internalPort}`
-  const inProcess = process.env.GAME_WORKER_FORK !== '1' && Boolean(startGame)
-  const script = workerScript()
-  let child: ChildProcess | undefined
-  let restarting = false
-  let workerAccepting = false
+  const isProduction = process.env.NODE_ENV === 'production' || onRailwayRuntime()
+  const allowedOrigins = resolveAllowedOrigins(isProduction)
 
-  const pipeToWorker = (client: Socket, head: Buffer, game: Socket) => {
-    workerAccepting = true
-    game.write(head)
-    client.pipe(game)
-    game.pipe(client)
-    game.on('error', () => {
-      workerAccepting = false
-      if (!client.destroyed) client.destroy()
+  process.env.GAME_WORKER = '1'
+  process.env.GAME_NO_LISTEN = '1'
+  delete process.env.GAME_SOCKET
+
+  const server = http.createServer((req, res) => {
+    const path = req.url?.split('?')[0] || '/'
+    if ((req.method === 'GET' || req.method === 'HEAD') && path === '/health') {
+      const body = JSON.stringify(
+        buildHealthPayload(
+          true,
+          process.env.GAME_SCRIPT || 'gtaLobbyScript.ts',
+          20,
+          process.uptime(),
+          process.env.ISLAND_MAP || 'live-hub'
+        )
+      )
+      res.writeHead(200, {
+        'Content-Type': 'application/json',
+        'Cache-Control': 'no-store',
+        'Content-Length': Buffer.byteLength(body),
+      })
+      if (req.method === 'HEAD') res.end()
+      else res.end(body)
+      return
+    }
+    res.writeHead(404).end()
+  })
+
+  const sockets = new WebSocketServer({ noServer: true, maxPayload: 64 * 1024 })
+  server.on('upgrade', (req, socket, head) => {
+    const origin = typeof req.headers.origin === 'string' ? req.headers.origin : ''
+    if (!isWebSocketOriginAllowed(origin, isProduction, allowedOrigins)) {
+      socket.write('HTTP/1.1 403 Forbidden\r\nConnection: close\r\n\r\n')
+      socket.destroy()
+      return
+    }
+    const system = getGameWebsocketSystem()
+    if (!system) {
+      socket.write('HTTP/1.1 502 Bad Gateway\r\nContent-Type: text/plain\r\nConnection: close\r\n\r\nGame server starting\n')
+      socket.destroy()
+      return
+    }
+    sockets.handleUpgrade(req, socket, head, (ws) => {
+      system.acceptNodeWebSocket(ws, req)
     })
-  }
-
-  const rejectClient = (client: Socket) => {
-    workerAccepting = false
-    if (!client.destroyed) client.end(startingResponse())
-  }
-
-  const openWorker = () =>
-    unixPath ? connect({ path: unixPath }) : connect(workerConnectOptions(internalPort))
-
-  const waitForWorker = () =>
-    unixPath ? connectWorkerSocket(unixPath) : connectWorkerPort(internalPort)
-
-  const spawnWorker = () => {
-    workerAccepting = false
-    if (unixPath) unlinkSocket(unixPath)
-    child = spawn(process.execPath, workerNodeArgs(script), {
-      cwd: process.cwd(),
-      env: {
-        ...process.env,
-        GAME_WORKER: '1',
-        ...(unixPath
-          ? { GAME_SOCKET: unixPath }
-          : {
-              PORT: String(internalPort),
-              GAME_PORT: String(internalPort),
-              LISTEN_HOST: '127.0.0.1',
-            }),
-      },
-      stdio: 'inherit',
-    })
-    console.log(`[supervisor] worker pid=${child.pid} ${script} ${workerLabel}`)
-    child.on('error', (error) => {
-      console.error(`[supervisor] spawn error: ${error.message}`)
-    })
-    child.on('exit', (code, signal) => {
-      console.error(`[supervisor] worker exited code=${code} signal=${signal}`)
-      workerAccepting = false
-      child = undefined
-      if (restarting) return
-      restarting = true
-      setTimeout(() => {
-        restarting = false
-        spawnWorker()
-      }, 3000)
-    })
-  }
+  })
 
   await new Promise<void>((resolve, reject) => {
-    const server = createServer((socket) => {
-      socket.once('data', (chunk) => {
-        const head = chunk.subarray(0, Math.min(chunk.length, 160)).toString('utf8')
-        if (isHealthHttpRequest(head)) {
-          socket.end(healthResponse())
-          return
-        }
-        if (workerAccepting) {
-          const game = openWorker()
-          game.once('connect', () => pipeToWorker(socket, chunk, game))
-          game.once('error', () => rejectClient(socket))
-          return
-        }
-        void waitForWorker().then(
-          (game) => pipeToWorker(socket, chunk, game),
-          () => rejectClient(socket)
-        )
-      })
-    })
-    server.on('error', reject)
+    server.once('error', reject)
     server.listen(publicPort, listenHost, () => {
-      console.log(`[supervisor] public ${listenHost}:${publicPort} -> ${workerLabel}`)
+      console.log(`[supervisor] Node http ${listenHost}:${publicPort} (health + websocket)`)
       resolve()
     })
   })
 
-  if (!inProcess || !startGame) {
-    spawnWorker()
-    return
-  }
-
-  process.env.GAME_WORKER = '1'
-  if (unixPath) {
-    unlinkSocket(unixPath)
-    process.env.GAME_SOCKET = unixPath
-  } else {
-    delete process.env.GAME_SOCKET
-    process.env.LISTEN_HOST = '127.0.0.1'
-    process.env.PORT = String(internalPort)
-    process.env.GAME_PORT = String(internalPort)
-  }
-  console.log(`[supervisor] in-process worker ${workerLabel}`)
+  if (!startGame) return
+  console.log('[supervisor] loading game on the public Node server')
   void startGame().catch((error: unknown) => {
     const message = error instanceof Error ? error.message : String(error)
     console.error(`[supervisor] game failed: ${message}`)
   })
+  for (let i = 0; i < 100 && !getGameWebsocketSystem(); i++) {
+    await new Promise((resolve) => setTimeout(resolve, 50))
+  }
+  if (!getGameWebsocketSystem()) {
+    console.error('[supervisor] game websocket handler did not register')
+  }
 }
+
