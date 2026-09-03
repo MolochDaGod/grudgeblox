@@ -51,6 +51,8 @@ import {
   isWebSocketOriginAllowed,
   readBoundedInteger,
   resolveAllowedOrigins,
+  resolveServerListenHost,
+  onRailwayRuntime,
 } from './serverPolicy.js'
 
 type PlayerData = { player?: Player; rateKey: string }
@@ -100,16 +102,12 @@ export class WebsocketSystem {
   }
 
   private initializeServer() {
-    const isProduction = process.env.NODE_ENV === 'production'
-    const listenHost = process.env.LISTEN_HOST || (isProduction ? '0.0.0.0' : '127.0.0.1')
+    const isRailway = onRailwayRuntime()
+    const isProduction = process.env.NODE_ENV === 'production' || isRailway
+    const listenHost = resolveServerListenHost()
     const allowedOrigins = resolveAllowedOrigins(isProduction)
     const sslKeyFile = process.env.SSL_KEY_FILE || ''
     const sslCertFile = process.env.SSL_CERT_FILE || ''
-    const isRailway = Boolean(
-      process.env.RAILWAY_ENVIRONMENT_NAME ||
-        process.env.RAILWAY_ENVIRONMENT_ID ||
-        process.env.RAILWAY_SERVICE_ID,
-    )
     // Railway / Vercel terminate TLS. Only bind SSLApp when cert files exist and we are not on Railway.
     const useTls =
       !isRailway &&

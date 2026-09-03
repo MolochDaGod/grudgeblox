@@ -8,8 +8,10 @@ import {
   isAdminAuthorized,
   isHealthHttpRequest,
   isWebSocketOriginAllowed,
+  onRailwayRuntime,
   readBoundedInteger,
   resolveAllowedOrigins,
+  resolveServerListenHost,
 } from './serverPolicy.js'
 
 describe('health and admin policy', () => {
@@ -102,6 +104,14 @@ describe('origin policy', () => {
     assert.equal(isWebSocketOriginAllowed('http://localhost:4000', false, origins), true)
     assert.equal(isWebSocketOriginAllowed('', false, origins), true)
     assert.equal(isWebSocketOriginAllowed('https://unknown.example', false, origins), false)
+  })
+
+  it('binds 0.0.0.0 on Railway even when NODE_ENV is unset', () => {
+    assert.equal(resolveServerListenHost(undefined, undefined, true), '0.0.0.0')
+    assert.equal(resolveServerListenHost(undefined, 'production', false), '0.0.0.0')
+    assert.equal(resolveServerListenHost(undefined, undefined, false), '127.0.0.1')
+    assert.equal(resolveServerListenHost('127.0.0.1', 'production', true), '127.0.0.1')
+    assert.equal(onRailwayRuntime(), Boolean(process.env.RAILWAY_SERVICE_ID || process.env.RAILWAY_ENVIRONMENT_ID || process.env.RAILWAY_ENVIRONMENT_NAME))
   })
 })
 

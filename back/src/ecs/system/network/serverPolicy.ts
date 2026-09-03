@@ -16,6 +16,25 @@ function coerceBrowserOrigin(raw: string): string {
   return value
 }
 
+export function onRailwayRuntime(): boolean {
+  return Boolean(
+    process.env.RAILWAY_ENVIRONMENT_NAME ||
+      process.env.RAILWAY_ENVIRONMENT_ID ||
+      process.env.RAILWAY_SERVICE_ID
+  )
+}
+
+/** Railway's proxy cannot reach a 127.0.0.1 bind even when NODE_ENV is unset. */
+export function resolveServerListenHost(
+  listenHost = process.env.LISTEN_HOST,
+  nodeEnv = process.env.NODE_ENV,
+  railway = onRailwayRuntime()
+): string {
+  if (listenHost) return listenHost
+  if (railway || nodeEnv === 'production') return '0.0.0.0'
+  return '127.0.0.1'
+}
+
 export type HealthPayload = {
   status: 'starting' | 'ok'
   ready: boolean
@@ -53,11 +72,7 @@ export function resolveAllowedOrigins(
     .map((origin) => origin.trim())
     .filter(Boolean)
 
-  const onRailway = Boolean(
-    process.env.RAILWAY_ENVIRONMENT_NAME ||
-      process.env.RAILWAY_ENVIRONMENT_ID ||
-      process.env.RAILWAY_SERVICE_ID
-  )
+  const onRailway = onRailwayRuntime()
 
   if (isProduction && configuredOrigins.length === 0 && !onRailway) {
     throw new Error('Production requires ALLOWED_ORIGINS or FRONTEND_URL')
