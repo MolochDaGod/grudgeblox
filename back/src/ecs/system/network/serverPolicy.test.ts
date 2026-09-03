@@ -7,6 +7,7 @@ import {
   buildHealthPayload,
   isAdminAuthorized,
   isHealthHttpRequest,
+  isWebSocketHttpRequest,
   isWebSocketOriginAllowed,
   onRailwayRuntime,
   readBoundedInteger,
@@ -48,6 +49,13 @@ describe('health and admin policy', () => {
     assert.equal(isHealthHttpRequest('HEAD /health HTTP/1.1\r\n'), true)
     assert.equal(isHealthHttpRequest('GET / HTTP/1.1\r\n'), false)
     assert.equal(isHealthHttpRequest('GET /play HTTP/1.1\r\n'), false)
+    assert.equal(
+      isWebSocketHttpRequest(
+        'GET / HTTP/1.1\r\nConnection: Upgrade\r\nUpgrade: websocket\r\n'
+      ),
+      true
+    )
+    assert.equal(isWebSocketHttpRequest('GET /health HTTP/1.1\r\n'), false)
   })
 })
 
