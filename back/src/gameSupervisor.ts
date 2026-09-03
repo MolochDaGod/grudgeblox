@@ -1,9 +1,9 @@
 /**
- * Public /health stays in this process so Railway probes never share the
- * Rapier/tsx event loop. Game traffic is proxied to uWS on a Unix socket.
+ * Public /health stays on Node net at $PORT so Railway's proxy can reach us.
+ * Game traffic is proxied to uWS on a Unix socket in this same process.
  *
- * Default: spawned worker on a Unix socket (Railway may deny extra TCP binds).
- * GAME_WORKER_INPROCESS=1 runs uWS in this process instead.
+ * A second Node heap never accepted on Railway (health 200, WS 502).
+ * GAME_WORKER_FORK=1 restores the spawned worker.
  */
 import { existsSync, unlinkSync } from 'node:fs'
 import { connect, createServer, type Socket } from 'node:net'
@@ -140,7 +140,7 @@ export async function runGameSupervisor(startGame?: () => Promise<void>): Promis
   const publicPort = readBoundedInteger(process.env.PORT ?? process.env.GAME_PORT, 8001, 1, 65535)
   const listenHost = process.env.LISTEN_HOST || '0.0.0.0'
   const socketPath = workerSocketPath()
-  const inProcess = process.env.GAME_WORKER_INPROCESS === '1' && Boolean(startGame)
+  const inProcess = process.env.GAME_WORKER_FORK !== '1' && Boolean(startGame)
   const script = workerScript()
   let child: ChildProcess | undefined
   let restarting = false
