@@ -136,6 +136,7 @@ describe('node websocket transport', () => {
     server.on('connection', (socket: Socket) => {
       void collectHttpHead(socket, 2000).then((leftover) => {
         assert.equal(handler(socket, leftover), true)
+        assert.equal(socket.isPaused(), false)
       })
     })
     try {

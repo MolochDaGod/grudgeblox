@@ -202,6 +202,9 @@ export function createNetUpgradeHandler(
     } as IncomingMessage
     try {
       server.handleUpgrade(req, socket, parsed.leftover, (ws) => {
+        // collectHttpHead pauses the net socket; ws attaches 'data' but does
+        // not resume an explicitly paused stream, so client frames would stall.
+        if (!socket.destroyed) socket.resume()
         accept(ws, req)
       })
     } catch (error) {
