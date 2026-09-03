@@ -38,7 +38,7 @@ export class InputManager {
   private cameraFollowSystem: OrbitCameraFollowSystem
   private keys = { u: false, d: false, l: false, r: false, s: false, i: false }
   private lastSkillHeld: number | null = null
-  private pendingSkill: number | null = null
+  private pendingSkills: number[] = []
 
   constructor(
     private webSocketManager: WebSocketManager,
@@ -93,16 +93,14 @@ export class InputManager {
 
     const skill = skillSlotEdge(this.lastSkillHeld, pad.skillSlot)
     this.lastSkillHeld = pad.skillSlot
-    if (skill != null) this.pendingSkill = skill
+    if (skill != null) this.pendingSkills.push(skill)
 
     this.nearestPrompt = this.proximityPromptSystem.getPromptText(entities)
     this.proximityPromptSystem.update(entities, dt)
   }
 
   consumeSkillSlot(): number | null {
-    const slot = this.pendingSkill
-    this.pendingSkill = null
-    return slot
+    return this.pendingSkills.shift() ?? null
   }
 
   hudState(): PlayHudState {
@@ -145,18 +143,22 @@ export class InputManager {
       case 'KeyW':
       case 'ArrowUp':
         this.keys.u = true
+        if (event.code.startsWith('Arrow')) event.preventDefault()
         break
       case 'KeyS':
       case 'ArrowDown':
         this.keys.d = true
+        if (event.code.startsWith('Arrow')) event.preventDefault()
         break
       case 'KeyA':
       case 'ArrowLeft':
         this.keys.l = true
+        if (event.code.startsWith('Arrow')) event.preventDefault()
         break
       case 'KeyD':
       case 'ArrowRight':
         this.keys.r = true
+        if (event.code.startsWith('Arrow')) event.preventDefault()
         break
       case 'Space':
         this.keys.s = true

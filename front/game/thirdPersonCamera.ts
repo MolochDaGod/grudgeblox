@@ -93,6 +93,22 @@ export function pullCameraDistance(
   return clamp(hitDistance - 0.22, minDistance, desiredDistance)
 }
 
+/** Keep the camera on the look→desired ray so shoulder offset cannot sit behind a wall. */
+export function pullAlongRay(
+  origin: { x: number; y: number; z: number },
+  desired: { x: number; y: number; z: number },
+  hitDistance: number | null
+): { x: number; y: number; z: number } {
+  const dx = desired.x - origin.x
+  const dy = desired.y - origin.y
+  const dz = desired.z - origin.z
+  const span = Math.hypot(dx, dy, dz)
+  const pulled = pullCameraDistance(span, hitDistance)
+  if (pulled >= span || span < 1e-6) return desired
+  const t = pulled / span
+  return { x: origin.x + dx * t, y: origin.y + dy * t, z: origin.z + dz * t }
+}
+
 export function clampZoom(distance: number): number {
   return clamp(distance, THIRD_PERSON.minZoom, THIRD_PERSON.maxZoom)
 }

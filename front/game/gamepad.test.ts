@@ -49,6 +49,22 @@ test('pollFirstGamepad skips empty slots', () => {
   assert.equal(frame.connected, true)
 })
 
+test('pollFirstGamepad skips a disconnected pad for a later live one', () => {
+  const frame = pollFirstGamepad([
+    { connected: false, axes: [1, 0, 0, 0], buttons: [{ pressed: true }] },
+    { connected: true, axes: [0, -0.8, 0, 0], buttons: [] },
+  ])
+  assert.equal(frame.connected, true)
+  assert.equal(frame.buttons.south, false)
+  assert.equal(frame.leftY < 0, true)
+})
+
+test('readGamepad treats connected:false as empty', () => {
+  const frame = readGamepad({ connected: false, axes: [1, 1, 1, 1], buttons: [{ pressed: true }] })
+  assert.equal(frame.connected, false)
+  assert.equal(frame.leftX, 0)
+})
+
 test('skillSlotEdge fires once per hold', () => {
   assert.equal(skillSlotEdge(null, 1), 1)
   assert.equal(skillSlotEdge(1, 1), null)
