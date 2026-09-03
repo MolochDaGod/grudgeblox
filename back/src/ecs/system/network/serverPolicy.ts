@@ -1,4 +1,19 @@
 import { timingSafeEqual } from 'node:crypto'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
+
+export const DEFAULT_GAME_SOCKET = join(tmpdir(), 'grudgeblox-game.sock')
+
+/** Worker uWS binds a Unix socket so Railway need not allow a second TCP port. */
+export function resolveGameSocketPath(
+  socket = process.env.GAME_SOCKET,
+  worker = process.env.GAME_WORKER
+): string | undefined {
+  const value = socket?.trim()
+  if (value) return value
+  if (worker === '1') return DEFAULT_GAME_SOCKET
+  return undefined
+}
 
 const DEFAULT_LOCAL_ORIGINS = ['http://127.0.0.1:4000', 'http://localhost:4000']
 const DEFAULT_LIVE_ORIGINS = [

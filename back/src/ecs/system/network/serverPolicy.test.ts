@@ -5,12 +5,14 @@ import { ClientMessageType } from '@shared/network/client/index.js'
 import { decodeClientMessage, MAX_CLIENT_MESSAGE_BYTES } from './clientMessageValidation.js'
 import {
   buildHealthPayload,
+  DEFAULT_GAME_SOCKET,
   isAdminAuthorized,
   isHealthHttpRequest,
   isWebSocketOriginAllowed,
   onRailwayRuntime,
   readBoundedInteger,
   resolveAllowedOrigins,
+  resolveGameSocketPath,
   resolveServerListenHost,
 } from './serverPolicy.js'
 
@@ -112,6 +114,12 @@ describe('origin policy', () => {
     assert.equal(resolveServerListenHost(undefined, undefined, false), '127.0.0.1')
     assert.equal(resolveServerListenHost('127.0.0.1', 'production', true), '127.0.0.1')
     assert.equal(onRailwayRuntime(), Boolean(process.env.RAILWAY_SERVICE_ID || process.env.RAILWAY_ENVIRONMENT_ID || process.env.RAILWAY_ENVIRONMENT_NAME))
+  })
+
+  it('binds the worker to a unix socket when GAME_WORKER=1', () => {
+    assert.equal(resolveGameSocketPath('/tmp/custom.sock', '0'), '/tmp/custom.sock')
+    assert.equal(resolveGameSocketPath(undefined, '1'), DEFAULT_GAME_SOCKET)
+    assert.equal(resolveGameSocketPath(undefined, undefined), undefined)
   })
 })
 

@@ -1,11 +1,16 @@
 import assert from 'node:assert/strict'
+import { unlinkSync } from 'node:fs'
 import { createServer } from 'node:net'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
 import { describe, it } from 'node:test'
 import {
   connectWorkerPort,
+  connectWorkerSocket,
   internalPortFor,
   shouldSupervise,
   workerNodeArgs,
+  workerSocketPath,
 } from './gameSupervisor.js'
 
 describe('game supervisor spawn', () => {
@@ -53,6 +58,28 @@ describe('game supervisor spawn', () => {
     }
   })
 
+  it('enables supervision off Railway only with GAME_SUPERVISOR=1', () => {
+    const keys = [
+      'GAME_WORKER',
+      'GAME_SUPERVISOR',
+      'RAILWAY_SERVICE_ID',
+      'RAILWAY_ENVIRONMENT_ID',
+      'RAILWAY_ENVIRONMENT_NAME',
+    ]
+    const previous = Object.fromEntries(keys.map((key) => [key, process.env[key]]))
+    try {
+      for (const key of keys) delete process.env[key]
+      assert.equal(shouldSupervise(), false)
+      process.env.GAME_SUPERVISOR = '1'
+      assert.equal(shouldSupervise(), true)
+    } finally {
+      for (const key of keys) {
+        if (previous[key] === undefined) delete process.env[key]
+        else process.env[key] = previous[key]
+      }
+    }
+  })
+
   it('derives an internal port away from the public one', () => {
     const previous = process.env.GAME_INTERNAL_PORT
     delete process.env.GAME_INTERNAL_PORT
@@ -62,6 +89,23 @@ describe('game supervisor spawn', () => {
     } finally {
       if (previous === undefined) delete process.env.GAME_INTERNAL_PORT
       else process.env.GAME_INTERNAL_PORT = previous
+    }
+  })
+
+  it('uses GAME_SOCKET or a tmp unix path for the worker', () => {
+    const previousSocket = process.env.GAME_SOCKET
+    const previousWorker = process.env.GAME_WORKER
+    try {
+      delete process.env.GAME_SOCKET
+      process.env.GAME_WORKER = '1'
+      assert.equal(workerSocketPath(), join(tmpdir(), 'grudgeblox-game.sock'))
+      process.env.GAME_SOCKET = '/tmp/custom-game.sock'
+      assert.equal(workerSocketPath(), '/tmp/custom-game.sock')
+    } finally {
+      if (previousSocket === undefined) delete process.env.GAME_SOCKET
+      else process.env.GAME_SOCKET = previousSocket
+      if (previousWorker === undefined) delete process.env.GAME_WORKER
+      else process.env.GAME_WORKER = previousWorker
     }
   })
 })
@@ -95,5 +139,30 @@ describe('game supervisor worker connect', () => {
     })
     await new Promise<void>((resolve, reject) => server.close((error) => (error ? reject(error) : resolve())))
     await assert.rejects(connectWorkerPort(port, 200, 40), /not accepting/)
+  })
+
+  it('retries until the worker unix socket accepts connections', async () => {
+    const path = join(tmpdir(), `grudgeblox-test-${process.pid}.sock`)
+    try {
+      unlinkSync(path)
+    } catch {
+      // no leftover socket
+    }
+    const server = createServer()
+    await new Promise<void>((resolve, reject) => {
+      server.once('error', reject)
+      server.listen(path, () => resolve())
+    })
+    try {
+      const socket = await connectWorkerSocket(path, 1000, 20)
+      socket.end()
+    } finally {
+      await new Promise<void>((resolve, reject) => server.close((error) => (error ? reject(error) : resolve())))
+      try {
+        unlinkSync(path)
+      } catch {
+        // already removed
+      }
+    }
   })
 })
