@@ -51,6 +51,4 @@ ENV NODE_ENV=production
 HEALTHCHECK --interval=10s --timeout=8s --start-period=120s --retries=6 \
   CMD node src/healthcheck.mjs
 
-# Vanilla Node parent owns $PORT. The game child loads tsx/Rapier and receives
-# WebSocket sockets over IPC so Rapier cannot hang Railway healthchecks.
-CMD ["node", "src/publicSupervisor.mjs"]
+CMD ["node", "--import", "tsx/esm", "src/sandbox.ts"]
