@@ -1,10 +1,8 @@
 import 'dotenv/config'
 import { resolve } from 'path'
 import { pathToFileURL } from 'url'
-import { startGameRuntime } from './index.js'
+import { runGameSupervisor, shouldSupervise } from './gameSupervisor.js'
 
-// This isn't a true "sandbox", not secured if player's can create their own scripts.
-// isolation could be done with this : https://github.com/sebastianwessel/quickjs maybe.
 async function loadGameLogic() {
   // Production default: GTA-like metaverse lobby (cars, districts, thugs)
   const gameScript = process.env.GAME_SCRIPT ?? 'gtaLobbyScript.ts'
@@ -14,16 +12,15 @@ async function loadGameLogic() {
   await import(pathToFileURL(codePath).href)
 }
 
-async function main() {
-  // Bind /health before loading worlds so Railway/Docker probes succeed.
+async function runGame() {
+  const { startGameRuntime } = await import('./index.js')
   await startGameRuntime()
-  // Yield so the first health probes can complete before tsx compiles the world script.
-  await new Promise((resolve) => setTimeout(resolve, 500))
+  await new Promise((resolve) => setTimeout(resolve, 250))
   try {
     await loadGameLogic()
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : String(error)
-    console.error(`Game logic failed to load; keeping /health and WebSocket alive: ${message}`)
+    console.error(`Game logic failed to load; keeping the worker alive: ${message}`)
   }
 }
 
@@ -31,8 +28,20 @@ process.on('unhandledRejection', (reason) => {
   console.error('Unhandled rejection (server stays up):', reason)
 })
 
-main().catch((error: unknown) => {
-  const message = error instanceof Error ? error.message : String(error)
-  console.error(`Listen failed: ${message}`)
-  process.exit(1)
-})
+async function main() {
+  if (shouldSupervise()) {
+    console.log('SUPERVISOR : public /health isolated from the game worker')
+    await runGameSupervisor(import.meta.url)
+    return
+  }
+
+  try {
+    await runGame()
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : String(error)
+    console.error(`Listen failed: ${message}`)
+    process.exit(1)
+  }
+}
+
+void main()
