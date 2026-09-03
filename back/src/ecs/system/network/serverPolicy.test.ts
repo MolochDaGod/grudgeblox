@@ -86,6 +86,18 @@ describe('origin policy', () => {
     }
   })
 
+  it('skips invalid configured origins and keeps Railway live defaults', () => {
+    const previous = process.env.RAILWAY_SERVICE_ID
+    process.env.RAILWAY_SERVICE_ID = 'test-service'
+    try {
+      const origins = resolveAllowedOrigins(true, 'not-a-url, https://blox.grudge-studio.com/play')
+      assert.equal(isWebSocketOriginAllowed('https://blox.grudge-studio.com', true, origins), true)
+    } finally {
+      if (previous === undefined) delete process.env.RAILWAY_SERVICE_ID
+      else process.env.RAILWAY_SERVICE_ID = previous
+    }
+  })
+
   it('accepts a websocket FRONTEND_URL as the matching https origin', () => {
     const origins = resolveAllowedOrigins(true, undefined, 'wss://blox.grudge-studio.com')
     assert.equal(isWebSocketOriginAllowed('https://blox.grudge-studio.com', true, origins), true)
