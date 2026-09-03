@@ -9,6 +9,7 @@ import { ConvexHullColliderComponent } from '../../component/physics/ConvexHullC
 import { KinematicRigidBodyComponent } from '../../component/physics/KinematicRigidBodyComponent.js'
 import { DynamicRigidBodyComponent } from '../../component/physics/DynamicRigidBodyComponent.js'
 import { ColliderPropertiesComponent } from '../../component/physics/ColliderPropertiesComponent.js'
+import { serverLoadsGltfColliders } from '../../../physics/colliderBudget.js'
 
 export class ConvexHullColliderSystem {
   private meshCache: Map<string, { vertices: number[] }> = new Map()
@@ -46,6 +47,13 @@ export class ConvexHullColliderSystem {
     world: Rapier.World
   ) {
     const convexHullComponent = event.component as ConvexHullColliderComponent
+
+    if (!serverLoadsGltfColliders()) {
+      console.warn(
+        'ConvexHullColliderSystem: skipping GLB hull (set CITY_GLTF_COLLIDERS=1 to force)'
+      )
+      return
+    }
 
     // Check if the mesh is already cached
     if (this.meshCache.has(convexHullComponent.meshUrl)) {

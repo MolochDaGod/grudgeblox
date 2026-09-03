@@ -13,6 +13,8 @@ import {
 } from '../component/physics/PhysicsPropertiesComponent.js'
 import { TextComponent } from '@shared/component/TextComponent.js'
 import { ConvexHullColliderComponent } from '../component/physics/ConvexHullColliderComponent.js'
+import { BoxColliderComponent } from '../component/physics/BoxColliderComponent.js'
+import { serverLoadsGltfColliders } from '../../physics/colliderBudget.js'
 import { VehicleComponent } from '@shared/component/VehicleComponent.js'
 import {
   ColliderPropertiesComponent,
@@ -206,12 +208,16 @@ export class Car {
         }
       )
     )
-    this.entity.addComponent(
-      new ConvexHullColliderComponent(
-        this.entity.id,
-        meshUrl ?? 'https://notbloxo.fra1.cdn.digitaloceanspaces.com/Notblox-Assets/vehicle/Car.glb'
+    if (serverLoadsGltfColliders()) {
+      this.entity.addComponent(
+        new ConvexHullColliderComponent(
+          this.entity.id,
+          meshUrl ?? 'https://notbloxo.fra1.cdn.digitaloceanspaces.com/Notblox-Assets/vehicle/Car.glb'
+        )
       )
-    )
+    } else {
+      this.entity.addComponent(new BoxColliderComponent(this.entity.id))
+    }
     this.entity.addComponent(
       new PhysicsPropertiesComponent(
         this.entity.id,
