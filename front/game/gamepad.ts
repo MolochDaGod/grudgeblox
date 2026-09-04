@@ -15,6 +15,8 @@ export type GamepadButtons = {
   dpadDown: boolean
   dpadLeft: boolean
   dpadRight: boolean
+  /** Select / Share / View (standard index 8). Cycles the HUD mode. */
+  select: boolean
 }
 
 export type GamepadFrame = {
@@ -52,6 +54,7 @@ const EMPTY_BUTTONS: GamepadButtons = {
   dpadDown: false,
   dpadLeft: false,
   dpadRight: false,
+  select: false,
 }
 
 export function emptyGamepadFrame(): GamepadFrame {
@@ -103,6 +106,7 @@ export function readGamepad(pad: GamepadLike | null | undefined): GamepadFrame {
     dpadDown: buttonPressed(pad.buttons, 13),
     dpadLeft: buttonPressed(pad.buttons, 14),
     dpadRight: buttonPressed(pad.buttons, 15),
+    select: buttonPressed(pad.buttons, 8),
   }
 
   let skillSlot: number | null = null

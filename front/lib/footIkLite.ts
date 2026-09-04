@@ -6,6 +6,7 @@
  * Prefer Bip001 / Mixamo leg chains. Weight fades when airborne.
  */
 import * as THREE from 'three'
+import { layerMask, raycastLayersFor } from '@/game/renderLayers'
 
 export type FootSide = 'left' | 'right'
 
@@ -105,6 +106,7 @@ export class FootIkLite {
     this.root = avatarRoot
     this.opts = { ...DEFAULTS, ...opts }
     this.enabled = this.opts.enabled !== false
+    this.ray.layers.mask = layerMask(raycastLayersFor('foot-ik'))
   }
 
   setGrounded(on: boolean) {

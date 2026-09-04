@@ -13,15 +13,19 @@ import {
   type WeaponSkillDef,
 } from '@/lib/weaponSkillsCombat'
 import { codexIconUrl } from '@/lib/voxelCodex'
+import { HUD_Z } from '@/game/hudLayers'
 
 export interface WeaponSkillBarProps {
   enabled?: boolean
+  /** Keys and gamepad still cast when hidden; only the bar itself is removed. */
+  visible?: boolean
   onCast?: (skill: WeaponSkillDef, phase: 'windup' | 'active' | 'projectile') => void
   consumeSkillSlot?: () => number | null
 }
 
 export default function WeaponSkillBar({
   enabled = true,
+  visible = true,
   onCast,
   consumeSkillSlot,
 }: WeaponSkillBarProps) {
@@ -99,12 +103,15 @@ export default function WeaponSkillBar({
     return () => clearInterval(id)
   }, [enabled])
 
-  if (!enabled) return null
+  if (!enabled || !visible) return null
 
   const now = performance.now()
 
   return (
-    <div className="pointer-events-auto absolute bottom-6 left-1/2 -translate-x-1/2 z-50 flex flex-col items-center gap-2">
+    <div
+      className="pointer-events-auto absolute bottom-6 left-1/2 -translate-x-1/2 flex flex-col items-center gap-2"
+      style={{ zIndex: HUD_Z.SKILLBAR }}
+    >
       {banner && (
         <div className="px-3 py-1 rounded-md bg-black/70 border border-amber-700/40 text-amber-100 text-xs font-semibold">
           {banner}

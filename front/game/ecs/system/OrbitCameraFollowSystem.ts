@@ -15,6 +15,7 @@ import {
   pullAlongRay,
 } from '@/game/thirdPersonCamera'
 import { requestBoundPointerLock } from '@/game/pointerLock'
+import { collectLayerMeshes, layerMask, raycastLayersFor } from '@/game/renderLayers'
 
 type SceneRenderer = THREE.WebGLRenderer & { scene?: THREE.Scene }
 
@@ -45,6 +46,7 @@ export class OrbitCameraFollowSystem {
     this.camera = camera
     this.canvas = renderer.domElement
     this.renderer = renderer as SceneRenderer
+    this.raycaster.layers.mask = layerMask(raycastLayersFor('camera-collision'))
     this.bindPointer()
   }
 
@@ -139,11 +141,8 @@ export class OrbitCameraFollowSystem {
 
     this.colliderCacheFrame += 1
     if (this.colliderCacheFrame % 8 === 1) {
-      this.colliderCache = []
-      scene.traverse((object) => {
-        if (!(object as THREE.Mesh).isMesh) return
-        if (!object.visible || object.userData.isHitbox) return
-        this.colliderCache.push(object)
+      this.colliderCache = collectLayerMeshes(scene, raycastLayersFor('camera-collision'), {
+        visibleOnly: true,
       })
     }
     if (!this.colliderCache.length) return null

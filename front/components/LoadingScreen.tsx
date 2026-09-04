@@ -1,3 +1,5 @@
+import { HUD_Z } from '@/game/hudLayers'
+
 interface LoadingScreenProps {
   error?: string | null
   isRetrying?: boolean
@@ -9,7 +11,8 @@ export default function LoadingScreen({ error, isRetrying = false, onRetry }: Lo
 
   return (
     <div
-      className="absolute top-1/2 left-1/2 z-[70] w-[min(92vw,28rem)] transform -translate-x-1/2 -translate-y-1/2"
+      className="absolute top-1/2 left-1/2 w-[min(92vw,28rem)] transform -translate-x-1/2 -translate-y-1/2"
+      style={{ zIndex: HUD_Z.OVERLAY }}
       role={hasError ? 'alert' : 'status'}
       aria-live="polite"
     >

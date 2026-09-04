@@ -11,7 +11,6 @@ import { applyAvatarToMesh } from '@/lib/grudgeAvatar'
 import {
   avatarAppearanceSig,
   clipNameForAttack,
-  findClip,
   fxForClass,
   kitVfxUrl,
   normalizeKitClass,
@@ -21,6 +20,7 @@ import type { FleetCharacter } from '@/lib/fleetCharacters'
 import { LoadManager } from '@/game/LoadManager'
 import { EntityManager } from '@shared/system/EntityManager'
 import { captureAvatarTransformContract } from '@/lib/avatarTransformContract'
+import { RENDER_LAYER, assignLayerTree } from '@/game/renderLayers'
 
 const vfxCache = new Map<string, THREE.Object3D>()
 
@@ -63,6 +63,7 @@ async function spawnFx(mesh: THREE.Object3D, fxId: string) {
   const clone = proto.clone(true)
   clone.scale.setScalar(fxId === 'slash' || fxId === 'slashes' ? 1.2 : 0.8)
   clone.position.set(0, 1.1, 0.4)
+  assignLayerTree(clone, RENDER_LAYER.FX)
   mesh.add(clone)
   window.setTimeout(() => {
     mesh.remove(clone)
@@ -95,6 +96,7 @@ export class PlayerAvatarSystem {
             mesh.userData.lastFxSeq = player.fxSeq || 0
             if (loaded) {
               mesh.userData.loadedAvatar = loaded
+              assignLayerTree(mesh, RENDER_LAYER.PLAYER)
               const transformContract = captureAvatarTransformContract(
                 mesh,
                 loaded.root,
@@ -120,12 +122,10 @@ export class PlayerAvatarSystem {
               const clips = loaded.clips
               let anim = entity.getComponent(AnimationComponent)
               if (anim) {
-                anim.mixer.stopAllAction()
-                anim.mixer = loaded.mixer
-                anim.animations = clips
+                anim.bind(loaded.mixer, clips)
               } else {
                 anim = new AnimationComponent(entity.id, meshC.mesh, clips)
-                anim.mixer = loaded.mixer
+                anim.bind(loaded.mixer, clips)
                 entity.addComponent(anim)
               }
             }
@@ -142,18 +142,7 @@ export class PlayerAvatarSystem {
         mesh.userData.lastFxSeq = player.fxSeq
         const fx = player.fx || fxForClass(player.classId)
         void spawnFx(mesh, fx)
-        const anim = entity.getComponent(AnimationComponent)
-        if (anim) {
-          const attack = findClip(anim.animations, clipNameForAttack(player.classId))
-          if (attack) {
-            const action = anim.mixer.clipAction(attack as THREE.AnimationClip)
-            action.reset()
-            action.setLoop(THREE.LoopOnce, 1)
-            action.clampWhenFinished = true
-            action.fadeIn(0.05)
-            action.play()
-          }
-        }
+        entity.getComponent(AnimationComponent)?.animator.playOneShot(clipNameForAttack(player.classId))
       }
     }
     void entities
