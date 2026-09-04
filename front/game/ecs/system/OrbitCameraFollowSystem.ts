@@ -14,6 +14,7 @@ import {
   lookingYAngle,
   pullAlongRay,
 } from '@/game/thirdPersonCamera'
+import { requestBoundPointerLock } from '@/game/pointerLock'
 
 type SceneRenderer = THREE.WebGLRenderer & { scene?: THREE.Scene }
 
@@ -214,15 +215,6 @@ export class OrbitCameraFollowSystem {
   private requestPointerLock(): void {
     if (typeof this.canvas.requestPointerLock !== 'function') return
     if (window.matchMedia?.('(pointer: coarse)').matches) return
-    try {
-      const request = this.canvas.requestPointerLock as (options?: { unadjustedMovement?: boolean }) => void
-      request({ unadjustedMovement: true })
-    } catch {
-      try {
-        this.canvas.requestPointerLock()
-      } catch {
-        /* Canvas may have been removed */
-      }
-    }
+    requestBoundPointerLock(this.canvas.requestPointerLock.bind(this.canvas))
   }
 }
