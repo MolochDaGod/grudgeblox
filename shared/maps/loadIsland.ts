@@ -10,6 +10,7 @@ import {
   type IslandKind,
 } from './islandBake.js'
 import { generateIsland } from './generateIsland.js'
+import { fitBakeToPlayScale } from './playScale.js'
 import { coerceSuperTerrainBake, isSuperTerrainDocument } from './superTerrainBake.js'
 
 export function bakedIslandCandidates(id: string): string[] {
@@ -35,7 +36,7 @@ export function loadBakedIslandJson(json: string, fallbackId: string): IslandBak
     : coerceEngineBake(parsed, fallbackId) || coerceSuperTerrainBake(parsed)
   if (!bake) throw new Error(`Could not parse island bake ${fallbackId}`)
   assertIslandBake(bake)
-  return bake
+  return fitBakeToPlayScale(bake)
 }
 
 export function loadIslandFromCatalog(id: string = 'harbor-atoll'): IslandBake {
@@ -103,7 +104,7 @@ export function loadIslandsFromEngineRoot(engineRoot: string): IslandBake[] {
         : coerceEngineBake(parsed, fallbackId) || coerceSuperTerrainBake(parsed)
       if (bake) {
         assertIslandBake(bake)
-        bakes.push(bake)
+        bakes.push(fitBakeToPlayScale(bake))
       }
     } catch {
       /* skip unrelated JSON */

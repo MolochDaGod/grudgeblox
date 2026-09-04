@@ -22,6 +22,7 @@ describe('live island generative layer', () => {
     const b = islandHubOrigin(1, true)
     assert.ok(a.x >= 560)
     assert.ok(b.x > a.x)
+    assert.equal(b.x - a.x, 200)
   })
 
   it('casts four NPC roles with hunt raiders', () => {

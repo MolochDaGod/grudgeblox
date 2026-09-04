@@ -38,10 +38,10 @@ Export JSON as `grudge-island-bake/v1` into `exports/`, `bakes/`, `out/`, or `ma
   "id": "harbor-atoll",
   "title": "Harbor Atoll",
   "seed": 1847291,
-  "size": 64,
-  "cellSize": 4,
+  "size": 96,
+  "cellSize": 1.25,
   "seaLevel": 0.2,
-  "maxHeight": 22,
+  "maxHeight": 11,
   "heights": [0, 12, 40],
   "biomes": [0, 2, 3],
   "spawns": [{ "x": 8, "y": 6, "z": -4, "label": "landing" }],
@@ -50,6 +50,8 @@ Export JSON as `grudge-island-bake/v1` into `exports/`, `bakes/`, `out/`, or `ma
 ```
 
 `heights` and `biomes` are row-major grids of `size * size`. Heights are 0–255 (quantized) or 0–1 / meters (auto-quantized on import). Nested `terrain.heightmap` 2D arrays are also accepted.
+
+Play-scale rebakes (`shared/maps/playScale.ts`) fit every catalog island to a **~119 m** footprint with **1.25 m** cells so slopes and landings match **1.8 m** fleet avatars. Mesh-level detection marks walkable faces (up-facing, above water) and snaps spawns/POIs onto the primary terrace. Super Terrain 4 km dumps are scaled onto that same footprint instead of playing at editor size.
 
 Catalog islands from this engine: `harbor-atoll` (8006), `volcanic-ridge` (8007), `frozen-fjord` (8008).
 
