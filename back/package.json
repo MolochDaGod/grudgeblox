@@ -28,29 +28,29 @@
   "dependencies": {
     "@dimforge/rapier3d-compat": "^0.14.0",
     "@notblox/shared": "workspace:*",
-    "dotenv": "^16.3.1",
-    "msgpackr": "^1.9.9",
+    "dotenv": "^16.6.1",
+    "msgpackr": "^1.11.8",
     "node-three-gltf": "^1.8.3",
     "pako": "^2.1.0",
-    "rate-limiter-flexible": "^5.0.3",
-    "three": "^0.183.0",
-    "tsx": "^4.0.0",
+    "rate-limiter-flexible": "^5.0.5",
+    "three": "^0.183.2",
+    "tsx": "^4.23.13",
     "uWebSockets.js": "github:uNetworking/uWebSockets.js#v20.57.0",
-    "ws": "^8.18.3"
+    "ws": "^8.21.3"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
-    "@types/node": "^24.0.0",
+    "@types/node": "^24.13.3",
     "@types/ws": "^8.18.1",
-    "@types/pako": "^2.0.3",
-    "@types/three": "^0.183.0",
+    "@types/pako": "^2.0.4",
+    "@types/three": "^0.183.1",
     "@types/uws": "^0.13.6",
     "@typescript-eslint/eslint-plugin": "latest",
     "@typescript-eslint/parser": "latest",
     "eslint": "latest",
     "globals": "latest",
-    "jiti": "^2.6.1",
-    "typescript": "^5.7.3",
+    "jiti": "^2.7.0",
+    "typescript": "^5.9.3",
     "typescript-eslint": "latest"
   }
 }

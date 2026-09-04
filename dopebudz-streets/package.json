@@ -8,6 +8,6 @@
     "check": "node --check index.mjs && node --check compatibilityServer.mjs"
   },
   "dependencies": {
-    "ws": "^8.18.3"
+    "ws": "^8.21.3"
   }
 }
