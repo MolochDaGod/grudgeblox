@@ -6,6 +6,7 @@ import {
   type IslandSpawn,
   vertexWorldPosition,
 } from './islandBake.js'
+import { PLAY_ISLAND_CELL_M, PLAY_ISLAND_GRID, annotatePlayBake } from './playScale.js'
 
 function hash2(x: number, y: number, seed: number): number {
   const n = Math.sin(x * 127.1 + y * 311.7 + seed * 19.19) * 43758.5453123
@@ -64,7 +65,7 @@ const PROFILES: Record<IslandKind, KindProfile> = {
   'harbor-atoll': {
     title: 'Harbor Atoll',
     seaLevel: 0.2,
-    maxHeight: 22,
+    maxHeight: 11,
     ridge: 0.35,
     lagoon: 0.55,
     snowStart: 1.2,
@@ -73,7 +74,7 @@ const PROFILES: Record<IslandKind, KindProfile> = {
   'volcanic-ridge': {
     title: 'Volcanic Ridge',
     seaLevel: 0.16,
-    maxHeight: 38,
+    maxHeight: 16,
     ridge: 0.85,
     lagoon: 0.12,
     snowStart: 0.78,
@@ -82,7 +83,7 @@ const PROFILES: Record<IslandKind, KindProfile> = {
   'frozen-fjord': {
     title: 'Frozen Fjord',
     seaLevel: 0.18,
-    maxHeight: 32,
+    maxHeight: 14,
     ridge: 0.62,
     lagoon: 0.2,
     snowStart: 0.58,
@@ -91,7 +92,7 @@ const PROFILES: Record<IslandKind, KindProfile> = {
   'alpine-mesh': {
     title: 'Alpine Mesh',
     seaLevel: 0.12,
-    maxHeight: 48,
+    maxHeight: 16,
     ridge: 0.92,
     lagoon: 0.08,
     snowStart: 0.52,
@@ -100,7 +101,7 @@ const PROFILES: Record<IslandKind, KindProfile> = {
   'granite-csg': {
     title: 'Granite CSG',
     seaLevel: 0.1,
-    maxHeight: 36,
+    maxHeight: 15,
     ridge: 0.78,
     lagoon: 0.05,
     snowStart: 0.94,
@@ -109,7 +110,7 @@ const PROFILES: Record<IslandKind, KindProfile> = {
   'spline-forest': {
     title: 'Spline Forest',
     seaLevel: 0.14,
-    maxHeight: 26,
+    maxHeight: 12,
     ridge: 0.28,
     lagoon: 0.18,
     snowStart: 1.1,
@@ -118,7 +119,7 @@ const PROFILES: Record<IslandKind, KindProfile> = {
   'tunnel-cavern': {
     title: 'Tunnel Cavern',
     seaLevel: 0.08,
-    maxHeight: 34,
+    maxHeight: 14,
     ridge: 0.7,
     lagoon: 0,
     snowStart: 0.9,
@@ -144,8 +145,8 @@ export function generateIsland(options: GenerateIslandOptions = {}): IslandBake 
   const kind = (options.kind || options.id || 'harbor-atoll') as string
   const profile = profileFor(kind)
   const seed = options.seed ?? 1847291
-  const size = Math.max(16, Math.min(128, options.size ?? 64))
-  const cellSize = options.cellSize ?? 4
+  const size = Math.max(16, Math.min(128, options.size ?? PLAY_ISLAND_GRID))
+  const cellSize = options.cellSize ?? PLAY_ISLAND_CELL_M
   const heights: number[] = []
   const biomes: number[] = []
 
@@ -234,7 +235,7 @@ export function generateIsland(options: GenerateIslandOptions = {}): IslandBake 
           ix,
           iz
         )
-        landSpawns.push({ ...p, y: p.y + 3, label: 'landing' })
+        landSpawns.push({ ...p, y: p.y + 0.1, label: 'landing' })
       }
     }
   }
@@ -273,7 +274,7 @@ export function generateIsland(options: GenerateIslandOptions = {}): IslandBake 
     })
   })
 
-  return {
+  return annotatePlayBake({
     format: ISLAND_BAKE_FORMAT,
     engine:
       options.engine ||
@@ -294,5 +295,5 @@ export function generateIsland(options: GenerateIslandOptions = {}): IslandBake 
     biomes,
     spawns: [spawn],
     pois,
-  }
+  })
 }

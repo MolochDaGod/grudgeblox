@@ -19,7 +19,7 @@ GAME_SCRIPT=islandSandboxScript.ts  ISLAND_MAP=<id>
 /play/island-<id>   all-era live sandbox
 ```
 
-Super Terrain meshes can include overhangs and tunnels. Rapier heightfields cannot. The bake either rasterizes vertex Y onto a grid or fills a catalog island (`alpine-mesh`, `granite-csg`, `spline-forest`, `tunnel-cavern`).
+Super Terrain meshes can include overhangs and tunnels. Rapier heightfields cannot. The bake either rasterizes vertex Y onto a grid or fills a catalog island (`alpine-mesh`, `granite-csg`, `spline-forest`, `tunnel-cavern`). Catalog rebakes are play-scale: ~119 m, 1.25 m cells, walkable mesh-level detection, sized for 1.8 m characters.
 
 ```bash
 # Catalog bakes (deterministic)

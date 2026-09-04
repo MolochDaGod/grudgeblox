@@ -75,6 +75,13 @@ export type IslandBake = {
   biomes: number[]
   spawns: IslandSpawn[]
   pois: IslandPoi[]
+  /** Present on play-scale rebakes: extent and walkable mesh level. */
+  play?: {
+    characterHeightM: number
+    extentM: number
+    primaryLevelY: number
+    walkableCount: number
+  }
 }
 
 export type IslandCatalogEntry = {

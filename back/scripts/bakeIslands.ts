@@ -13,6 +13,7 @@ import { fileURLToPath } from 'node:url'
 import { ISLAND_CATALOG } from '@shared/maps/islandBake.js'
 import { generateIsland } from '@shared/maps/generateIsland.js'
 import { loadIslandsFromEngineRoot } from '@shared/maps/loadIsland.js'
+import { fitBakeToPlayScale } from '@shared/maps/playScale.js'
 
 const here = dirname(fileURLToPath(import.meta.url))
 const outDir = join(here, '../../shared/maps/baked')
@@ -31,7 +32,7 @@ const byId = new Map(imported.map((bake) => [bake.id, bake]))
 
 const written: string[] = []
 for (const entry of ISLAND_CATALOG) {
-  const bake =
+  const bake = fitBakeToPlayScale(
     byId.get(entry.id) ||
     generateIsland({
       id: entry.id,
@@ -45,6 +46,7 @@ for (const entry of ISLAND_CATALOG) {
           ? 'super-terrain (generated bake)'
           : 'Island-Terrain-World-Engine (generated bake)',
     })
+  )
   const path = join(outDir, `${entry.id}.json`)
   writeFileSync(path, `${JSON.stringify(bake)}\n`)
   writeFileSync(join(publicDir, `${entry.id}.json`), `${JSON.stringify(bake)}\n`)
@@ -53,9 +55,10 @@ for (const entry of ISLAND_CATALOG) {
 
 for (const bake of imported) {
   if (ISLAND_CATALOG.some((entry) => entry.id === bake.id)) continue
-  const path = join(outDir, `${bake.id}.json`)
-  writeFileSync(path, `${JSON.stringify(bake)}\n`)
-  writeFileSync(join(publicDir, `${bake.id}.json`), `${JSON.stringify(bake)}\n`)
+  const scaled = fitBakeToPlayScale(bake)
+  const path = join(outDir, `${scaled.id}.json`)
+  writeFileSync(path, `${JSON.stringify(scaled)}\n`)
+  writeFileSync(join(publicDir, `${scaled.id}.json`), `${JSON.stringify(scaled)}\n`)
   written.push(path)
 }
 

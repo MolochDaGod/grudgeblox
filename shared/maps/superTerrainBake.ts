@@ -20,6 +20,7 @@ import {
   type IslandKind,
 } from './islandBake.js'
 import { generateIsland } from './generateIsland.js'
+import { PLAY_ISLAND_CELL_M, PLAY_ISLAND_GRID, fitBakeToPlayScale } from './playScale.js'
 
 export const SUPER_TERRAIN_REPO = 'https://github.com/vibe-stack/super-terrain'
 export const SUPER_TERRAIN_SOURCE_FORMAT = 'meshterrain-godot-source@1'
@@ -148,7 +149,10 @@ export function coerceSuperTerrainBake(
 
   const direct = coerceEngineBake(nested, fallbackId)
   if (direct && Array.isArray(nested.heights || nested.heightmap)) {
-    return { ...direct, engine: direct.engine.includes('super-terrain') ? direct.engine : 'super-terrain' }
+    return fitBakeToPlayScale({
+      ...direct,
+      engine: direct.engine.includes('super-terrain') ? direct.engine : 'super-terrain',
+    })
   }
 
   const config =
@@ -161,7 +165,7 @@ export function coerceSuperTerrainBake(
   )
   const size = Math.max(
     16,
-    Math.min(128, Math.round(asFiniteNumber(nested.size ?? nested.resolution, 64)))
+    Math.min(128, Math.round(asFiniteNumber(nested.size ?? nested.resolution, PLAY_ISLAND_GRID)))
   )
   const positions = collectPositionArrays(nested)
   const raster = positions.length >= 9 ? rasterizeMeshToHeightfield(positions, size, worldSize) : null
@@ -181,7 +185,7 @@ export function coerceSuperTerrainBake(
       },
       fallbackId
     )
-    if (bake) return bake
+    if (bake) return fitBakeToPlayScale(bake)
   }
 
   if (!looksLikeSuperTerrain(nested) && !looksLikeSuperTerrain(rec)) return direct
@@ -195,7 +199,7 @@ export function coerceSuperTerrainBake(
     kind,
     seed,
     size,
-    cellSize: 4,
+    cellSize: PLAY_ISLAND_CELL_M,
     engine: 'super-terrain (godot source fill-in)',
   })
 }

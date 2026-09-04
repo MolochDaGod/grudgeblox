@@ -166,8 +166,8 @@ export function startIslandLiveRuntime(options: IslandLiveOptions = {}): LiveIsl
     const points = landPoints(bake, origin)
     const spawn = points[0]
     const pad = new Cube({
-      position: { x: spawn.x, y: Math.max(origin.y + 0.4, spawn.y - 2.4), z: spawn.z },
-      size: { width: 8, height: 1, depth: 8 },
+      position: { x: spawn.x, y: Math.max(origin.y + 0.2, spawn.y - 0.28), z: spawn.z },
+      size: { width: 5.4, height: 0.35, depth: 5.4 },
       color: '#e8c46a',
     })
     pad.entity.addNetworkComponent(
@@ -176,7 +176,7 @@ export function startIslandLiveRuntime(options: IslandLiveOptions = {}): LiveIsl
     for (const poi of bake.pois) {
       const marker = new Cube({
         position: { x: poi.x + origin.x, y: poi.y + origin.y, z: poi.z + origin.z },
-        size: { width: 2.2, height: 2.2, depth: 2.2 },
+        size: { width: 1.4, height: 1.8, depth: 1.4 },
         color: poi.color || '#7dd3a0',
       })
       marker.entity.addNetworkComponent(

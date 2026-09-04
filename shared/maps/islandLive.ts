@@ -4,7 +4,7 @@
  */
 import { ISLAND_CATALOG, type IslandKind } from './islandBake.js'
 
-export const ISLAND_HUB_SPACING = 480
+export const ISLAND_HUB_SPACING = 200
 export const ISLAND_CITY_OFFSET_X = 560
 
 export type IslandNpcRole = 'guide' | 'scout' | 'warden' | 'raider'
