@@ -1,16 +1,31 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 import {
+  CAMERA_MIN_ABOVE_FEET,
   THIRD_PERSON,
   applyMouseLook,
   applyStickLook,
   chaseOffset,
+  clampAboveFeet,
   clampPitch,
   clampZoom,
   lookingYAngle,
   pullAlongRay,
   pullCameraDistance,
 } from './thirdPersonCamera'
+
+test('camera never sinks below the pad the player stands on', () => {
+  const feetY = 2 // pad top
+  const lookY = feetY + THIRD_PERSON.lookHeight
+  // Max zoom at the lowest pitch would put the camera well under the pad.
+  const offset = chaseOffset(THIRD_PERSON.defaultYaw, THIRD_PERSON.minPitch, THIRD_PERSON.maxZoom)
+  assert.ok(lookY + offset.y < feetY)
+  const clamped = clampAboveFeet(lookY + offset.y, lookY)
+  assert.ok(Math.abs(clamped - (feetY + CAMERA_MIN_ABOVE_FEET)) < 1e-9)
+  // Normal pitch is untouched.
+  const up = chaseOffset(THIRD_PERSON.defaultYaw, THIRD_PERSON.defaultPitch, THIRD_PERSON.distance)
+  assert.equal(clampAboveFeet(lookY + up.y, lookY), lookY + up.y)
+})
 
 test('default chase offset sits behind the player on +Z', () => {
   const offset = chaseOffset(THIRD_PERSON.defaultYaw, 0, 4)
