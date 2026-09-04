@@ -10,6 +10,7 @@ import {
   applyMouseLook,
   applyStickLook,
   chaseOffset,
+  clampAboveFeet,
   clampZoom,
   lookingYAngle,
   pullAlongRay,
@@ -85,7 +86,7 @@ export class OrbitCameraFollowSystem {
       const offset = chaseOffset(this.yaw, this.pitch, this.distance)
       this.desired.set(
         this.lookTarget.x + offset.x,
-        this.lookTarget.y + offset.y,
+        clampAboveFeet(this.lookTarget.y + offset.y, this.lookTarget.y, this.lookHeight),
         this.lookTarget.z + offset.z
       )
 

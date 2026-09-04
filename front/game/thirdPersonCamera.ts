@@ -112,3 +112,21 @@ export function pullAlongRay(
 export function clampZoom(distance: number): number {
   return clamp(distance, THIRD_PERSON.minZoom, THIRD_PERSON.maxZoom)
 }
+
+/** Camera never drops below this far above the plane the player stands on. */
+export const CAMERA_MIN_ABOVE_FEET = 0.35
+
+/**
+ * Keep the chase camera above the player's feet. A negative pitch at long
+ * zoom can otherwise put the camera under the pad the player is standing on,
+ * where backface culling makes the world look empty until the next look input.
+ */
+export function clampAboveFeet(
+  desiredY: number,
+  lookTargetY: number,
+  lookHeight: number = THIRD_PERSON.lookHeight,
+  minAboveFeet: number = CAMERA_MIN_ABOVE_FEET
+): number {
+  const feetY = lookTargetY - lookHeight
+  return Math.max(desiredY, feetY + minAboveFeet)
+}
