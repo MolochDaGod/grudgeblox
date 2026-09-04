@@ -109,10 +109,18 @@ export function clipNameForState(state: string): string[] {
 
 export function clipNameForAttack(classId?: string): string[] {
   const c = normalizeKitClass(classId)
-  if (c === 'warrior') return ['sword_attack_a', 'attack', 'sword_combo_finisher']
-  if (c === 'ranger') return ['attack', 'sword_attack_a']
-  if (c === 'mage') return ['attack', 'unarmed_uppercut']
-  return ['attack', 'unarmed_uppercut', 'sword_attack_a']
+  if (c === 'warrior') return ['sword_attack_a', 'sword_combo_finisher', 'attack4', 'attack']
+  if (c === 'ranger') return ['shoot', 'rifle', 'attack', 'sword_attack_a']
+  if (c === 'mage') return ['castSpell', 'magic', 'attack', 'unarmed_uppercut']
+  return ['attack', 'unarmed_uppercut', 'sword_attack_a', 'attack4']
+}
+
+export function clipNameForFx(fxId?: string): string[] {
+  const fx = (fxId || '').toLowerCase()
+  if (fx === 'bolt') return ['castSpell', 'magic', 'attack', 'unarmed_uppercut']
+  if (fx === 'orb') return ['shoot', 'rifle', 'attack']
+  if (fx === 'slashes') return ['sword_combo_finisher', 'attack4', 'heavy', 'attack']
+  return ['sword_attack_a', 'attack', 'slash', 'unarmed_uppercut']
 }
 
 export function findClip(

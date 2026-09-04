@@ -17,6 +17,7 @@ import type { FleetCharacter } from '@/lib/fleetCharacters'
 import DopeBudzControls from './DopeBudzControls'
 import { formatNearbyPrompt } from '@/game/playHud'
 import { HUD_Z, hudLayerVisible, hudModeLabel, type HudMode } from '@/game/hudLayers'
+import { StudioItemIcon } from './StudioItemIcon'
 
 export interface MetaverseHudProps {
   messages: MessageComponent[]
@@ -29,6 +30,10 @@ export interface MetaverseHudProps {
   kills?: number
   killFeed?: Array<{ id: number; text: string }>
   softAim?: boolean
+  stamina?: number
+  maxStamina?: number
+  guarding?: boolean
+  combatAction?: string | null
   fightLinks?: Record<string, string>
   worldSlug?: string
   pointerLocked?: boolean
@@ -48,6 +53,10 @@ export default function MetaverseHud({
   kills = 0,
   killFeed = [],
   softAim = false,
+  stamina = 100,
+  maxStamina = 100,
+  guarding = false,
+  combatAction = null,
   fightLinks,
   worldSlug,
   pointerLocked = false,
@@ -84,6 +93,7 @@ export default function MetaverseHud({
   }, [])
 
   const hpPct = Math.max(0, Math.min(100, (hp / Math.max(1, maxHp)) * 100))
+  const staminaPct = Math.max(0, Math.min(100, (stamina / Math.max(1, maxStamina)) * 100))
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
@@ -179,8 +189,8 @@ export default function MetaverseHud({
       {/* Top bar */}
       {show('PANELS') && (
       <div className="absolute top-3 left-3 right-3 flex justify-between items-start gap-3">
-        <div className="pointer-events-auto bg-black/70 backdrop-blur-md border border-amber-800/40 rounded-xl px-4 py-3 max-w-xs shadow-lg">
-          <p className="text-[10px] uppercase tracking-[0.15em] text-amber-500/80">Metaverse lobby</p>
+        <div className="pointer-events-auto bg-slate-950/80 backdrop-blur-md border border-amber-400/30 rounded-2xl px-4 py-3 max-w-sm shadow-[inset_0_2px_10px_rgba(255,255,255,0.04),0_16px_45px_rgba(0,0,0,0.45)]">
+          <p className="text-[10px] uppercase tracking-[0.15em] text-amber-300/80">Studio-ready metaverse</p>
           <a href="/" className="text-lg font-bold text-amber-50 hover:text-amber-200 block">
             {worldTitle}
           </a>
@@ -190,8 +200,8 @@ export default function MetaverseHud({
             </p>
           )}
           {/* HP avatar fill (three-player-controller player-hud) */}
-          <div className="flex items-center gap-2 mt-2">
-            <div className="relative w-10 h-10 rounded border-2 border-emerald-500/70 overflow-hidden bg-black/50">
+          <div className="grid grid-cols-[auto_1fr_auto] items-center gap-2 mt-3">
+            <div className="relative w-11 h-11 rounded-xl border-2 border-emerald-500/70 overflow-hidden bg-slate-950/70 shadow-inner">
               <div
                 className="absolute bottom-0 left-0 right-0 transition-all"
                 style={{
@@ -204,15 +214,51 @@ export default function MetaverseHud({
                         : 'rgba(255,50,50,0.7)',
                 }}
               />
+              <StudioItemIcon id="heart" size={26} className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 drop-shadow" />
             </div>
-            <div>
+            <div className="min-w-[125px]">
               <p className="text-[10px] text-emerald-400 font-bold tracking-wider">HP</p>
               <p className="font-mono text-sm font-bold">{hp}/{maxHp}</p>
+              <div className="mt-1 h-1.5 rounded-full bg-black/60 overflow-hidden border border-white/10">
+                <div
+                className="h-full rounded-full bg-gradient-to-r from-emerald-500 to-lime-300 transition-all"
+                style={{ width: `${hpPct}%` }}
+                />
+              </div>
             </div>
             <div className="ml-2 pl-2 border-l border-white/10">
               <p className="text-[10px] text-amber-400 font-bold">KILLS</p>
               <p className="font-mono text-sm font-bold text-amber-200">{kills}</p>
             </div>
+          </div>
+          <div className="mt-2 grid grid-cols-[auto_1fr_auto] items-center gap-2">
+            <div className="relative w-8 h-8 rounded-lg border border-amber-400/50 bg-slate-950/70 flex items-center justify-center">
+              <StudioItemIcon id={guarding ? 'guard' : 'stamina'} size={22} />
+            </div>
+            <div>
+              <div className="flex justify-between text-[10px] font-bold">
+                <span className="text-amber-300">{guarding ? 'GUARD' : 'STAMINA'}</span>
+                <span className="font-mono text-white/70">{Math.round(stamina)}</span>
+              </div>
+              <div className="mt-1 h-1.5 rounded-full bg-black/60 overflow-hidden border border-white/10">
+                <div
+                className="h-full rounded-full bg-gradient-to-r from-orange-500 via-amber-300 to-yellow-100 transition-all"
+                style={{ width: `${staminaPct}%` }}
+                />
+              </div>
+            </div>
+            <div className="text-[10px] text-sky-200">{combatAction ?? (softAim ? 'SOFT AIM' : 'READY')}</div>
+          </div>
+          <div className="grid grid-cols-5 gap-1.5 mt-3">
+            {(['chest', 'crate', 'workbench', 'furnace', 'turret'] as const).map((id) => (
+              <div
+                key={id}
+                className="h-9 rounded-lg bg-slate-900/80 border border-white/10 flex items-center justify-center shadow-inner"
+                title={`Studio ${id}`}
+              >
+                <StudioItemIcon id={id} size={24} />
+              </div>
+            ))}
           </div>
           <div className="flex flex-wrap gap-2 mt-2 text-[10px]">
             <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-emerald-950/50 border border-emerald-800/40 text-emerald-200">

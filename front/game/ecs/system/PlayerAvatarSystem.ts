@@ -11,6 +11,7 @@ import { applyAvatarToMesh } from '@/lib/grudgeAvatar'
 import {
   avatarAppearanceSig,
   clipNameForAttack,
+  clipNameForFx,
   fxForClass,
   kitVfxUrl,
   normalizeKitClass,
@@ -142,7 +143,9 @@ export class PlayerAvatarSystem {
         mesh.userData.lastFxSeq = player.fxSeq
         const fx = player.fx || fxForClass(player.classId)
         void spawnFx(mesh, fx)
-        entity.getComponent(AnimationComponent)?.animator.playOneShot(clipNameForAttack(player.classId))
+        entity
+          .getComponent(AnimationComponent)
+          ?.animator.playOneShot(player.fx ? clipNameForFx(player.fx) : clipNameForAttack(player.classId))
       }
     }
     void entities

@@ -11,7 +11,7 @@ import type { WeaponSkillDef } from '@/lib/weaponSkillsCombat'
 import { CurrentPlayerComponent } from '@/game/ecs/component/CurrentPlayerComponent'
 import { MeshComponent } from '@/game/ecs/component/MeshComponent'
 import type { LoadedAvatar } from '@/lib/grudgeAvatar'
-import { avatarAppearanceSig, fxForSkillStyle } from '@/lib/fourCharacterKit'
+import { findClip, fxForSkillStyle } from '@/lib/fourCharacterKit'
 import {
   FlyingProjectile,
   baseDamageForSkill,
@@ -52,6 +52,9 @@ export default function GamePlayer({
     prompt: null,
     hudMode: 'full',
   })
+  const [stamina, setStamina] = useState(100)
+  const [guarding, setGuarding] = useState(false)
+  const [combatAction, setCombatAction] = useState<string | null>(null)
   const refContainer = useRef(null)
   const avatarTried = useRef(false)
   const loadedAvatar = useRef<LoadedAvatar | null>(null)
@@ -115,6 +118,14 @@ export default function GamePlayer({
     }, 160)
     return () => window.clearInterval(id)
   }, [gameInstance, isLoading])
+
+  useEffect(() => {
+    if (!combatEnabled) return
+    const id = window.setInterval(() => {
+      setStamina((value) => Math.min(100, value + (guarding ? 1.2 : 2.8)))
+    }, 140)
+    return () => window.clearInterval(id)
+  }, [combatEnabled, guarding])
 
   // Soft aim RMB (three-player-controller soft aim)
   useEffect(() => {
@@ -233,8 +244,41 @@ export default function GamePlayer({
     return () => cancelAnimationFrame(raf)
   }, [gameInstance, isLoading, playerName])
 
+  const playLocalSkillClip = useCallback((skill: WeaponSkillDef, phase: string) => {
+    const loaded = loadedAvatar.current
+    if (!loaded?.clips.length) return
+    const wanted =
+      skill.id === 'guard'
+        ? ['block', 'shield', 'guard', 'idle']
+        : skill.id === 'smash'
+          ? ['sword_combo_finisher', 'attack4', 'heavy', 'overhead', 'attack']
+          : skill.id === 'bolt'
+            ? ['castSpell', 'magic', 'attack', 'unarmed_uppercut']
+            : skill.id === 'shot'
+              ? ['shoot', 'rifle', 'attack']
+              : phase === 'windup'
+                ? ['draw', 'equip', 'attack']
+                : ['sword_attack_a', 'attack', 'slash', 'unarmed_uppercut']
+    const clip = findClip(loaded.clips, wanted) as THREE.AnimationClip | undefined
+    if (!clip) return
+    const action = loaded.mixer.clipAction(clip)
+    action.reset()
+    action.setLoop(THREE.LoopOnce, 1)
+    action.clampWhenFinished = skill.id === 'guard'
+    action.fadeIn(0.05)
+    action.play()
+  }, [])
+
+  const fxIdForSkill = useCallback((skill: WeaponSkillDef) => {
+    if (skill.id === 'smash') return 'slashes'
+    return fxForSkillStyle(skill.style, skill.projectile)
+  }, [])
+
   const onCast = useCallback(
-    (skill: WeaponSkillDef, phase: 'windup' | 'active' | 'projectile') => {
+    (
+      skill: WeaponSkillDef,
+      phase: 'windup' | 'active' | 'projectile' | 'recovery' | 'ready',
+    ) => {
       if (!gameInstance) return
       const scene = gameInstance.renderer?.scene
       const meshRoot = playerMeshRef.current
@@ -242,9 +286,17 @@ export default function GamePlayer({
 
       try {
         if (phase === 'windup') {
+          const cost = skill.id === 'smash' ? 40 : skill.id === 'guard' ? 8 : skill.projectile ? 16 : 12
+          setStamina((value) => Math.max(0, value - cost))
+          setCombatAction(skill.label.toUpperCase())
+          setGuarding(skill.id === 'guard')
+          playLocalSkillClip(skill, phase)
+          if (meshRoot) meshRoot.scale.setScalar(1.03)
           if (collider) collider.visible = false
-          gameInstance.sendPlayerFx?.(fxForSkillStyle(skill.style, skill.projectile))
+          gameInstance.sendPlayerFx?.(fxIdForSkill(skill))
         } else if (phase === 'active') {
+          playLocalSkillClip(skill, phase)
+          if (meshRoot) meshRoot.scale.setScalar(1)
           // Melee: enable weapon collider for active window
           if (collider && !skill.projectile) {
             collider.visible = true
@@ -281,6 +333,8 @@ export default function GamePlayer({
             }
           }
         } else if (phase === 'projectile' && scene && meshRoot) {
+          playLocalSkillClip(skill, phase)
+          if (meshRoot) meshRoot.scale.setScalar(1)
           const from = new THREE.Vector3()
           if (collider) collider.getWorldPosition(from)
           else {
@@ -311,12 +365,17 @@ export default function GamePlayer({
           })
           scene.add(proj.mesh)
           projectiles.current.push(proj)
+        } else if (phase === 'recovery') {
+          if (meshRoot) meshRoot.scale.setScalar(1)
+          if (collider) collider.visible = false
+          setGuarding(false)
+          setCombatAction(null)
         }
       } catch {
         /* ignore */
       }
     },
-    [gameInstance, softAim],
+    [fxIdForSkill, gameInstance, playLocalSkillClip, softAim],
   )
 
   return (
@@ -341,6 +400,10 @@ export default function GamePlayer({
             kills={kills}
             killFeed={killFeed}
             softAim={softAim}
+            stamina={stamina}
+            maxStamina={100}
+            guarding={guarding}
+            combatAction={combatAction}
             fightLinks={METAVERSE_FIGHT_LINKS}
             worldSlug={gameInfo.slug}
             pointerLocked={playHud.pointerLocked}

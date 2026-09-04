@@ -93,8 +93,7 @@ export function getAuthToken(): string | null {
 }
 
 export function buildLoginUrl(returnPath = '/play/test'): string {
-  const origin = typeof window !== 'undefined' ? window.location.origin : FLEET.blox
-  const redirect = encodeURIComponent(`${origin}${returnPath}`)
+  const redirect = encodeURIComponent(`${FLEET.blox}${returnPath}`)
   return `${FLEET.id}/login?redirect_uri=${redirect}`
 }
 
@@ -102,8 +101,7 @@ export function buildFoundryCreateUrl(
   returnPath = '/play/test',
   era = 'voxel',
 ): string {
-  const origin = typeof window !== 'undefined' ? window.location.origin : FLEET.blox
-  const returnTo = encodeURIComponent(`${origin}${returnPath}`)
+  const returnTo = encodeURIComponent(`${FLEET.blox}${returnPath}`)
   const e = (era || 'voxel').toLowerCase()
   return `${FLEET.foundry}/foundry?era=${encodeURIComponent(e)}&mode=create&returnTo=${returnTo}`
 }

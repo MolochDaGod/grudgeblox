@@ -12,15 +12,26 @@ import {
   type SkillCastState,
   type WeaponSkillDef,
 } from '@/lib/weaponSkillsCombat'
-import { codexIconUrl } from '@/lib/voxelCodex'
 import { HUD_Z } from '@/game/hudLayers'
+import { StudioItemIcon, type StudioIconId } from './StudioItemIcon'
 
 export interface WeaponSkillBarProps {
   enabled?: boolean
   /** Keys and gamepad still cast when hidden; only the bar itself is removed. */
   visible?: boolean
-  onCast?: (skill: WeaponSkillDef, phase: 'windup' | 'active' | 'projectile') => void
+  onCast?: (
+    skill: WeaponSkillDef,
+    phase: 'windup' | 'active' | 'projectile' | 'recovery' | 'ready',
+  ) => void
   consumeSkillSlot?: () => number | null
+}
+
+function iconForSkill(skill: WeaponSkillDef): StudioIconId {
+  if (skill.id === 'guard') return 'guard'
+  if (skill.id === 'bolt') return 'bolt'
+  if (skill.id === 'shot') return 'shot'
+  if (skill.id === 'smash') return 'smash'
+  return 'sword'
 }
 
 export default function WeaponSkillBar({
@@ -52,11 +63,15 @@ export default function WeaponSkillBar({
           onCast?.(s, 'projectile')
           tick((n) => n + 1)
         },
-        onRecovery: () => {
+        onRecovery: (s) => {
           setBanner(null)
+          onCast?.(s, 'recovery')
           tick((n) => n + 1)
         },
-        onReady: () => tick((n) => n + 1),
+        onReady: (s) => {
+          onCast?.(s, 'ready')
+          tick((n) => n + 1)
+        },
       })
       if (!r.ok) {
         setBanner(r.reason === 'cooldown' ? 'Cooldown' : 'Busy')
@@ -113,11 +128,11 @@ export default function WeaponSkillBar({
       style={{ zIndex: HUD_Z.SKILLBAR }}
     >
       {banner && (
-        <div className="px-3 py-1 rounded-md bg-black/70 border border-amber-700/40 text-amber-100 text-xs font-semibold">
+        <div className="px-3 py-1 rounded-md bg-slate-950/80 border border-amber-400/40 text-amber-100 text-xs font-semibold shadow-[0_0_20px_rgba(245,158,11,0.22)]">
           {banner}
         </div>
       )}
-      <div className="flex gap-1.5 p-2 rounded-xl bg-black/75 border border-amber-800/40 backdrop-blur-sm">
+      <div className="flex gap-1.5 p-2 rounded-2xl bg-slate-950/80 border border-amber-400/30 backdrop-blur-md shadow-[inset_0_2px_8px_rgba(0,0,0,0.65),0_12px_40px_rgba(0,0,0,0.45)]">
         {BLOX_WEAPON_SKILLS.map((s) => {
           const ready = isSkillReady(state, s.id, now)
           const active = state.skillId === s.id
@@ -129,21 +144,25 @@ export default function WeaponSkillBar({
               type="button"
               title={`${s.label} [${s.key}] · ${s.style}`}
               onClick={() => cast(s)}
-              className="relative w-12 h-12 rounded-lg border flex flex-col items-center justify-center text-[10px] font-bold transition"
+              className="relative w-14 h-14 rounded-xl border flex flex-col items-center justify-center text-[10px] font-bold transition overflow-hidden"
               style={{
-                borderColor: active ? s.color : ready ? `${s.color}88` : '#333',
-                background: active ? `${s.color}33` : ready ? '#1a120c' : '#0a0a0a',
+                borderColor: active ? s.color : ready ? `${s.color}aa` : '#334155',
+                background: active
+                  ? `linear-gradient(180deg, ${s.color}44, rgba(15,23,42,0.94))`
+                  : ready
+                    ? 'linear-gradient(180deg, rgba(30,41,59,0.95), rgba(2,6,23,0.95))'
+                    : 'linear-gradient(180deg, rgba(15,23,42,0.8), rgba(2,6,23,0.95))',
                 color: ready ? '#f4e6c8' : '#666',
                 opacity: ready ? 1 : 0.55,
+                boxShadow: active
+                  ? `0 0 0 2px ${s.color}44, inset 0 2px 8px rgba(255,255,255,0.08)`
+                  : 'inset 0 2px 6px rgba(255,255,255,0.06)',
               }}
             >
-              <img
-                src={codexIconUrl(s.id)}
-                alt=""
-                className="absolute inset-1 w-10 h-10 object-contain opacity-80 pointer-events-none"
-              />
-              <span className="relative z-10 text-[9px] text-amber-200 drop-shadow">{s.key}</span>
-              <span className="relative z-10 leading-tight drop-shadow">{s.label}</span>
+              <span className="absolute inset-0 bg-[radial-gradient(circle_at_35%_20%,rgba(255,255,255,0.18),transparent_40%)]" />
+              <StudioItemIcon id={iconForSkill(s)} size={30} className="relative z-10 drop-shadow" />
+              <span className="absolute top-1 left-1.5 z-10 text-[9px] text-amber-200 drop-shadow">{s.key}</span>
+              <span className="relative z-10 mt-0.5 leading-tight drop-shadow">{s.label}</span>
               {!ready && cdLeft > 0 && (
                 <span className="absolute inset-0 flex items-center justify-center bg-black/50 rounded-lg text-amber-200 text-xs">
                   {cdLeft.toFixed(1)}
@@ -153,7 +172,7 @@ export default function WeaponSkillBar({
           )
         })}
       </div>
-      <p className="text-[9px] text-white/40">1–5 weapon skills · windup → hit / projectile impact</p>
+      <p className="text-[9px] text-white/45">Studio combat bar · 1-5 skills · windup to active to recovery</p>
     </div>
   )
 }
