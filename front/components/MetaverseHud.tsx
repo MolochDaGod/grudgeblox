@@ -16,6 +16,7 @@ import { FLEET } from '@/lib/fleetConfig'
 import type { FleetCharacter } from '@/lib/fleetCharacters'
 import DopeBudzControls from './DopeBudzControls'
 import { formatNearbyPrompt } from '@/game/playHud'
+import { HUD_Z, hudLayerVisible, hudModeLabel, type HudMode } from '@/game/hudLayers'
 
 export interface MetaverseHudProps {
   messages: MessageComponent[]
@@ -33,6 +34,7 @@ export interface MetaverseHudProps {
   pointerLocked?: boolean
   gamepadConnected?: boolean
   prompt?: string | null
+  hudMode?: HudMode
 }
 
 export default function MetaverseHud({
@@ -51,7 +53,9 @@ export default function MetaverseHud({
   pointerLocked = false,
   gamepadConnected = false,
   prompt = null,
+  hudMode = 'full',
 }: MetaverseHudProps) {
+  const show = (layer: Parameters<typeof hudLayerVisible>[0]) => hudLayerVisible(layer, hudMode)
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const [notifications, setNotifications] = useState<
     Array<{ id: number; content: string; author: string }>
@@ -129,9 +133,12 @@ export default function MetaverseHud({
   })
 
   return (
-    <div className="fixed inset-0 z-50 pointer-events-none text-white">
+    <div className="fixed inset-0 pointer-events-none text-white" style={{ zIndex: HUD_Z.PANELS }}>
       {/* Notifications */}
-      <div className="fixed top-20 left-1/2 -translate-x-1/2 flex flex-col items-center gap-2">
+      <div
+        className="fixed top-20 left-1/2 -translate-x-1/2 flex flex-col items-center gap-2"
+        style={{ zIndex: HUD_Z.NOTIFICATIONS }}
+      >
         {notifications.map((n) => (
           <div
             key={n.id}
@@ -144,18 +151,33 @@ export default function MetaverseHud({
       </div>
 
       {/* Kill feed (multiplayer-gltf) */}
-      <div className="fixed top-14 right-3 z-[70] flex flex-col items-end gap-1 pointer-events-none">
-        {killFeed.map((k) => (
-          <div
-            key={k.id}
-            className="text-xs text-white px-2 py-0.5 rounded bg-black/60 border border-amber-800/30 shadow"
-          >
-            {k.text}
-          </div>
-        ))}
-      </div>
+      {show('FEED') && (
+        <div
+          className="fixed top-14 right-3 flex flex-col items-end gap-1 pointer-events-none"
+          style={{ zIndex: HUD_Z.FEED }}
+        >
+          {killFeed.map((k) => (
+            <div
+              key={k.id}
+              className="text-xs text-white px-2 py-0.5 rounded bg-black/60 border border-amber-800/30 shadow"
+            >
+              {k.text}
+            </div>
+          ))}
+        </div>
+      )}
+
+      {hudMode !== 'full' && show('FEED') && (
+        <div
+          className="pointer-events-none absolute bottom-3 left-3 rounded-md bg-black/55 px-2 py-1 text-[10px] text-white/60 border border-white/10"
+          style={{ zIndex: HUD_Z.FEED }}
+        >
+          {hudModeLabel(hudMode)} · H
+        </div>
+      )}
 
       {/* Top bar */}
+      {show('PANELS') && (
       <div className="absolute top-3 left-3 right-3 flex justify-between items-start gap-3">
         <div className="pointer-events-auto bg-black/70 backdrop-blur-md border border-amber-800/40 rounded-xl px-4 py-3 max-w-xs shadow-lg">
           <p className="text-[10px] uppercase tracking-[0.15em] text-amber-500/80">Metaverse lobby</p>
@@ -270,19 +292,26 @@ export default function MetaverseHud({
             </button>
           </div>
           <p className="text-[10px] text-white/40 bg-black/40 px-2 py-1 rounded">
-            WASD · look · Space · RMB aim · E · 1–5 · pad · Tab
+            WASD · look · Space · RMB aim · E · 1–5 · pad · Tab · H hud
           </p>
         </div>
       </div>
+      )}
 
-      {!pointerLocked && (
-        <div className="hidden lg:flex pointer-events-none absolute top-1/2 left-1/2 z-[55] -translate-x-1/2 translate-y-10 rounded-lg bg-black/65 px-3 py-1.5 text-[11px] text-amber-100/90 border border-amber-800/40">
+      {!pointerLocked && show('LOOK_HINT') && (
+        <div
+          className="hidden lg:flex pointer-events-none absolute top-1/2 left-1/2 -translate-x-1/2 translate-y-10 rounded-lg bg-black/65 px-3 py-1.5 text-[11px] text-amber-100/90 border border-amber-800/40"
+          style={{ zIndex: HUD_Z.LOOK_HINT }}
+        >
           Click the world to look · Esc releases the mouse
         </div>
       )}
 
-      {prompt && (
-        <div className="pointer-events-none absolute bottom-28 left-1/2 z-[70] -translate-x-1/2 rounded-lg border border-emerald-700/50 bg-black/75 px-4 py-2 text-center shadow-xl">
+      {prompt && show('FEED') && (
+        <div
+          className="pointer-events-none absolute bottom-28 left-1/2 -translate-x-1/2 rounded-lg border border-emerald-700/50 bg-black/75 px-4 py-2 text-center shadow-xl"
+          style={{ zIndex: HUD_Z.FEED }}
+        >
           <p className="text-[10px] uppercase tracking-widest text-emerald-400/80">Nearby</p>
           <p className="text-sm font-semibold text-white">
             {formatNearbyPrompt(prompt, gamepadConnected)}
@@ -291,8 +320,11 @@ export default function MetaverseHud({
       )}
 
       {/* Scoreboard Tab */}
-      {scoreboard && (
-        <div className="fixed inset-0 z-[80] flex items-center justify-center bg-black/50 pointer-events-none">
+      {scoreboard && show('SCOREBOARD') && (
+        <div
+          className="fixed inset-0 flex items-center justify-center bg-black/50 pointer-events-none"
+          style={{ zIndex: HUD_Z.SCOREBOARD }}
+        >
           <div className="min-w-[320px] rounded-xl border border-white/15 bg-black/85 backdrop-blur-md overflow-hidden">
             <div className="px-4 py-2 text-center text-xs tracking-widest text-white/80 border-b border-white/10">
               SCOREBOARD
@@ -320,6 +352,7 @@ export default function MetaverseHud({
       )}
 
       {/* Chat panel */}
+      {show('PANELS') && (
       <div className="absolute bottom-4 right-4 hidden lg:flex flex-col w-[340px] pointer-events-auto space-y-2">
         <div className="grid grid-cols-4 gap-2">
           {gameData.slice(0, 4).map((game: GameInfo) => (
@@ -373,9 +406,10 @@ export default function MetaverseHud({
           )}
         </div>
       </div>
+      )}
 
       {/* Mobile joystick + jump / interact */}
-      <div className="flex lg:hidden pointer-events-auto">
+      <div className="flex lg:hidden pointer-events-auto" style={{ zIndex: HUD_Z.MOBILE_CONTROLS }}>
         <div className="absolute bottom-12 left-8">
           <Joystick
             size={100}

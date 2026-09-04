@@ -12,17 +12,21 @@ import {
   skillSlotEdge,
   type GamepadFrame,
 } from './gamepad'
+import { nextHudMode, type HudMode } from './hudLayers'
 
 export type PlayHudState = {
   pointerLocked: boolean
   gamepadConnected: boolean
   prompt: string | null
+  hudMode: HudMode
 }
 
 export class InputManager {
   pcUser: boolean = true
   gamepadConnected = false
   nearestPrompt: string | null = null
+  hudMode: HudMode = 'full'
+  private lastSelectHeld = false
   inputState: InputMessage = {
     t: ClientMessageType.INPUT,
     u: false,
@@ -95,6 +99,9 @@ export class InputManager {
     this.lastSkillHeld = pad.skillSlot
     if (skill != null) this.pendingSkills.push(skill)
 
+    if (pad.buttons.select && !this.lastSelectHeld) this.cycleHudMode()
+    this.lastSelectHeld = pad.buttons.select
+
     this.nearestPrompt = this.proximityPromptSystem.getPromptText(entities)
     this.proximityPromptSystem.update(entities, dt)
   }
@@ -108,7 +115,13 @@ export class InputManager {
       pointerLocked: this.cameraFollowSystem.pointerLocked,
       gamepadConnected: this.gamepadConnected,
       prompt: this.nearestPrompt,
+      hudMode: this.hudMode,
     }
+  }
+
+  cycleHudMode(): HudMode {
+    this.hudMode = nextHudMode(this.hudMode)
+    return this.hudMode
   }
 
   public handleJoystickStop(_joystick: IJoystickUpdateEvent) {
@@ -166,6 +179,9 @@ export class InputManager {
         break
       case 'KeyE':
         this.keys.i = true
+        break
+      case 'KeyH':
+        if (!event.repeat) this.cycleHudMode()
         break
     }
   }

@@ -20,6 +20,9 @@ import {
 import type { FootIkLite } from '@/lib/footIkLite'
 import { METAVERSE_FIGHT_LINKS } from '@/lib/dangerRoomSkills'
 import { EntityManager } from '@shared/system/EntityManager'
+import { RENDER_LAYER, collectLayerMeshes, raycastLayersFor } from '@/game/renderLayers'
+import { HUD_Z, hudLayerVisible } from '@/game/hudLayers'
+import type { PlayHudState } from '@/game/InputManager'
 import * as THREE from 'three'
 
 interface GamePlayerProps extends GameInfo {
@@ -43,10 +46,11 @@ export default function GamePlayer({
   const [kills, setKills] = useState(0)
   const [killFeed, setKillFeed] = useState<Array<{ id: number; text: string }>>([])
   const [softAim, setSoftAim] = useState(false)
-  const [playHud, setPlayHud] = useState({
+  const [playHud, setPlayHud] = useState<PlayHudState>({
     pointerLocked: false,
     gamepadConnected: false,
-    prompt: null as string | null,
+    prompt: null,
+    hudMode: 'full',
   })
   const refContainer = useRef(null)
   const avatarTried = useRef(false)
@@ -183,21 +187,17 @@ export default function GamePlayer({
         // Foot IK against world meshes
         const footIk = loadedAvatar.current?.footIk as FootIkLite | undefined
         if (footIk) {
-          const colliders: THREE.Object3D[] = []
-          scene.traverse((o) => {
-            if ((o as THREE.Mesh).isMesh && o.visible && !o.userData.isHitbox) {
-              colliders.push(o)
-            }
+          const colliders = collectLayerMeshes(scene, raycastLayersFor('foot-ik'), {
+            visibleOnly: true,
           })
           footIk.setGrounded(true)
           footIk.update(colliders.slice(0, 80), dt)
         }
 
-        // Projectiles
-        const targets: THREE.Object3D[] = []
-        scene.traverse((o) => {
-          if ((o as THREE.Mesh).isMesh) targets.push(o)
-        })
+        // Projectiles: world solids + avatar hitboxes, never VFX or skins
+        const targets = projectiles.current.length
+          ? collectLayerMeshes(scene, raycastLayersFor('projectile'))
+          : []
         for (const p of [...projectiles.current]) {
           const hit = p.update(dt, raycaster.current, targets)
           if (hit) {
@@ -206,6 +206,7 @@ export default function GamePlayer({
               new THREE.SphereGeometry(0.2, 6, 6),
               new THREE.MeshBasicMaterial({ color: p.color, transparent: true, opacity: 0.8 }),
             )
+            flash.layers.set(RENDER_LAYER.FX)
             flash.position.copy(hit.point)
             scene.add(flash)
             window.setTimeout(() => {
@@ -260,10 +261,7 @@ export default function GamePlayer({
               origin.y += 1.2
             }
             const forward = new THREE.Vector3(0, 0, 1).applyQuaternion(meshRoot.quaternion)
-            const targets: THREE.Object3D[] = []
-            scene.traverse((o) => {
-              if ((o as THREE.Mesh).isMesh && o.userData.isHitbox) targets.push(o)
-            })
+            const targets = collectLayerMeshes(scene, raycastLayersFor('melee'))
             const hit = raycastProjectile(
               raycaster.current,
               origin,
@@ -348,17 +346,20 @@ export default function GamePlayer({
             pointerLocked={playHud.pointerLocked}
             gamepadConnected={playHud.gamepadConnected}
             prompt={playHud.prompt}
+            hudMode={playHud.hudMode}
           />
           <WeaponSkillBar
             enabled={combatEnabled !== false && !isLoading}
+            visible={hudLayerVisible('SKILLBAR', playHud.hudMode)}
             onCast={onCast}
             consumeSkillSlot={() => gameInstance.inputManager.consumeSkillSlot()}
           />
           {/* Crosshair (three-player-controller) */}
-          {combatEnabled !== false && !isLoading && (
+          {combatEnabled !== false && !isLoading && hudLayerVisible('CROSSHAIR', playHud.hudMode) && (
             <div
-              className="pointer-events-none fixed top-1/2 left-1/2 z-[60] -translate-x-1/2 -translate-y-1/2"
+              className="pointer-events-none fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2"
               style={{
+                zIndex: HUD_Z.CROSSHAIR,
                 width: softAim ? 4 : 6,
                 height: softAim ? 4 : 6,
                 borderRadius: '50%',
@@ -367,8 +368,11 @@ export default function GamePlayer({
               }}
             />
           )}
-          {character && !avatarReady && (
-            <div className="pointer-events-none absolute top-20 left-3 z-40 px-3 py-1.5 rounded-lg bg-black/60 border border-amber-800/40 text-[11px] text-amber-100/70">
+          {character && !avatarReady && hudLayerVisible('PANELS', playHud.hudMode) && (
+            <div
+              className="pointer-events-none absolute top-20 left-3 px-3 py-1.5 rounded-lg bg-black/60 border border-amber-800/40 text-[11px] text-amber-100/70"
+              style={{ zIndex: HUD_Z.PANELS }}
+            >
               Loading fleet avatar + hitboxes…
             </div>
           )}

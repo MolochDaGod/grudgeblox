@@ -7,7 +7,9 @@ import { ComponentRemovedEvent } from '@shared/component/events/ComponentRemoved
 import * as THREE from 'three'
 import { PositionComponent } from '@shared/component/PositionComponent.js'
 import { RotationComponent } from '@shared/component/RotationComponent.js'
+import { PlayerComponent } from '@shared/component/PlayerComponent.js'
 import { EntityManager } from '@shared/system/EntityManager.js'
+import { RENDER_LAYER, assignLayerTree } from '@/game/renderLayers'
 
 export class MeshSystem {
   update(entities: Entity[], renderer: Renderer) {
@@ -27,6 +29,10 @@ export class MeshSystem {
 
       const meshComponent = addedEvent.component
       this.updateMeshTransform(entity, meshComponent)
+      assignLayerTree(
+        meshComponent.mesh,
+        entity.getComponent(PlayerComponent) ? RENDER_LAYER.PLAYER : RENDER_LAYER.WORLD
+      )
       this.addMeshToScene(meshComponent, renderer)
     }
   }
@@ -58,7 +64,6 @@ export class MeshSystem {
   }
 
   private addMeshToScene(meshComponent: MeshComponent, renderer: Renderer) {
-    console.log('MeshSystem: Adding mesh to scene')
     this.activateShadows(meshComponent)
     renderer.scene.add(meshComponent.mesh)
   }
