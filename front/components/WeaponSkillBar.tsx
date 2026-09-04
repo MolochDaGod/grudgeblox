@@ -14,6 +14,7 @@ import {
 } from '@/lib/weaponSkillsCombat'
 import { HUD_Z } from '@/game/hudLayers'
 import { StudioItemIcon, type StudioIconId } from './StudioItemIcon'
+import { codexIconUrl } from '@/lib/voxelCodex'
 
 export interface WeaponSkillBarProps {
   enabled?: boolean
@@ -160,7 +161,22 @@ export default function WeaponSkillBar({
               }}
             >
               <span className="absolute inset-0 bg-[radial-gradient(circle_at_35%_20%,rgba(255,255,255,0.18),transparent_40%)]" />
-              <StudioItemIcon id={iconForSkill(s)} size={30} className="relative z-10 drop-shadow" />
+              <img
+                src={codexIconUrl(s.id)}
+                alt=""
+                width={30}
+                height={30}
+                className="relative z-10 drop-shadow"
+                style={{ imageRendering: 'pixelated' }}
+                onError={(e) => {
+                  e.currentTarget.style.display = 'none'
+                  const fb = e.currentTarget.nextElementSibling
+                  if (fb instanceof HTMLElement) fb.style.display = 'block'
+                }}
+              />
+              <span className="relative z-10 hidden">
+                <StudioItemIcon id={iconForSkill(s)} size={30} className="drop-shadow" />
+              </span>
               <span className="absolute top-1 left-1.5 z-10 text-[9px] text-amber-200 drop-shadow">{s.key}</span>
               <span className="relative z-10 mt-0.5 leading-tight drop-shadow">{s.label}</span>
               {!ready && cdLeft > 0 && (

@@ -1,5 +1,7 @@
+import { FLEET } from '@/lib/fleetConfig'
+
 const DEFAULT_LOCAL_SERVER_PORT = 8001
-const DEFAULT_RAILWAY_WSS = 'wss://grudgeblox-production.up.railway.app'
+const DEFAULT_RAILWAY_WSS = FLEET.ws
 
 function isLoopbackHost(hostname: string): boolean {
   return (

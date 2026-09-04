@@ -91,7 +91,7 @@ See `back/src/ecs/entity/` for full entity catalog.
 - **One WebSocket server = one game room**
 - **No built-in matchmaking** – each server is a single persistent session
 - Deploy multiple servers (via `docker-compose.yml` ports or separate Railway services) for multiple rooms
-- Players join by connecting to `wss://your-server.railway.app` (or `ws://localhost:8001` in dev)
+- Players join `wss://grudgeblox-production.up.railway.app` (TLS **443**, no `:8001`). Local: `ws://127.0.0.1:8001`. Resolver: `front/game/serverUrl.ts` (`NEXT_PUBLIC_SERVER_URL` or `FLEET.ws`). Not Colyseus.
 
 ### Authentication & Identity
 
