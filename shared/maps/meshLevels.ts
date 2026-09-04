@@ -3,6 +3,7 @@ import { heightAt, worldSizeMeters, type IslandBake } from './islandBake.js'
 export const PLAY_WALKABLE_NORMAL_Y = 0.72
 export const PLAY_LEVEL_BIN_M = 0.5
 export const PLAY_SPAWN_CLEARANCE_M = 0.1
+const PLAY_CHARACTER_STEP = 0.9
 
 export type MeshLevel = {
   y: number
@@ -40,8 +41,12 @@ export function detectMeshLevels(bake: IslandBake): MeshLevelReport {
       const y10 = heightAt(bake, i10)
       const y01 = heightAt(bake, i01)
       const y11 = heightAt(bake, i01 + 1)
-      markIfWalkable(walkable, i00, i10, i01, cell, y00, y10, y01, water)
-      markIfWalkable(walkable, i10, i01 + 1, i01, cell, y10, y11, y01, water)
+      const x0 = ix * cell
+      const z0 = iz * cell
+      const x1 = x0 + cell
+      const z1 = z0 + cell
+      markIfWalkable(walkable, i00, i10, i01, x0, y00, z0, x1, y10, z0, x0, y01, z1, water)
+      markIfWalkable(walkable, i10, i01 + 1, i01, x1, y10, z0, x1, y11, z1, x0, y01, z1, water)
     }
   }
 
@@ -66,25 +71,37 @@ export function detectMeshLevels(bake: IslandBake): MeshLevelReport {
   }
 }
 
-const PLAY_CHARACTER_STEP = 0.9
-
 function markIfWalkable(
   walkable: Uint8Array,
   a: number,
   b: number,
   c: number,
-  cell: number,
-  ya: number,
-  yb: number,
-  yc: number,
+  ax: number,
+  ay: number,
+  az: number,
+  bx: number,
+  by: number,
+  bz: number,
+  cx: number,
+  cy: number,
+  cz: number,
   water: number
 ) {
-  if (ya < water && yb < water && yc < water) return
-  const dx = yb - ya
-  const dz = yc - ya
-  const nx = -dx * cell
-  const ny = cell * cell
-  const nz = -dz * cell
+  if (ay < water && by < water && cy < water) return
+  const e1x = bx - ax
+  const e1y = by - ay
+  const e1z = bz - az
+  const e2x = cx - ax
+  const e2y = cy - ay
+  const e2z = cz - az
+  let nx = e1y * e2z - e1z * e2y
+  let ny = e1z * e2x - e1x * e2z
+  let nz = e1x * e2y - e1y * e2x
+  if (ny < 0) {
+    nx = -nx
+    ny = -ny
+    nz = -nz
+  }
   const len = Math.hypot(nx, ny, nz) || 1
   if (ny / len < PLAY_WALKABLE_NORMAL_Y) return
   walkable[a] = 1
