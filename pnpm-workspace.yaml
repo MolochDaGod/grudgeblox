@@ -16,6 +16,9 @@ allowBuilds:
 # Transitive security floors (pnpm audit --prod). Direct deps are bumped in
 # each package.json; these only lift what next / tailwindcss / jsdom pin.
 overrides:
+  # Retain the local parent-specific repairs alongside the upstream security floors.
+  'next>postcss': '8.5.28'
+  'node-three-gltf>sharp': '0.35.4'
   nanoid@<3.3.18: '>=3.3.18'
   picomatch@<2.3.2: '>=2.3.2'
   picomatch@>=4.0.0 <4.0.4: '>=4.0.4'

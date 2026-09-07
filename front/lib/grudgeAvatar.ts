@@ -23,6 +23,7 @@ import { CANONICAL_CHARACTER_HEIGHT_M } from '@shared/avatar/characterTransformC
 
 export type AvatarLoadContext = {
   worldSlug?: string
+  isCurrent?: () => boolean
 }
 
 export type AvatarTransformBounds = {
@@ -309,9 +310,29 @@ export async function applyAvatarToMesh(
 ): Promise<LoadedAvatar | null> {
   try {
     const loaded = await loadGrudgeAvatar(character, context)
+    if (context.isCurrent && !context.isCurrent()) {
+      // This load has private GLTF resources and has never been attached.
+      loaded.mixer.stopAllAction()
+      loaded.mixer.uncacheRoot(loaded.mixer.getRoot())
+      const geometries = new Set<THREE.BufferGeometry>()
+      const materials = new Set<THREE.Material>()
+      const textures = new Set<THREE.Texture>()
+      loaded.root.traverse((object) => {
+        if (!(object instanceof THREE.Mesh)) return
+        geometries.add(object.geometry)
+        for (const material of Array.isArray(object.material) ? object.material : [object.material]) {
+          materials.add(material)
+          Object.values(material).forEach((value) => { if (value instanceof THREE.Texture) textures.add(value) })
+        }
+      })
+      geometries.forEach((geometry) => geometry.dispose())
+      materials.forEach((material) => material.dispose())
+      textures.forEach((texture) => texture.dispose())
+      return null
+    }
     // Clear children except helpers
     const keep: THREE.Object3D[] = []
-    meshRoot.children.forEach((c) => {
+    ;[...meshRoot.children].forEach((c) => {
       if (c.name.startsWith('__keep')) keep.push(c)
       else meshRoot.remove(c)
     })

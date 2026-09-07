@@ -22,6 +22,7 @@ DerivedData
 *.xcuserstate
 project.xcworkspace
 .next/
+.shire-next/
 *.tsbuildinfo
 # Android/IntelliJ
 #

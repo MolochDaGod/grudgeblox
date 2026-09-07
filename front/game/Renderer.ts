@@ -23,6 +23,7 @@ export class Renderer extends THREE.WebGLRenderer {
   composer?: EffectComposer
 
   private directionalLight: THREE.DirectionalLight | undefined
+  private resizeListener = () => this.onWindowResize()
   constructor(public gameContainerRef: MutableRefObject<any>) {
     super({ antialias: true, stencil: false, powerPreference: 'high-performance' })
     // Disable auto update of shadow map, expensive operation
@@ -54,7 +55,16 @@ export class Renderer extends THREE.WebGLRenderer {
     }
     // this.setupPostProcessing()
 
-    window.addEventListener('resize', this.onWindowResize.bind(this), false)
+    window.addEventListener('resize', this.resizeListener, false)
+  }
+
+  disposeSession() {
+    window.removeEventListener('resize', this.resizeListener)
+    this.camera.controlSystem.dispose()
+    this.composer?.dispose()
+    this.domElement.remove()
+    this.css2DRenderer.domElement.remove()
+    this.dispose()
   }
 
   private getDevicePixelRatio(): number {

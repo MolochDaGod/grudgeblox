@@ -16,6 +16,7 @@
     "build:front": "pnpm --filter @notblox/front run build",
     "dev:front": "pnpm --filter @notblox/front run dev",
     "test:back": "pnpm --filter @notblox/back run test",
+    "test:client:reliability": "pnpm --filter @notblox/back exec tsx --tsconfig ../front/tsconfig.json --test ../front/lib/guidedReliability.test.ts",
     "build-vercel": "pnpm run build:shared && pnpm run build:front",
     "build": "pnpm run build:shared && pnpm run build:back && pnpm run build:front",
     "validate:avatars": "node front/scripts/validate-avatar-orientation.mjs",

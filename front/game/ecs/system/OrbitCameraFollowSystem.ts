@@ -38,6 +38,7 @@ export class OrbitCameraFollowSystem {
   private readonly hitPoint = new THREE.Vector3()
   private readonly skip = new Set<THREE.Object3D>()
   private dragging = false
+  private capturedPointerId: number | null = null
   private lastX = 0
   private lastY = 0
   private snapped = false
@@ -167,6 +168,27 @@ export class OrbitCameraFollowSystem {
     document.addEventListener('pointerlockchange', this.onPointerLockChange)
   }
 
+  dispose(): void {
+    this.canvas.removeEventListener('pointerdown', this.onPointerDown)
+    window.removeEventListener('pointermove', this.onPointerMove)
+    window.removeEventListener('pointerup', this.onPointerUp)
+    this.canvas.removeEventListener('wheel', this.onWheel)
+    document.removeEventListener('pointerlockchange', this.onPointerLockChange)
+    if (this.capturedPointerId !== null) {
+      try {
+        this.canvas.releasePointerCapture(this.capturedPointerId)
+      } catch {
+        /* Capture may already have been released by the browser. */
+      }
+      this.capturedPointerId = null
+    }
+    if (document.pointerLockElement === this.canvas) document.exitPointerLock()
+    this.dragging = false
+    this.pointerLocked = false
+    this.colliderCache = []
+    this.skip.clear()
+  }
+
   private readonly onPointerDown = (event: PointerEvent) => {
     if (event.button === 2) return
     this.dragging = true
@@ -174,6 +196,7 @@ export class OrbitCameraFollowSystem {
     this.lastY = event.clientY
     try {
       this.canvas.setPointerCapture(event.pointerId)
+      this.capturedPointerId = event.pointerId
     } catch {
       /* ignore */
     }
@@ -197,6 +220,7 @@ export class OrbitCameraFollowSystem {
     this.dragging = false
     try {
       this.canvas.releasePointerCapture(event.pointerId)
+      if (this.capturedPointerId === event.pointerId) this.capturedPointerId = null
     } catch {
       /* ignore */
     }

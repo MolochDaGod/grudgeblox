@@ -20,6 +20,8 @@ export type PlayHudState = {
   prompt: string | null
   hudMode: HudMode
 }
+import { config } from '@shared/network/config'
+import { InputTransmission } from './InputTransmission'
 
 export class InputManager {
   pcUser: boolean = true
@@ -51,6 +53,11 @@ export class InputManager {
     this.cameraFollowSystem = cameraFollowSystem
     window.addEventListener('keydown', this.handleKeyDown)
     window.addEventListener('keyup', this.handleKeyUp)
+  }
+
+  dispose() {
+    window.removeEventListener('keydown', this.handleKeyDown)
+    window.removeEventListener('keyup', this.handleKeyUp)
   }
 
   private isGameFocused(event: KeyboardEvent) {
@@ -213,32 +220,19 @@ export class InputManager {
     }
   }
 
-  private previousInputState: InputMessage | null = null
+  private transmission = new InputTransmission()
 
   sendInput(entities: Entity[]) {
-    if (
-      !this.previousInputState ||
-      !this.areInputStatesEqual(this.inputState, this.previousInputState)
-    ) {
-      this.webSocketManager.send(this.inputState)
-      this.previousInputState = { ...this.inputState }
-
-      if (this.inputState.i) {
-        const message = this.proximityPromptSystem.getMessage(entities)
-        if (message) this.webSocketManager.send(message)
-      }
+    const now = performance.now()
+    const epoch = this.webSocketManager.connectionEpoch
+    if (!this.transmission.shouldSend(this.inputState, now, config.SERVER_TICKRATE, epoch)) return
+    const previous = this.transmission.previousFor(epoch)
+    if (!this.webSocketManager.send(this.inputState)) return
+    this.transmission.didSend(this.inputState, now, epoch)
+    // One interaction per press, not another interaction on each yaw update.
+    if (this.inputState.i && !previous?.i) {
+      const message = this.proximityPromptSystem.getMessage(entities)
+      if (message) this.webSocketManager.send(message)
     }
-  }
-
-  private areInputStatesEqual(state1: InputMessage, state2: InputMessage): boolean {
-    return (
-      state1.u === state2.u &&
-      state1.d === state2.d &&
-      state1.l === state2.l &&
-      state1.r === state2.r &&
-      state1.s === state2.s &&
-      state1.i === state2.i &&
-      state1.y === state2.y
-    )
   }
 }

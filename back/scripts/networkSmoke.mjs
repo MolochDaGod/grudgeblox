@@ -165,6 +165,15 @@ async function main() {
   assert.equal(await websocketUpgradeStatus('https://rejected.invalid'), 403)
 
   await testStreetsActions()
+  const normalClient = await openWebSocket()
+  try {
+    for (let frame = 0; frame < 210; frame++) {
+      assert.equal(normalClient.readyState, WebSocket.OPEN, 'normal 20 Hz yaw traffic must remain connected')
+      normalClient.send(pack({ t: 1, u: false, d: false, l: false, r: false, s: false, i: false, y: frame * 0.01 }))
+      await delay(50)
+    }
+    assert.equal(normalClient.readyState, WebSocket.OPEN)
+  } finally { normalClient.close() }
   await testRejectedPayload(Uint8Array.from([0xd9]))
   await testRejectedPayload(new Uint8Array(513))
 
@@ -176,7 +185,7 @@ async function main() {
   await rateClose
 
   assert.equal((await get('/health')).status, 200)
-  console.log('Network smoke passed: health/auth/origins/Streets/malformed/oversized/rate-limit')
+  console.log('Network smoke passed: health/auth/origins/Streets/10s-normal-cadence/malformed/oversized/rate-limit')
 }
 
 await main()

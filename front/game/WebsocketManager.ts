@@ -17,6 +17,9 @@ export class WebSocketManager {
   private websocket: WebSocket | null = null
   private messageHandlers: Map<ServerMessageType, MessageHandler> = new Map()
   private serverUrl: string
+  private openedConnections = 0
+
+  get connectionEpoch(): number { return this.openedConnections }
 
   timeSinceLastServerUpdate: number = 0
   constructor(game: Game, port: number = 8001, roomUrl?: string) {
@@ -69,6 +72,7 @@ export class WebSocketManager {
         websocket.addEventListener('open', (event) => {
           if (settled) return
           settled = true
+          this.openedConnections++
           window.clearTimeout(timeout)
           console.log('WebSocket connection opened:', event)
           resolve()
@@ -115,26 +119,17 @@ export class WebSocketManager {
     console.log('WebSocket connection opened:', event)
   }
 
-  send(message: ClientMessage) {
-    if (!this.isConnected()) {
-      console.error("Websocket not connected, can't send message", message)
-      return
-    }
-
-    if (!this.websocket) {
-      console.error("Websocket not initialized, can't send message", message)
-      return
-    }
+  send(message: ClientMessage): boolean {
+    if (!this.isConnected() || !this.websocket) return false
 
     try {
       // Compress with msgpackr
       const packed = pack(message)
       this.websocket.send(packed)
+      return true
     } catch (error) {
-      console.error(
-        `Failed to send message: ${error instanceof Error ? error.message : 'Unknown error'}`,
-        message
-      )
+      // Input retries on the next writable frame; avoid per-frame console floods.
+      return false
     }
   }
   private isConnected(): boolean {
@@ -142,6 +137,8 @@ export class WebSocketManager {
   }
 
   private async onMessage(event: MessageEvent) {
+    if (event.currentTarget !== this.websocket) return
+    const source = this.websocket
     const raw = event.data
     const bytes =
       raw instanceof ArrayBuffer
@@ -149,6 +146,7 @@ export class WebSocketManager {
         : raw instanceof Blob
           ? new Uint8Array(await raw.arrayBuffer())
           : new Uint8Array(raw as Uint8Array)
+    if (source !== this.websocket) return
     const decompressed = pako.inflate(bytes)
     // Then decompress the msgpackr
     const message: ServerMessage = unpack(decompressed)

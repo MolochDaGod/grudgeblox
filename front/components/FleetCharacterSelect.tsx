@@ -4,7 +4,7 @@
  */
 'use client'
 
-import { useEffect, useState } from 'react'
+import React, { useEffect, useState } from 'react'
 import {
   loadFleetRoster,
   setStoredCharacterId,
@@ -38,6 +38,7 @@ export interface FleetCharacterSelectProps {
   onSelect: (c: FleetCharacter) => void
   onPlay: () => void
   gameTitle: string
+  returnPath: string
   era?: string
   rosterMode?: RosterMode | string
   sandbox?: boolean
@@ -52,6 +53,7 @@ export default function FleetCharacterSelect({
   onSelect,
   onPlay,
   gameTitle,
+  returnPath,
   era = 'voxel',
   rosterMode = 'world-era',
   sandbox = false,
@@ -71,6 +73,19 @@ export default function FleetCharacterSelect({
   )
   const allEras = rosterMode === 'all-eras' || sandbox
   const policy = getEraPolicy(eraFilter === 'all' ? era : eraFilter)
+  const [returnOrigin, setReturnOrigin] = useState<string>(FLEET.blox)
+  const [signedIn, setSignedIn] = useState(false)
+
+  useEffect(() => {
+    const refreshSession = () => { setReturnOrigin(window.location.origin); setSignedIn(!!getAuthToken()) }
+    refreshSession()
+    window.addEventListener('focus', refreshSession)
+    window.addEventListener('storage', refreshSession)
+    return () => {
+      window.removeEventListener('focus', refreshSession)
+      window.removeEventListener('storage', refreshSession)
+    }
+  }, [])
 
   const refresh = async () => {
     setLoading(true)
@@ -112,7 +127,6 @@ export default function FleetCharacterSelect({
     if (c.name) onPlayerNameChange(c.name)
   }
 
-  const signedIn = !!getAuthToken()
   const visibleChars =
     eraFilter === 'all'
       ? chars
@@ -322,7 +336,7 @@ export default function FleetCharacterSelect({
             </div>
             <p className="text-[10px] text-stone-500">
               {signedIn
-                ? `Signed in: new hero POSTs Railway /api/characters (era=${policy.apiEra}).`
+                ? 'Your new hero will be saved to your account.'
                 : 'Guest look is local to this lobby. Sign in + Foundry for fleet roster.'}
             </p>
           </div>
@@ -330,7 +344,7 @@ export default function FleetCharacterSelect({
 
         <div className="flex flex-wrap gap-2 text-[11px]">
           {!signedIn && (
-            <a href={buildLoginUrl(`/play/test`)} className="text-emerald-400 underline">
+            <a href={buildLoginUrl(returnPath, returnOrigin)} className="text-emerald-400 underline">
               Sign in Grudge ID
             </a>
           )}
@@ -342,7 +356,7 @@ export default function FleetCharacterSelect({
             Create in lobby
           </button>
           <a
-            href={buildFoundryCreateUrl(`/play/test`, policy.apiEra)}
+            href={buildFoundryCreateUrl(returnPath, policy.apiEra, returnOrigin)}
             className="text-amber-400/90 underline"
             target="_blank"
             rel="noreferrer"

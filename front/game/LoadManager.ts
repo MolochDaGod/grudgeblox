@@ -78,6 +78,15 @@ export class LoadManager {
     return clonedMesh as THREE.Mesh
   }
 
+  static releaseClone(mesh: THREE.Object3D) {
+    const materials = new Set<THREE.Material>()
+    mesh.traverse((object) => {
+      if (!(object instanceof THREE.Mesh)) return
+      for (const material of Array.isArray(object.material) ? object.material : [object.material]) materials.add(material)
+    })
+    materials.forEach((material) => material.dispose())
+  }
+
   private extractMesh(gltf: any): THREE.Mesh | null {
     let mesh: THREE.Mesh = new THREE.Mesh()
     mesh.add(gltf.scene)

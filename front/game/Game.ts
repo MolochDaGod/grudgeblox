@@ -1,4 +1,5 @@
 import { EntityManager } from '@shared/system/EntityManager'
+import { resetClientSession } from './resetClientSession'
 import { config } from '@shared/network/config'
 import { InputManager } from './InputManager'
 import { WebSocketManager } from './WebsocketManager'
@@ -100,18 +101,25 @@ export class Game {
   /** Drop the singleton so lobby retry can open a fresh WebSocket. */
   static resetInstance() {
     if (!Game.instance) return
+    Game.instance.disposed = true
+    Game.instance.serverMeshSystem.dispose()
+    Game.instance.playerAvatarSystem.dispose()
+    Game.instance.inputManager.dispose()
     try {
       Game.instance.websocketManager.disconnect()
       Game.instance.renderer.setAnimationLoop(null)
+      Game.instance.renderer.disposeSession()
     } catch {
       /* ignore */
     }
+    resetClientSession()
     Game.instance = undefined
   }
 
   async start() {
     // Wait for the WebSocket connection to be established
     await this.websocketManager.connect()
+    if (this.disposed) throw new Error('Game session closed')
     this.renderer.appendChild()
     this.renderer.setAnimationLoop(this.loopFunction)
     this.joinLiveIsland()
@@ -203,8 +211,10 @@ export class Game {
   }
 
   private loadingPromise: Promise<void> | null = null
+  private disposed = false
 
   private async loop() {
+    if (this.disposed) return
     const entities = EntityManager.getInstance().getAllEntities()
     const now = Date.now()
     const deltaTime = now - this.lastRenderTime
@@ -219,6 +229,7 @@ export class Game {
 
     // Wait for the loading operation to finish
     await this.loadingPromise
+    if (this.disposed) return
     this.loadingPromise = null
 
     this.identifyFollowedMeshSystem.update(entities, this)

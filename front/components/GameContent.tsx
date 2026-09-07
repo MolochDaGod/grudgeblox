@@ -112,6 +112,7 @@ export default function GameContent({
                   era={initialEra || gameInfo.era || 'voxel'}
                   rosterMode={gameInfo.rosterMode || (gameInfo.sandbox ? 'all-eras' : 'world-era')}
                   sandbox={!!gameInfo.sandbox}
+                  returnPath={`/play/${gameInfo.slug}`}
                 />
               </div>
             </div>

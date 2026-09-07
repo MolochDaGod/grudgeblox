@@ -11,7 +11,7 @@ import type { WeaponSkillDef } from '@/lib/weaponSkillsCombat'
 import { CurrentPlayerComponent } from '@/game/ecs/component/CurrentPlayerComponent'
 import { MeshComponent } from '@/game/ecs/component/MeshComponent'
 import type { LoadedAvatar } from '@/lib/grudgeAvatar'
-import { findClip, fxForSkillStyle } from '@/lib/fourCharacterKit'
+import { avatarAppearanceSig, findClip, fxForSkillStyle } from '@/lib/fourCharacterKit'
 import {
   FlyingProjectile,
   baseDamageForSkill,
@@ -61,6 +61,8 @@ export default function GamePlayer({
   const projectiles = useRef<FlyingProjectile[]>([])
   const raycaster = useRef(new THREE.Raycaster())
   const playerMeshRef = useRef<THREE.Object3D | null>(null)
+
+  useEffect(() => () => Game.resetInstance(), [])
 
   useEffect(() => {
     let active = true

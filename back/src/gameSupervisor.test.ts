@@ -176,8 +176,10 @@ describe('game supervisor worker connect', () => {
     await assert.rejects(connectWorkerPort(port, 200, 40), /not accepting/)
   })
 
-  it('retries until the worker unix socket accepts connections', async () => {
-    const path = join(tmpdir(), `grudgeblox-test-${process.pid}.sock`)
+  it('connects to the worker IPC socket on the current platform', async () => {
+    const path = process.platform === 'win32'
+      ? `\\\\.\\pipe\\grudgeblox-test-${process.pid}`
+      : join(tmpdir(), `grudgeblox-test-${process.pid}.sock`)
     try {
       unlinkSync(path)
     } catch {

@@ -2,6 +2,17 @@
 
 Status labels are evidence-based: **complete** means source plus a relevant check prove the item; **partial** means only part is proved; **blocked** needs missing authority or identity; **external** is not owned by this repository; **open** is not yet verified.
 
+## Recent-chat implementation guide — 2026-09-05
+
+- [x] **Complete — GB-C1 input cadence.** Send-state/reconnect/key-edge regressions and a real loopback normal-traffic/malicious-burst check pass; no server protection was relaxed.
+- [x] **Complete — GB-E1 avatar retry.** Failed loads keep the old visual, retry with a bounded backoff and cannot commit a stale appearance. Actual loader-failure/retry and stale-result checks pass.
+- [x] **Complete — GB-E2 effect ownership.** Each transient effect owns geometry/material clones; expiry leaves prototype resources and overlapping effects alive. Reset cancels retained timers.
+- [x] **Complete — GB-E3 world-preserving links.** Login/Foundry paths cover test, combat, lobby, grudox and streets, with deterministic initial origin and browser origin after hydration.
+- [x] **Complete — session-reset source defect.** Prior entities/events, renderer and input resources retire on reset; an actual pending-load/reused-entity-ID regression rejects old completion.
+- [x] **Complete — GB-E5 current dependency snapshot.** Compatible maintenance plus two scoped overrides clear the production audit. Actual textured GLTF/PNG decoding and sanitization pass.
+- [!] **Blocked — GB-E4 authoritative character ownership.** Requires the verified backend identity/character/bag contract; no second bag database or fabricated ownership was added.
+- [ ] **Open — final visual/gameplay acceptance.** Structural resource and lifecycle checks are not a live multi-client, repeated-navigation, avatar-contact or overlapping-VFX visual acceptance run. See `docs/RELEASE_SAFETY.md` for exact evidence.
+
 ## Locally actionable functionality
 
 ### Dope Budz Streets integration
@@ -64,3 +75,19 @@ Status labels are evidence-based: **complete** means source plus a relevant chec
 
 - [ ] **Open — refresh Browserslist data deliberately.** Do this as a reviewed lockfile maintenance change; do not broadly upgrade dependencies merely to silence the age warning.
 - [ ] **Open — configure persistent Next.js build caching if CI/runtime warrants it.** The warning is environmental and does not identify a source defect in the local build.
+
+## The Middle-earth local Shire (6 September 2026)
+
+- [x] Source — isolated `/play/shire`, local action/save service, enclosed density excavation and collision, furnishings, crops, ten-species care/breeding, 44 Shire homes, Fangorn clearing and continuous countryside.
+- [x] Storage — E: assets, saves/backups, temp/cache, builds and evidence; the saved D: checkout remains in place. Owned loopback launcher and explicit no-fallback storage checks.
+- [x] Validation — 32 source/filesystem checks, production Next build, and 6 live HTTP service checks. These establish their named layers only.
+- [x] Care interface — full animal roster, species filter, shared breeding eligibility messages, and named parent/offspring details that survive save/reopen.
+- [x] Reusable administration — one-pass worker `shire-local-admin-v1` under E: `admin-worker`, with durable state/backlog, asset and server checks, and concurrent-run protection. No recurring monitor is scheduled.
+- [~] Assets — retained approved rabbit and 124 evidence files hash-verified; existing local human/elf NPC kits reused. Sheep/chicken/cattle/pig/horse/fish/llama/bird/frog production visuals remain pending, with labelled development representations.
+- [x] Initial gameplay — Al reports a positive pass for the initial elements, 6 September 2026. This is user-reported acceptance of that initial scope.
+- [x] Wildlife/building expansion — distinct species routines and reactions, feeder/perch/shelter entities, descending Entry with level chamber, adjustable translucent sculpt volumes at a 2 m default, and fitted hallway door surrounds. Four fresh-review findings fixed and rechecked.
+- [ ] Expanded gameplay — verify the new Entry, sculpt shapes/preview, fitted doors, wildlife reactions and new habitat entities through normal controls. Prior initial acceptance does not automatically accept this expansion.
+- [ ] Source fidelity — measured Middle-earth geometric map and fauna database remain unverified. Current placement is explicitly designed geography; retained workbook and atlas/races reports are copied with hashes.
+- [ ] Acceptance — full visual/gameplay acceptance remains open. No asset production, Dev Tool readiness claim, commit/push, deployment or public listener is implied.
+
+Implementation and local play instructions: `docs/SHIRE_LOCAL_WORLD.md`. Evidence: `E:\GrudgeBloxData\TheMiddleEarth\evidence`.

@@ -92,16 +92,17 @@ export function getAuthToken(): string | null {
   }
 }
 
-export function buildLoginUrl(returnPath = '/play/test'): string {
-  const redirect = encodeURIComponent(`${FLEET.blox}${returnPath}`)
+export function buildLoginUrl(returnPath = '/play/test', origin: string = FLEET.blox): string {
+  const redirect = encodeURIComponent(`${origin}${returnPath}`)
   return `${FLEET.id}/login?redirect_uri=${redirect}`
 }
 
 export function buildFoundryCreateUrl(
   returnPath = '/play/test',
   era = 'voxel',
+  origin: string = FLEET.blox,
 ): string {
-  const returnTo = encodeURIComponent(`${FLEET.blox}${returnPath}`)
+  const returnTo = encodeURIComponent(`${origin}${returnPath}`)
   const e = (era || 'voxel').toLowerCase()
   return `${FLEET.foundry}/foundry?era=${encodeURIComponent(e)}&mode=create&returnTo=${returnTo}`
 }
