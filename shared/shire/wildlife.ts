@@ -22,7 +22,7 @@ function shelterApproach(a:Animal,shelter:Furnishing):{target:Point;entrance:Poi
 }
 
 function allowed(w:World,a:Animal,p:Point){
-  const habitat=SPECIES[a.species].habitat,ground=height(p.x,p.z,w.seed)
+  const habitat=SPECIES[a.species].habitat,ground=height(p.x,p.z,w)
   if(habitat==='water')return ground<WATER_LEVEL-0.35&&p.y>ground+0.15&&p.y<WATER_LEVEL-0.2
   if(habitat==='air')return p.y>ground+0.2&&clear(p,w)
   if(habitat==='bank'&&ground<WATER_LEVEL-0.4)return false
@@ -37,6 +37,7 @@ export function advanceWildlife(w:World,seconds:number){
   for(let step=0;step<steps;step++){
     const time=w.time-seconds+(step+1)*dt,previous=w.animals.map(a=>({id:a.id,species:a.species,position:{...a.position}}))
     for(const a of w.animals){
+      if(w.combat?.actors.find(b=>b.id===a.id)?.vitality.hp===0)continue
       const spec=SPECIES[a.species],rule=WILDLIFE[a.species],phase=phaseOf(a),cycle=(time+phase)%18,hungry=a.fedUntil<time
       const nearby=distance(w.player,a.position)<rule.fear,calm=(a.calmUntil||0)>time
       if(nearby&&!calm)a.startledUntil=Math.max(a.startledUntil||0,time+2)
@@ -67,7 +68,7 @@ export function advanceWildlife(w:World,seconds:number){
       }
       if(speed>0){
         const dx=target.x-a.position.x,dz=target.z-a.position.z,l=Math.hypot(dx,dz),move=Math.min(l,speed*dt),p={x:a.position.x+(l?dx/l*move:0),y:a.position.y,z:a.position.z+(l?dz/l*move:0)}
-        const ground=height(p.x,p.z,w.seed)
+        const ground=height(p.x,p.z,w)
         if(spec.habitat==='water')p.y=Math.max(ground+0.2,Math.min(WATER_LEVEL-0.25,WATER_LEVEL-0.8+Math.sin(angle)*0.18))
         else if(spec.habitat==='air'){const desired=activity==='perching'?target.y:ground+(scared?5:3.1)+Math.sin(angle)*0.45;p.y+=Math.max(-speed*dt,Math.min(speed*dt,desired-p.y))}
         else p.y=spec.habitat==='bank'?Math.max(ground,WATER_LEVEL-0.05):ground

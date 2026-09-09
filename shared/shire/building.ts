@@ -1,3 +1,4 @@
+import { inBounds, fallFloor } from './atlas'
 import { Excavation, Point, World, WorldAction, Tool, FurnitureKind, DoorFit, WORLD_LIMIT, FALL_RECOVERY_Y } from './model'
 import { density, clear } from './terrain'
 
@@ -11,7 +12,7 @@ export function entrancePlan(w:World,a:EntranceAction):{edits:Excavation[]; end:
   const forward={x:-Math.sin(a.yaw),z:-Math.cos(a.yaw)},side={x:Math.cos(a.yaw),z:-Math.sin(a.yaw)}
   for(const length of [8,10,12,14,16,18,20]){
     const drop=length*slope,floor=a.origin.y-drop,roomWidth=Math.max(4.5,width+1),roomDepth=4.5
-    if(floor<FALL_RECOVERY_Y+3)continue
+    if(floor<fallFloor(w)+3)continue
     const end={x:a.origin.x+forward.x*(length+1.5),y:floor+0.08,z:a.origin.z+forward.z*(length+1.5)}
     const room:Excavation={id:'preview-room',kind:'dig',shape:'box',center:{...end,y:floor+tall/2},size:{x:roomWidth,y:tall,z:roomDepth},yaw:a.yaw,entrance:false}
     let covered=true
@@ -19,7 +20,7 @@ export function entrancePlan(w:World,a:EntranceAction):{edits:Excavation[]; end:
     for(let ix=0;ix<=nx;ix++)for(let iz=0;iz<=nz;iz++){
       const x=roomWidth*(ix/nx-0.5),z=roomDepth*(iz/nz-0.5)
       const px=end.x+side.x*x-forward.x*z,pz=end.z+side.z*x-forward.z*z
-      if(Math.abs(px)>WORLD_LIMIT||Math.abs(pz)>WORLD_LIMIT||[0.1,0.35,0.7].some(dy=>density(px,floor+tall+dy,pz,w.seed,w.edits)<0.03))covered=false
+      if(!inBounds(px,pz,w)||[0.1,0.35,0.7].some(dy=>density(px,floor+tall+dy,pz,w,w.edits)<0.03))covered=false
     }
     if(!covered)continue
     // Begin slightly behind the mouth, so the ramp joins the existing walking surface.
@@ -27,8 +28,8 @@ export function entrancePlan(w:World,a:EntranceAction):{edits:Excavation[]; end:
     const candidate={...w,edits:[...w.edits,ramp,room]}
     if(!clear(w.player,candidate))continue
     let walkable=true
-    for(let d=0;d<=length;d+=0.2){const p={x:a.origin.x+forward.x*d,y:a.origin.y-d*slope+0.08,z:a.origin.z+forward.z*d};if(!clear(p,candidate)||density(p.x,p.y-0.25,p.z,w.seed,candidate.edits)<=0)walkable=false}
-    if(!clear(end,candidate)||density(end.x,end.y-0.3,end.z,w.seed,candidate.edits)<=0)walkable=false
+    for(let d=0;d<=length;d+=0.2){const p={x:a.origin.x+forward.x*d,y:a.origin.y-d*slope+0.08,z:a.origin.z+forward.z*d};if(!clear(p,candidate)||density(p.x,p.y-0.25,p.z,w,candidate.edits)<=0)walkable=false}
+    if(!clear(end,candidate)||density(end.x,end.y-0.3,end.z,w,candidate.edits)<=0)walkable=false
     if(walkable)return {edits:[ramp,room],end,length,drop}
   }
   throw Error('Aim into a dry hillside from nearby ground. Entry needs enough earth for a descending tunnel and a covered, level chamber.')
@@ -36,7 +37,7 @@ export function entrancePlan(w:World,a:EntranceAction):{edits:Excavation[]; end:
 
 /** Find the hall's actual walls and ceiling; the surround overlaps earth at its edges. */
 export function fitDoor(w:World,position:Point,yaw:number):{position:Point;fit:DoorFit} {
-  const c=Math.cos(yaw),s=Math.sin(yaw),at=(x:number,y:number)=>density(position.x+x*c,position.y+y,position.z-x*s,w.seed,w.edits)
+  const c=Math.cos(yaw),s=Math.sin(yaw),at=(x:number,y:number)=>density(position.x+x*c,position.y+y,position.z-x*s,w,w.edits)
   const wall=(direction:number,y:number)=>{for(let x=0.15;x<=4.5;x+=0.1)if(at(x*direction,y)>0.03)return x;return null}
   let left=wall(-1,0.8),right=wall(1,0.8)
   if(left===null||right===null)throw Error('Aim at the floor of an enclosed hallway and turn the door across the passage. Both side walls must be within 4.5 m.')

@@ -1,5 +1,13 @@
 # The Middle-earth — local Shire world
 
+## Atlas worlds — integrated 8 September 2026
+
+New worlds now use the Tolkien atlas generation: 37 populated settlement sites, 675 public buildings, seven rivers, full regional distances and 43 travel destinations. The scenery refinement adds much denser mixed woodland, undergrowth and connected entrance paths, aligns crossings with bridge decks, and places Haysend's houses on one bank. Continue **The Shire · Tolkien atlas** to inspect the prepared world. Use **Map**, **Area overview** and **Landmark view**. Original saves retain their original geography. See [the integration notes](SHIRE_ATLAS_INTEGRATION.md) for terrain, town features, validation and interpretation limits. The older implementation notes below describe the original creative generation unless stated otherwise.
+
+## Tolkien terrain reference atlas - 8 September 2026
+
+The new map and terrain specification is stored at `E:\GrudgeBloxData\TheMiddleEarth\assets\references\shire-atlas-2026-09-08`. Open `Shire-Terrain-Atlas.pdf` for the four map sheets and generation guide; `README.md` describes the editable maps, feature register and height data. It uses a T.A. 3018 baseline, identifies book-map discrepancies and labels every numerical elevation as designed. New atlas worlds now use this reference package; original saves keep their existing generation.
+
 Source: `D:\grudgeblox`, saved main checkout. Data: `E:\GrudgeBloxData\TheMiddleEarth`. This mode is for this PC and needs no sign-in or remote game server.
 
 ## Play
@@ -50,3 +58,9 @@ The dedicated worker `shire-local-admin-v1` lives in `E:\GrudgeBloxData\TheMiddl
 ```
 
 It checks E: capacity, the recorded local server identity and entry route, source/build/check freshness, retained asset hashes and rabbit approval evidence, and existing animal-catalog metadata. It writes only its own state, backlog and dated reports. `WORKER.md` describes how to reuse it; `state.json` points to the latest report. A concurrent invocation is refused. Each invocation finishes after one pass; there is no scheduled monitor. Operational health cannot establish gameplay or visual acceptance.
+
+## Hostile creatures and combat — 8 September 2026
+
+The 25 completed Blender representatives and retained Cinderlord now spawn through the Creatures journal in both world generators. Player, enemies, residents and wildlife share health, armour, damage, effects, healing, death and respawn. F strikes, Q guards and H heals; Space swims up and Ctrl dives. Models stream from the existing E: asset store. See [the combat integration and live testing report](SHIRE_COMBAT_INTEGRATION.md) for the catalog, screenshots, controls, preservation checks and practical limits.
+
+The final build passed 18 combat checks, 32 existing Shire checks and 10 atlas checks. Actual game tests covered every encounter model plus ground, flying and water combat, residents, wildlife, falling, drowning, recovery and persistence. The 24 revision heads belonging to the 12 pre-existing worlds remain unchanged.

@@ -2,6 +2,7 @@ import fs from 'node:fs/promises'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { createHash } from 'node:crypto'
+import { registerHostiles } from './register-shire-hostiles.mjs'
 
 const repo=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'..')
 const root=process.env.GRUDGE_SHIRE_DATA_ROOT||'E:\\GrudgeBloxData\\TheMiddleEarth'
@@ -51,4 +52,5 @@ const references=[
 for(const [name,source,hash] of references)await put(path.join(root,'assets','references',name),await verify(source,hash))
 const manifest={version:1,createdAt:new Date().toISOString(),assets,references:references.map(([file,sourcePath,sha256])=>({file:`references/${file}`,sourcePath,sha256:sha256.toLowerCase()})),missingProductionSpecies:['sheep','chicken','cattle','pig','horse','fish','llama','bird','frog'],geography:'Designed layout; no measured geographic or fauna database verified.'}
 await fs.writeFile(path.join(root,'assets','manifest.json'),JSON.stringify(manifest,null,2))
+if(await fs.stat(path.join(root,'assets','hostile-races')).catch(()=>null))await registerHostiles(root)
 console.log(JSON.stringify({storage:root,assets:assets.map(a=>({id:a.id,sha256:a.sha256,byteSize:a.byteSize})),verifiedEvidenceFiles:bundle.entries.length,missingProductionSpecies:manifest.missingProductionSpecies},null,2))

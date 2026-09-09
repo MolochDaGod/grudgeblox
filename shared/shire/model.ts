@@ -1,4 +1,5 @@
 /** Local world state. These IDs are world-local, never fleet account or bag IDs. */
+import type { CombatState } from './combatTypes'
 export type Point = { x: number; y: number; z: number }
 export type Species = 'sheep' | 'chicken' | 'rabbit' | 'cattle' | 'pig' | 'horse' | 'fish' | 'llama' | 'bird' | 'frog'
 export type FurnitureKind = 'table' | 'chair' | 'bed' | 'shelf' | 'chest' | 'door' | 'lamp' | 'fence' | 'feeder' | 'perch' | 'burrow'
@@ -11,7 +12,8 @@ export const ANIMAL_ACTIVITIES = ['grazing','pecking','hopping','rooting','cante
 export type AnimalActivity = typeof ANIMAL_ACTIVITIES[number]
 export interface Animal { id: string; name: string; species: Species; sex: 'female' | 'male'; age: number; home: Point; position: Point; fedUntil: number; parents?: [string,string]; pregnant?: { sire: string; due: number }; cooldownUntil: number; mood: 'grazing' | 'walking' | 'resting' | 'hungry'; tint: number; activity?:AnimalActivity; startledUntil?:number; calmUntil?:number }
 export interface World {
-  version: 1; generator: 'shire-1'; id: string; name: string; seed: number; revision: number; createdAt: string; savedAt: string; time: number;
+  combat?: CombatState;
+  version: 1; generator: 'shire-1'|'shire-atlas-1'; id: string; name: string; seed: number; revision: number; createdAt: string; savedAt: string; time: number;
   player: Point & { yaw: number; pitch: number }; home?: Point; edits: Excavation[]; redo: Excavation[]; furniture: Furnishing[]; crops: Crop[]; animals: Animal[];
   supplies: { barleySeed: number; carrotSeed: number; barley: number; carrot: number; feed: number }; storage: { barley: number; carrot: number };
 }
@@ -34,6 +36,9 @@ export const SPECIES: Record<Species, { label: string; habitat: 'pasture' | 'wat
   frog: { label: 'Frog', habitat: 'bank', maturity: 120, gestation: 60, speed: 0.35, scale: 0.3, color: 0x708844 },
 }
 export type WorldAction =
+  | { type:'strike'; id:string }
+  | { type:'guard'|'heal'|'respawn' }
+  | { type:'travel-encounter'; id:string }
   | { type: 'checkpoint'; player: World['player'] }
   | { type: 'excavate'; edit: Omit<Excavation,'id'> }
   | { type: 'entrance'; origin:Point; yaw:number; width:number; height:number }

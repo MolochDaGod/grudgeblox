@@ -27,10 +27,10 @@ export class CinderlordEnemy {
     this.light.position.y=2.8;this.root.add(this.light);scene.add(this.root,this.scenery)
     const ground=new T.CircleGeometry(18,64);ground.rotateX(-Math.PI/2)
     const vertices=ground.attributes.position
-    for(let i=0;i<vertices.count;i++)vertices.setY(i,height(this.site.x+vertices.getX(i),this.site.z+vertices.getZ(i),w.seed)-this.site.y+0.035)
+    for(let i=0;i<vertices.count;i++)vertices.setY(i,height(this.site.x+vertices.getX(i),this.site.z+vertices.getZ(i),w)-this.site.y+0.035)
     ground.computeVertexNormals()
     const scar=new T.Mesh(ground,new T.MeshStandardMaterial({color:0x302a25,roughness:1,polygonOffset:true,polygonOffsetFactor:-1}));scar.position.set(this.site.x,this.site.y,this.site.z);scar.receiveShadow=true;this.scenery.add(scar)
-    const board=sign('ASHEN HOLLOW\nCINDERLORD · KEEP YOUR DISTANCE',6);board.position.set(this.site.x+9,height(this.site.x+9,this.site.z+31,w.seed)+2.2,this.site.z+31);this.scenery.add(board)
+    const board=sign('ASHEN HOLLOW\nCINDERLORD · KEEP YOUR DISTANCE',6);board.position.set(this.site.x+9,height(this.site.x+9,this.site.z+31,w)+2.2,this.site.z+31);this.scenery.add(board)
     this.ring=new T.Mesh(new T.RingGeometry(0.88,1,80),new T.MeshBasicMaterial({color:0xff5f13,transparent:true,opacity:0,side:T.DoubleSide,depthWrite:false}));this.ring.rotation.x=-Math.PI/2;this.scenery.add(this.ring)
   }
   get loaded(){return !!this.model}
@@ -71,7 +71,7 @@ export class CinderlordEnemy {
     if(phase==='patrol'){tx=this.site.x+Math.sin(this.elapsed*.17)*5;tz=this.site.z+Math.cos(this.elapsed*.17)*5;speed=1.1}
     if(phase==='return'){tx=this.site.x;tz=this.site.z;speed=2.2}
     if(phase==='chase'){tx=player.x;tz=player.z;speed=2.8}
-    if(speed){const mx=tx-pos.x,mz=tz-pos.z,length=Math.hypot(mx,mz);if(length>.1){const step=Math.min(length,speed*dt),nx=pos.x+mx/length*step,nz=pos.z+mz/length*step,ny=surfaceAt(nx,nz,w,height(nx,nz,w.seed)+4);if(Math.abs(ny-pos.y)<.5&&clear({x:nx,y:ny+.08,z:nz},w)){pos.set(nx,ny,nz);this.root.rotation.y=Math.atan2(mx,mz)}}}
+    if(speed){const mx=tx-pos.x,mz=tz-pos.z,length=Math.hypot(mx,mz);if(length>.1){const step=Math.min(length,speed*dt),nx=pos.x+mx/length*step,nz=pos.z+mz/length*step,ny=surfaceAt(nx,nz,w,height(nx,nz,w)+4);if(Math.abs(ny-pos.y)<.5&&clear({x:nx,y:ny+.08,z:nz},w)){pos.set(nx,ny,nz);this.root.rotation.y=Math.atan2(mx,mz)}}}
     else if(phase==='yell'||phase==='smash')this.root.rotation.y=Math.atan2(dx,dz)
     this.play(phase==='smash'?'GroundSmash':phase==='yell'?'Yell':speed?'Walk':'Idle')
     this.mixer.update(dt);this.light.intensity=75+Math.sin(this.elapsed*8)*12

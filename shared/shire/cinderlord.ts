@@ -7,9 +7,9 @@ export function cinderlordSite(w:Pick<World,'seed'>):Point {
   // Keep the encounter on dry land for every supported world seed.
   for(let ring=0;ring<8;ring++)for(let i=0;i<8;i++){
     const x=CINDERLORD.x+Math.cos(i*Math.PI/4)*ring*22,z=CINDERLORD.z+Math.sin(i*Math.PI/4)*ring*22
-    if([[-16,-16],[16,-16],[-16,16],[16,16],[0,0]].every(([dx,dz])=>height(x+dx,z+dz,w.seed)>WATER_LEVEL+1))return {x,y:height(x,z,w.seed),z}
+    if([[-16,-16],[16,-16],[-16,16],[16,16],[0,0]].every(([dx,dz])=>height(x+dx,z+dz,w)>WATER_LEVEL+1))return {x,y:height(x,z,w),z}
   }
-  return {x:CINDERLORD.x,y:height(CINDERLORD.x,CINDERLORD.z,w.seed),z:CINDERLORD.z}
+  return {x:CINDERLORD.x,y:height(CINDERLORD.x,CINDERLORD.z,w),z:CINDERLORD.z}
 }
 export function outsideHome(w:Pick<World,'home'>,p:Point){return !w.home||Math.hypot(p.x-w.home.x,p.z-w.home.z)>60}
 

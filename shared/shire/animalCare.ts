@@ -4,6 +4,7 @@ import { Point, SPECIES, World, distance } from './model'
 export function breedingIssue(w:World,damId:string,sireId:string,observer:Point=w.player):string|null {
   const dam=w.animals.find(a=>a.id===damId),sire=w.animals.find(a=>a.id===sireId)
   if(!dam||!sire)return 'Choose a female and a male from your animal list.'
+  if(w.combat?.actors.some(a=>(a.id===damId||a.id===sireId)&&a.vitality.hp===0))return 'Defeated animals cannot breed. Wait for their recovery.'
   if(dam.id===sire.id||dam.species!==sire.species||dam.sex!=='female'||sire.sex!=='male')return 'Select a female and a male of the same species.'
   const species=SPECIES[dam.species]
   if(dam.age<species.maturity||sire.age<species.maturity)return 'Young animals must grow into adults first.'

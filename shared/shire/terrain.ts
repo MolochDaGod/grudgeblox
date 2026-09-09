@@ -1,6 +1,9 @@
 import { Excavation, Point, World, PLAYER_HEIGHT, PLAYER_RADIUS, FURNITURE, WORLD_LIMIT } from './model'
+import { TerrainContext, isAtlas, atlasHeight, inBounds, buildingBlocked, bridgeBlocked, fallFloor, landcover } from './atlas'
 
-export function height(x: number,z: number,seed=42) {
+export function height(x: number,z: number,context:TerrainContext=42) {
+  if(isAtlas(context))return atlasHeight(x,z)
+  const seed=typeof context==='number'?context:context.seed
   const s=(seed%199)*0.01
   const hills = 11*Math.exp(-((x+30)**2/540+(z+6)**2/790)) + 5*Math.exp(-((x-170)**2+(z-95)**2)/6500)
   const rolling=3.2*Math.sin(x/86+s)*Math.cos(z/130)+2.7*Math.sin(z/67+0.3)+1.5*Math.cos((x+z)/43)
@@ -17,7 +20,7 @@ export function shapeDistance(p: Point,e: Excavation) {
   return Math.hypot(Math.max(qx,0),Math.max(qy,0),Math.max(qz,0))+Math.min(Math.max(qx,qy,qz),0)-round
 }
 /** Positive is earth; subtracting a full 3D distance volume leaves actual roofs and walls. */
-export function density(x:number,y:number,z:number,seed:number,edits:Excavation[]) {
+export function density(x:number,y:number,z:number,seed:TerrainContext,edits:Excavation[]) {
   let d=height(x,z,seed)-y
   for(const e of edits) {
     const radius=Math.hypot(e.size.x,e.size.z)+(e.shape==='sphere'?1:0)
@@ -27,15 +30,15 @@ export function density(x:number,y:number,z:number,seed:number,edits:Excavation[
   }
   return d
 }
-export function solid(p:Point,w:Pick<World,'seed'|'edits'>) { return density(p.x,p.y,p.z,w.seed,w.edits)>0.015 }
-export function terrainClear(p:Point,w:Pick<World,'seed'|'edits'>) {
+export function solid(p:Point,w:Pick<World,'seed'|'edits'>&Partial<Pick<World,'generator'>>) { return density(p.x,p.y,p.z,w,w.edits)>0.015 }
+export function terrainClear(p:Point,w:Pick<World,'seed'|'edits'>&Partial<Pick<World,'generator'>>) {
   for(const dy of [0.09,0.4,0.9,PLAYER_HEIGHT-0.08]) for(const [dx,dz] of [[0,0],[PLAYER_RADIUS,0],[-PLAYER_RADIUS,0],[0,PLAYER_RADIUS],[0,-PLAYER_RADIUS]]) {
     if(solid({x:p.x+dx,y:p.y+dy,z:p.z+dz},w))return false
   }
   return true
 }
 export function clear(p:Point,w:World) {
-  if(Math.abs(p.x)>WORLD_LIMIT || Math.abs(p.z)>WORLD_LIMIT || !terrainClear(p,w))return false
+  if(!inBounds(p.x,p.z,w) || buildingBlocked(p,w) || bridgeBlocked(p,w) || !terrainClear(p,w))return false
   for(const f of w.furniture) {
     if(f.kind==='lamp')continue
     const sz=f.kind==='door'&&f.fit?{x:f.fit.width,y:f.fit.height,z:0.25}:FURNITURE[f.kind].size,dx=p.x-f.position.x,dz=p.z-f.position.z,c=Math.cos(f.yaw),s=Math.sin(f.yaw)
@@ -58,7 +61,7 @@ export function hasOutdoorExit(start:Point,w:World):boolean {
   const queue:Point[]=[start],seen=new Set<string>(),step=0.55
   for(let i=0;i<queue.length&&i<4000;i++){
     const p=queue[i]
-    if(height(p.x,p.z,w.seed)<p.y+0.5&&clear(p,openWorld))return true
+    if(height(p.x,p.z,w)<p.y+0.5&&clear(p,openWorld))return true
     for(const [dx,dz] of [[step,0],[-step,0],[0,step],[0,-step]]){
       const q={x:p.x+dx,y:p.y,z:p.z+dz}
       if(Math.hypot(q.x-start.x,q.z-start.z)>24)continue
@@ -71,11 +74,11 @@ export function hasOutdoorExit(start:Point,w:World):boolean {
   }
   return false
 }
-export function surfaceAt(x:number,z:number,w:Pick<World,'seed'|'edits'>,from=80) {
-  for(let y=from;y>-40;y-=0.2) if(density(x,y,z,w.seed,w.edits)>0)return y+0.2
-  return height(x,z,w.seed)
+export function surfaceAt(x:number,z:number,w:Pick<World,'seed'|'edits'>&Partial<Pick<World,'generator'>>,from=height(x,z,w)+1) {
+  for(let y=from;y>fallFloor(w)-5;y-=0.2) if(density(x,y,z,w,w.edits)>0)return y+0.2
+  return height(x,z,w)
 }
-export function rayTerrain(origin:Point,direction:Point,w:Pick<World,'seed'|'edits'>,max=10) {
+export function rayTerrain(origin:Point,direction:Point,w:Pick<World,'seed'|'edits'>&Partial<Pick<World,'generator'>>,max=10) {
   for(let t=0.15;t<max;t+=0.08) {const p={x:origin.x+direction.x*t,y:origin.y+direction.y*t,z:origin.z+direction.z*t};if(solid(p,w))return {...p,distance:t}}
   return null
 }
@@ -84,11 +87,11 @@ export interface TerrainMesh { positions: Float32Array; normals:Float32Array; co
 const CORNERS=[[0,0,0],[1,0,0],[1,1,0],[0,1,0],[0,0,1],[1,0,1],[1,1,1],[0,1,1]]
 const TETS=[[0,5,1,6],[0,1,2,6],[0,2,3,6],[0,3,7,6],[0,7,4,6],[0,4,5,6]]
 /** Same field is used for character collision and both sides of chunk seams. */
-export function meshChunk(cx:number,cz:number,seed:number,allEdits:Excavation[],step=1):TerrainMesh {
+export function meshChunk(cx:number,cz:number,seed:TerrainContext,allEdits:Excavation[],step=1):TerrainMesh {
   const size=16,x0=cx*size,z0=cz*size
   const edits=allEdits.filter(e=>{const r=Math.hypot(e.size.x,e.size.z)+2;return e.center.x+r>=x0&&e.center.x-r<=x0+size&&e.center.z+r>=z0&&e.center.z-r<=z0+size})
   const pos:number[]=[],norm:number[]=[],col:number[]=[]
-  const paint=(x:number,y:number,z:number)=>{const grass=y>height(x,z,seed)-0.38;const v=0.95+0.05*Math.sin(x*1.8+z*1.2);return grass?[0.30*v,0.43*v,0.17*v]:[0.40*v,0.29*v,0.17*v]}
+  const paint=(x:number,y:number,z:number)=>{const grass=y>height(x,z,seed)-0.38;const v=0.95+0.05*Math.sin(x*1.8+z*1.2);if(isAtlas(seed)&&grass){const c=landcover(x,z),rgb=c===10?[0.319,0.305,0.147]:c===3?[0.084,0.133,0.053]:c===4||c===5?[0.159,0.223,0.093]:c===8?[0.361,0.352,0.171]:[0.242,0.314,0.091];return rgb.map(n=>n*(0.96+0.04*Math.sin(x/57)*Math.cos(z/69)))}return grass?[0.30*v,0.43*v,0.17*v]:[0.40*v,0.29*v,0.17*v]}
   const tri=(a:number[],b:number[],c:number[],out?:number[])=>{
     let ux=b[0]-a[0],uy=b[1]-a[1],uz=b[2]-a[2],vx=c[0]-a[0],vy=c[1]-a[1],vz=c[2]-a[2]
     let nx=uy*vz-uz*vy,ny=uz*vx-ux*vz,nz=ux*vy-uy*vx

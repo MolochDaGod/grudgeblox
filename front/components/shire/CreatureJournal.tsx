@@ -1,0 +1,7 @@
+import type { World, WorldAction } from '@shared/shire/model'
+import { HOSTILES, CINDERLORD_DEFINITION } from '@shared/shire/hostiles'
+import { combatActor } from '@shared/shire/combat'
+
+export default function CreatureJournal({world,busy,onAction,onRetry}:{world:World;busy:boolean;onAction:(a:WorldAction)=>void;onRetry:()=>void}){
+  return <><div className="shire-eyebrow">CREATURES & FACTIONS</div><h2>Encounter journal</h2><p>Twenty-five textured, animated representatives, plus the original Cinderlord. Travel places you beyond their detection range; walk closer to challenge them.</p><p className="shire-note">These are creative encounters across the game world. Human entries represent hostile factions; the journal does not describe entire peoples as evil.</p><div className="shire-creature-list">{[...HOSTILES,CINDERLORD_DEFINITION].map(d=>{const a=combatActor(world,`hostile:${d.id}`);return <article key={d.id}><h3>{d.name}</h3><p>{d.description}</p><small>{d.hp} health · {d.armour} armour · {d.damageType} attacks<br/>{a?`${Math.round(a.home.x)} E · ${Math.round(a.home.z)} S`:''}{a?.vitality.hp===0?` · returns in ${Math.max(0,Math.ceil((a.vitality.respawnAt||0)-world.time))}s`:''}</small><button disabled={busy||!a} onClick={()=>onAction({type:'travel-encounter',id:a!.id})}>Visit {d.name}</button></article>})}</div><button onClick={onRetry}>Retry failed creature models</button></>
+}

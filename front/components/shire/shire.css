@@ -12,3 +12,18 @@
 .shire-encounter-status{margin-top:10px;padding:12px;border:1px solid #c47a40;border-radius:10px;background:rgba(39,26,22,.93);color:#ffdcaa;max-width:210px;box-shadow:0 5px 24px #21160d55}
 .shire-encounter-status strong,.shire-encounter-status small{display:block}
 .shire-encounter-status small{margin-top:7px;line-height:1.5;color:#e8c49f}
+
+.shire-overview .shire-crosshair,.shire-overview .shire-aim,.shire-overview .shire-explore-card,.shire-overview .shire-vignette{display:none}.shire-overview .shire-minimap,.shire-overview .shire-compass{display:none}.shire-overview .shire-left{top:120px}.shire-panel select{display:block;width:100%;padding:10px;margin:8px 0 14px;border:1px solid #baae8c;background:#f5ecd6;color:#304533;border-radius:4px}.shire-overview .shire-topbar{background:linear-gradient(#f0e6ccdf,transparent)}
+/* Shared living-entity combat feedback. */
+.shire-combat-hud{position:absolute;left:20px;bottom:95px;width:290px;background:rgba(24,38,31,.94);color:#f8f0db;border:1px solid #77825c;border-radius:12px;padding:13px;z-index:5;box-shadow:0 8px 25px #0003}
+.shire-combat-hud.hurt{border-color:#fa6c5c;box-shadow:0 0 30px #c8303066}
+.shire-vital-row{display:flex;justify-content:space-between;gap:8px;font-size:13px;margin:3px 0}
+.shire-combat-hud meter{display:block;width:100%;height:14px;margin:4px 0 8px;accent-color:#a9c66d}
+.shire-combat-hud .stamina{accent-color:#e3ba62}
+.shire-combat-hud button{padding:7px 8px;font-size:12px;white-space:nowrap}
+.shire-target-health{margin-top:12px;padding-top:9px;border-top:1px solid #ffffff33;display:flex;flex-direction:column;gap:4px}
+.shire-afflictions{display:block;color:#ffa26c;margin:6px 0}
+.shire-defeat{position:absolute;top:40%;left:50%;transform:translate(-50%,-50%);max-width:430px;background:#242a23f5;color:#f8f0db;padding:28px;border:1px solid #dd9273;border-radius:16px;z-index:30;text-align:center}
+.shire-creature-list article{border-top:1px solid #a9a08466;padding:13px 0}.shire-creature-list h3{margin:0}.shire-creature-list p{margin:6px 0}.shire-creature-list small{display:block;line-height:1.6;margin-bottom:7px}.shire-creature-list button{width:100%}
+@media(max-width:800px){.shire-combat-hud{left:8px;bottom:85px;width:230px;padding:9px}.shire-combat-hud button{padding:6px 4px}.shire-vital-row{font-size:11px}}
+.shire-qa{position:absolute;top:120px;left:20px;z-index:20;width:280px;background:#f3e9ce;padding:8px;border-radius:8px;font-size:12px}.shire-qa button{display:block;margin:4px 0;width:100%;padding:5px}
