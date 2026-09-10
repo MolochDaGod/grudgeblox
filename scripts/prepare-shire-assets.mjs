@@ -13,6 +13,7 @@ const sha=bytes=>createHash('sha256').update(bytes).digest('hex')
 const verify=async(file,expected)=>{const bytes=await fs.readFile(file);if(expected&&sha(bytes)!==expected.toLowerCase())throw Error(`Hash mismatch: ${file}`);return bytes}
 const put=async(file,bytes)=>{await fs.mkdir(path.dirname(file),{recursive:true});try{const old=await fs.readFile(file);if(sha(old)!==sha(bytes))throw Error(`Existing asset differs; preserved: ${file}`)}catch(e){if(e.code!=='ENOENT')throw e;await fs.writeFile(file,bytes,{flag:'wx'})}}
 const assets=[]
+const existingManifest=JSON.parse(await fs.readFile(path.join(root,'assets','manifest.json'),'utf8').catch(e=>{if(e.code==='ENOENT')return '{"assets":[]}';throw e}))
 for(const [id,name] of [['resident-human','human.glb'],['resident-elf','high_elf.glb']]){
   const sourcePath=path.join(repo,'front','public','kit','4character','races',name),bytes=await verify(sourcePath),file=`${id}.glb`
   await put(path.join(root,'assets',file),bytes)
@@ -50,7 +51,8 @@ const references=[
   ['tolkien-legendarium-peoples-and-races-reference-catalogue.md','C:\\Users\\mjneu\\Documents\\Codex\\2026-09-02\\middle-earth-races-research\\outputs\\tolkien-legendarium-peoples-and-races-reference-catalogue.md','b0e3525ae59b16420834a9297ea1254cd4750ad93a4ca1e1088fea1924963a04']
 ]
 for(const [name,source,hash] of references)await put(path.join(root,'assets','references',name),await verify(source,hash))
-const manifest={version:1,createdAt:new Date().toISOString(),assets,references:references.map(([file,sourcePath,sha256])=>({file:`references/${file}`,sourcePath,sha256:sha256.toLowerCase()})),missingProductionSpecies:['sheep','chicken','cattle','pig','horse','fish','llama','bird','frog'],geography:'Designed layout; no measured geographic or fauna database verified.'}
+for(const asset of existingManifest.assets.filter(a=>a.status?.startsWith('original-shire-life'))){if(!/^[a-z0-9-]+\.glb$/.test(asset.file))throw Error('Invalid retained life asset path.');const bytes=await verify(path.join(root,'assets',asset.file),asset.sha256);if(bytes.length!==asset.byteSize)throw Error('Retained life asset size changed.');assets.push(asset)}
+const manifest={version:1,createdAt:new Date().toISOString(),assets,references:references.map(([file,sourcePath,sha256])=>({file:`references/${file}`,sourcePath,sha256:sha256.toLowerCase()})),missingProductionSpecies:['sheep','chicken','cattle','pig','horse','fish','llama','bird','frog'].filter(s=>!assets.some(a=>a.id===`animal-${s}`)),geography:'Tolkien atlas with designed elevations, local households and activities; original compact worlds remain available.'}
 await fs.writeFile(path.join(root,'assets','manifest.json'),JSON.stringify(manifest,null,2))
 if(await fs.stat(path.join(root,'assets','hostile-races')).catch(()=>null))await registerHostiles(root)
 console.log(JSON.stringify({storage:root,assets:assets.map(a=>({id:a.id,sha256:a.sha256,byteSize:a.byteSize})),verifiedEvidenceFiles:bundle.entries.length,missingProductionSpecies:manifest.missingProductionSpecies},null,2))

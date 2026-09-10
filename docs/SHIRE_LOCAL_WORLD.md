@@ -1,66 +1,97 @@
-# The Middle-earth — local Shire world
+# The Shire — local game guide
 
-## Atlas worlds — integrated 8 September 2026
+Current implementation: 10 September 2026. Source: saved `D:\grudgeblox` main. Worlds, assets and builds: `E:\GrudgeBloxData\TheMiddleEarth`. This game runs on this PC without sign-in.
 
-New worlds now use the Tolkien atlas generation: 37 populated settlement sites, 675 public buildings, seven rivers, full regional distances and 43 travel destinations. The scenery refinement adds much denser mixed woodland, undergrowth and connected entrance paths, aligns crossings with bridge decks, and places Haysend's houses on one bank. Continue **The Shire · Tolkien atlas** to inspect the prepared world. Use **Map**, **Area overview** and **Landmark view**. Original saves retain their original geography. See [the integration notes](SHIRE_ATLAS_INTEGRATION.md) for terrain, town features, validation and interpretation limits. The older implementation notes below describe the original creative generation unless stated otherwise.
+## Start playing
 
-## Tolkien terrain reference atlas - 8 September 2026
+Double-click **The Shire.lnk** in `D:\grudgeblox`. The existing **Play The Middle-earth.cmd** also works. The launcher opens `http://127.0.0.1:4100/play/shire`. Continue a save or create a named world, choosing a seed, atlas or original geography, and play style.
 
-The new map and terrain specification is stored at `E:\GrudgeBloxData\TheMiddleEarth\assets\references\shire-atlas-2026-09-08`. Open `Shire-Terrain-Atlas.pdf` for the four map sheets and generation guide; `README.md` describes the editable maps, feature register and height data. It uses a T.A. 3018 baseline, identifies book-map discrepancies and labels every numerical elevation as designed. New atlas worlds now use this reference package; original saves keep their existing generation.
+| Style | Experience |
+| --- | --- |
+| Homestead | Default peaceful life: neighbours, earned improvements, gardens, animals and discovery. Hostile encounters are inactive. |
+| Adventure | Home and village systems plus six authored regional threats, equipment, rewards and stories. |
+| Creative | Free construction, supplied items, open travel and the retained encounter catalogue. |
 
-Source: `D:\grudgeblox`, saved main checkout. Data: `E:\GrudgeBloxData\TheMiddleEarth`. This mode is for this PC and needs no sign-in or remote game server.
+Settings can change the style. Opened original worlds receive additive village-life state and initially use Creative to preserve their building and travel access. Their geography and existing objects remain.
 
-## Play
+## Your first home
 
-After a successful local build, double-click `D:\grudgeblox\Play The Middle-earth.cmd`. It starts the owned server on `127.0.0.1:4100`, waits for E: storage, and opens `/play/shire`. Choose New world or Continue. An occupied port reports a useful error and leaves the other process alone.
+1. Journal starts with **A place at the table**. Talk to Ada Goodbarrel in Hobbiton or enter the Ivy Bush. Finish the request with the neighbour to receive the reward.
+2. Accept **A hill to call home**. Follow the suggested hillside waypoint. **Face direction** turns the view; walk there yourself. Build → **Mark this hill as home** claims the land.
+3. Return to the carpenter to collect timber and bedding cloth. Journal's **Find neighbour** points to the workshop. Village search finds names, villages and professions; enter the building when the resident is indoors.
+4. At your home marker, face clear ground and choose Household → **Starter smial**. Walk down the descending entrance into its covered chamber. Individual building tools can extend it.
+5. Furnish a bed and chest. Aim at supported floor or use **Place on the floor ahead**. Keep the exit clear. Complete the carpenter's next requests.
+6. Outside, face clear soil and use Household → **Kitchen garden**. Twelve watered plots cost six seeds of each crop. After 60 seconds of active play, Farm → **Nearby garden** offers harvesting.
+7. Cook carrots and herbs into garden stew at a village kitchen. Complete the gardening/cooking requests and deliver a stew to the Green Dragon in Bywater.
+8. Continue through animal care, a crafted lantern, discovery and a village gathering. Already-achieved objectives count when a request becomes available; each reward is collected once.
 
-- Walk with WASD, run with Shift, jump with Space. Right-drag to look, or use Explore to capture the mouse. Escape and window blur release input. Arrow keys and Page Up/Down also steer the view.
-- Mark a free hillside as home. Aim into it and use Entry: it creates an 8–20 m descending tunnel with a gentle slope and a level covered chamber. The translucent preview shows the complete plan. Walk down into the chamber, then extend rooms/passages. Entry undoes as one group and cannot be undone while you are inside it.
-- Sculpt and Add earth have independent width, height and depth, initially 2 m each. Choose ellipsoid/sphere, rounded box or cylinder, then adjust its turn. The translucent layer shows the actual volume, including the part inside the hill. Enclosed rooms retain earth overhead. Floor, ceiling, sculpt, fill, undo and redo use the same persistent 3D field. Undo and fill cannot bury the player.
-- Place tables, chairs, beds, shelves, a household chest, doors, lamps and fences on supported ground. New doors measure the hallway walls and ceiling and add a solid surround around the round opening. Turn the door across the passage before placing it. Old saved doorways keep their previous form; remove and place one again to apply the fitted surround. Doors open with E; lanterns toggle light and beds advance world time. A furnishing cannot occupy the player or close an existing local escape path. Household storage holds the world's harvested produce.
-- Till/plant barley or carrots outdoors. Water, wait 60 seconds of play, then harvest produce, seeds and feed. Look at a crop and press E to water or harvest.
-- Feed both adult parents near you, then choose a female and male of the same species. The care panel lists every animal, filters by species, explains when a pair is not ready, and shows actual parents and offspring in Family details. New offspring receive distinct species-numbered names. Maturity, care, gestation/developing clutches, recovery periods, parent IDs and offspring persist. All ten requested species have simulation rules. Durations are accelerated game rules.
-- Wildlife now has species-specific routines and nearby-player reactions: flocking sheep, pecking chickens, hopping rabbits, slow-grazing cattle, rooting pigs, cantering horses, schooling fish, watchful browsing llamas, circling/perching birds and basking/hopping frogs. Young follow their actual mother. Wait quietly calms a nearby animal; Call nearby startles it; feeding also calms it. The panel shows its current activity.
-- Place a Wildlife feeder outdoors and use it to transfer up to 12 feed from your supplies; hungry land animals approach and eat from it. Birds land on open Bird perches. Startled rabbits retreat to Rabbit shelters, routing around the shelter to its entrance. Use a perch or shelter to close/reopen wildlife access. These new entities and their state save with the world.
-- Walk the countryside or use the map to visit three Shire neighbourhoods and the Fangorn elven clearing. Save & leave records your current pose. Continue restores the selected local world.
-- Export backup writes a JSON file under E: `saves\backups`. Restore imports it into a new slot. Recover previous creates a separate slot and preserves a damaged original.
+The journal has 11 introductory requests, 37 village requests and three regional stories. Completed objectives may still require their named neighbour before rewards can be collected.
 
-## Storage and launcher
+## Controls and settings
 
-`scripts\shire-local.ps1` supports Prepare, Build, Start, Stop and Status. Start opens a browser only with `-OpenBrowser`. Stop verifies and stops only the recorded Shire Node process. The listener binds to loopback. E: is required; no C:/D: data fallback is used.
+| Action | Default |
+| --- | --- |
+| Walk / run / jump | W A S D / Shift / Space |
+| Walk forward with the mouse | Hold LMB + RMB together; release either to stop |
+| Point to a walking destination | Right-click dry, open ground; keyboard movement cancels |
+| Select a creature or object | Left-click it, then interact or strike when within reach |
+| Look | Right-drag, Explore mouse capture, or arrow keys and Page Up/Down |
+| Interact | E or the contextual interaction button |
+| Apply tool / strike while exploring | F |
+| Guard / heal / dodge | Q / H / R |
+| Swim up / dive | Space / Ctrl |
+| Pause and release input | Escape or Pause |
 
-The launcher points `front\.shire-next` at E: `builds\next`, and directs new temp/Node caches to E:. It preserves the existing `.next`. All world revisions use validated UUID directories, checksummed revision files and atomic current/previous heads. Each accepted action persists before success is returned. Simulation runs only while the world is actively polled; time does not jump forward when closed. The service validates local host, origin, session and request limits. It does not introduce fleet account, bag, wallet or character identity databases.
+Right-drag steers the view. Both-button forward movement works with this steering and uses normal collision, swimming and riding rules. Right-click travel follows a local route and stops on arrival or when blocked; walking, opening a panel, pausing or losing focus cancels it. Turn it off with **Right-click ground to walk there** in Settings. While Explore has captured the mouse, left-click uses the current tool or weapon.
 
-The isolated Next route uses the existing repo's Three loader plus its own local action/snapshot service. The shared density field serves both character collision and terrain-worker marching tetrahedra. Detailed terrain streams around the player; far countryside uses cheaper surface geometry. Unrelated shared multiplayer source is preserved.
+Settings provides rebinding, sensitivity, vertical inversion, field of view, first/third-person camera, interface scale, contrast, reduced motion, quality, captions and separate master/music/effects volumes. Duplicate control bindings are rejected. Auto-pause on focus loss is configurable. Pause freezes simulation; ordinary activity panels leave the world running. Touch and gamepad controls are implemented; physical-device acceptance is separate from desktop checks. Character settings offer Hobbit/human appearance, a name and clothing colour.
 
-## Assets and evidence boundaries
+## A useful village life
 
-`scripts\prepare-shire-assets.mjs` verifies and copies the retained approved animated rabbit and all 124 evidence files to E:. Its final GLB SHA-256 is `8e175fae59f5c09a4adc10d3c82645b6c9bd3ddad0f4656a1133f782bf87437c`; canonical asset ID `3777b19b-676a-4d40-9175-104eee12b3e7` is retained. In-game scale/contact and motion acceptance remain separate from the upstream approval.
+Atlas worlds contain 215 named residents, 37 settlements and 675 public buildings. Residents have professions, households, friendship, dialogue and daily destinations. They walk toward work, home, inns, markets and festivals; distant populations sleep to limit processing. These are authored game households, not a claim that every resident occurs in Tolkien's books.
 
-Existing GrudgeBlox human and high-elf kit models are NPC residents. The first-person player does not introduce a replacement hero asset. Sheep, chickens, cattle, pigs, horses, fish, llamas, birds and frogs currently use explicitly labelled development representations. They are not accepted production models. No new generation pipeline was launched.
+Use Village search, Directions and Nearby doorways, or aim at a marked entrance and use the current Interact binding (E by default). Public interiors have furniture, kitchens and workbenches. Mills and smithies add specialised stations. Shared workshops allow visits to different assigned residents; Talk selects the person being addressed.
 
-The peoples workbook and separate atlas/races reports are copied with exact hashes in `assets\references` and the asset manifest. The 4 km square's hills, roads, pond, 44 public Shire homes and eight Fangorn homes are designed geography. A measured geometric map and fauna database remain unverified. Fangorn's elves follow Al's creative direction. Public homes are scenery and settlement anchors; custom excavated player homes are the editable interiors.
+Trade shows quantities and prices. Gifts improve friendship once per resident per day. Hosts offer rest, meals, lessons, news and journey bookings. Lessons are limited to one per host per day. Food heals and grants a meal bonus; tea clears harmful effects. The satchel contains 35 item types and 16 recipes, with six skills gaining experience from useful actions.
 
-## Current validation
+Ten-minute days form seven-day seasons. Every third day is a market day and every seventh a festival. Share food at an inn or green for a reward, larger on festival days. Rain waters crops. Clear weather, clouds, mist, rain and seasonal snow change the atmosphere. Original local music, environmental cues and interaction sounds have captions and volume controls.
 
-The 32 focused source/filesystem checks include excavation and roofs, walking collision, grouped Entry undo, sculpt dimensions/shapes, fitted-door boundaries, furnishings/storage, timed crops, breeding/family persistence, wildlife habitats/reactions, feeders/perches/shelters, imports, backup/recovery and revision retention. Six live service checks include current-player observations for wildlife. Reports are in E: `evidence\source-checks-latest.json`, `service-checks-latest.json` and the uniquely named storage-check folder.
+## Home, garden and animal options
 
-Al reported a positive gameplay pass for the initial elements on 6 September 2026. That acceptance is retained. The new wildlife/building expansion has source, build, service and fresh-review evidence; its new controls and visuals await the next gameplay pass. All eight pre-expansion worlds were exported and snapshotted on E: before rebuilding; their 16 current/previous revision heads were checked for compatibility and preservation.
+Earned construction belongs within 85 metres of the home marker. Public homes, lanes and gardens are protected. Creative removes costs while retaining physical and public-place rules. Established furnished homes cannot be casually relocated in earned styles.
 
-Production build and manual gameplay evidence are tracked separately in E: `evidence`. The coordinator controls the exclusive desktop test slot. No commit, push, deployment, paid service, public listener, user-file deletion or unrelated app/GPU interruption is included.
+Volumetric terrain supports actual earth-covered rooms, passages, adjustable sculpt shapes, filling and grouped undo/redo. Changes that bury the player are rejected. Round doors fit their passages. Furniture checks support, occupancy and exits. Household controls move, copy, rotate and undo nearby furniture. Empty a chest before removing it or undoing its placement. A table supplies a home workbench; a nearby table plus lantern supplies a cooking station. Beds provide a comfort bonus.
 
-## Reusable administration worker
+Barley and carrots yield produce, seed and feed. Apple trees, herbs and flax offer repeat harvests. Renewable gathering spots provide timber, stone, fruit, herbs, fibre, clay and iron. Place garden plans outside on supported soil.
 
-The dedicated worker `shire-local-admin-v1` lives in `E:\GrudgeBloxData\TheMiddleEarth\admin-worker`. Run a single pass from PowerShell:
+In Household, feed a pasture animal to earn trust, adopt it, name it, lead it along clear ground and settle it on your land. Cared-for animals provide applicable eggs, milk or wool. An owned pony and saddle support riding. Fish, frogs and wild birds remain habitat wildlife; riverbank fishing provides food.
 
-```powershell
-& 'C:\Program Files\nodejs\node.exe' 'E:\GrudgeBloxData\TheMiddleEarth\admin-worker\run.mjs'
-```
+Use Animals → Follow directions to locate livestock. Animal cards keep their positions while the panel is open, and directions mark the last observed position. The Animals panel retains species filtering, calm/call actions, breeding and family records. Mature, healthy, fed, unrelated opposite-sex pairs of one species can breed nearby. Parents, offspring, maturity, gestation/clutches and recovery persist; young follow their actual mother. Feeders consume stored feed, birds use open perches and rabbits use open shelters. Regional populations retain their identities when revisited.
 
-It checks E: capacity, the recorded local server identity and entry route, source/build/check freshness, retained asset hashes and rabbit approval evidence, and existing animal-catalog metadata. It writes only its own state, backlog and dated reports. `WORKER.md` describes how to reuse it; `state.json` points to the latest report. A concurrent invocation is refused. Each invocation finishes after one pass; there is no scheduled monitor. Operational health cannot establish gameplay or visual acceptance.
+## Travel and adventure
 
-## Hostile creatures and combat — 8 September 2026
+The atlas offers 43 destinations: settlements, bridge, quarry, ferry, Hay Gate, Old Man Willow and barrow. Discovered map destinations are free to revisit. An indoor host can book an undiscovered destination for five coins. Walking and riding remain available across continuous countryside. Travel shortcuts, elevations and settlement layouts are designed interpretations; the dated atlas references distinguish book geography from inference.
 
-The 25 completed Blender representatives and retained Cinderlord now spawn through the Creatures journal in both world generators. Player, enemies, residents and wildlife share health, armour, damage, effects, healing, death and respawn. F strikes, Q guards and H heals; Space swims up and Ctrl dives. Models stream from the existing E: asset store. See [the combat integration and live testing report](SHIRE_COMBAT_INTEGRATION.md) for the catalog, screenshots, controls, preservation checks and practical limits.
+Booked or discovered ferry travel arrives at a usable dock; walking directions choose the nearer bank. The Brandywine ferry crosses between two physical landings in 18 seconds. Board through the landing interaction or nearby Village control, then wait for arrival. Hay Gate can open and close. Forest landmarks and the barrow provide persistent exploration actions. Follow the barrow's entry clue to activate its three runes and receive a token once.
 
-The final build passed 18 combat checks, 32 existing Shire checks and 10 atlas checks. Actual game tests covered every encounter model plus ground, flying and water combat, residents, wildlife, falling, drowning, recovery and persistence. The 24 revision heads belonging to the 12 pre-existing worlds remain unchanged.
+Adventure territories use ambushes, flanking, guarding, thrown projectiles, area attacks and flight. Combat includes sword, bow, arrows, shield, guard, dodge, healing, armour, effects, death and recovery. Damage and outcomes are server-controlled. Arrows travel and consume ammunition. Defeated regional threats grant rewards and journal progress. Creative additionally exposes the retained 25 hostile representatives and Cinderlord for direct encounter travel. Original geography retains Ashen Hollow and the user-directed Fangorn clearing.
+
+## Save management
+
+Save world records progress; Save & leave returns to the opening screen. Settings renames or archives slots. Show archived slots to restore them. Export writes an E: backup; import and previous-revision recovery create separate slots.
+
+The store validates worlds and atomically switches checksummed current/previous revisions. Accepted actions persist before success is reported. Simulation advances only while actively polled; closed worlds do not jump forward. The implementation review uses an isolated play store, with original save and asset hashes tracked separately.
+
+## Assets and acceptance
+
+Eleven original Blender packages cover nine animal species and male/female Hobbits. Each has its own native project, skin, materials, semantic clips and review renders. The approved rabbit, human/elf packages and hostile catalogue remain. New opening artwork, 35 item icons, round-door identity and local shortcut are applied. See [asset provenance](SHIRE_ASSET_PROVENANCE_2026-09-10.md).
+
+The new art is stylised Blender-authored geometry, not Hunyuan output, scans or purchased models. Integrity, native motion inspection, runtime appearance, audible output and Al's visual acceptance remain separate checks. Current results belong in [the implementation ledger](SHIRE_IMMERSIVE_IMPLEMENTATION.md). [The original audit](SHIRE_GAME_AUDIT_2026-09-10.md) records the pre-implementation state. [Atlas integration](SHIRE_ATLAS_INTEGRATION.md) and [combat integration](SHIRE_COMBAT_INTEGRATION.md) retain their dated history.
+
+The previous guide is preserved as `evidence\immersive-2026-09-10\SHIRE_LOCAL_WORLD-before.md`. Al's positive initial gameplay feedback from 6 September remains historical acceptance; it does not automatically approve these new systems and assets.
+
+## Local operation
+
+`scripts\shire-local.ps1` supports Prepare, Build, Start, Stop and Status. Start opens a browser with `-OpenBrowser`. Stop verifies the owned process. The listener binds to loopback; occupied ports leave other processes alone. E: is required, with no C:/D: fallback. The launcher directs `front\.shire-next` and new caches to E: and preserves the unrelated `.next`.
+
+The administration worker remains at `E:\GrudgeBloxData\TheMiddleEarth\admin-worker`. Its `run.mjs` performs one bounded operational pass; `WORKER.md` explains usage. It is not a scheduled monitor, and operational health does not establish gameplay or visual acceptance.

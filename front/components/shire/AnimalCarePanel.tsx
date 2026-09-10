@@ -12,9 +12,12 @@ function optionLabel(a:Animal,w:World,position:Point){
   return `${a.name} · ${lifeStage(a)} · ${care} · ${Math.round(distance(a.position,position))} m`
 }
 
-export default function AnimalCarePanel({world,position,busy,onFeed,onBreed,onReact}:{world:World;position:Point;busy:boolean;onFeed:(id:string)=>void;onBreed:(dam:string,sire:string)=>void;onReact:(id:string,type:'calm'|'startle')=>void}){
+export default function AnimalCarePanel({world,position,busy,onFeed,onBreed,onReact,onDirections}:{world:World;position:Point;busy:boolean;onFeed:(id:string)=>void;onBreed:(dam:string,sire:string)=>void;onReact:(id:string,type:'calm'|'startle')=>void;onDirections:(animal:Animal)=>void}){
   const [damId,setDam]=useState(''),[sireId,setSire]=useState(''),[filter,setFilter]=useState<Species|'all'>('all')
-  const nearby=[...world.animals].sort((a,b)=>distance(a.position,position)-distance(b.position,position))
+  // Keep cards under the pointer while animals move; refresh their order when the panel opens.
+  const [openingOrder]=useState(()=>[...world.animals].sort((a,b)=>distance(a.position,position)-distance(b.position,position)).map(a=>a.id))
+  const rank=new Map(openingOrder.map((id,index)=>[id,index]))
+  const nearby=[...world.animals].sort((a,b)=>(rank.get(a.id)??Infinity)-(rank.get(b.id)??Infinity)||a.id.localeCompare(b.id))
   const dam=world.animals.find(a=>a.id===damId),sire=world.animals.find(a=>a.id===sireId)
   const issue=breedingIssue(world,damId,sireId,position)
   const alive=(a:Animal)=>living(combatActor(world,a.id))
@@ -59,9 +62,10 @@ export default function AnimalCarePanel({world,position,busy,onFeed,onBreed,onRe
           {a.parents?<p>Mother: {nameOf(a.parents[0])}<br/>Father: {nameOf(a.parents[1])}</p>:<p>One of this world’s founding animals.</p>}
           {children.length>0&&<p>Offspring: {children.map(child=>child.name).join(', ')}</p>}
         </details>
+        <button disabled={busy} onClick={()=>onDirections(a)}>Follow directions</button>
         <div className="shire-row"><button disabled={busy||!alive(a)||distance(position,a.position)>7} onClick={()=>onReact(a.id,'calm')}>Wait quietly</button><button disabled={busy||!alive(a)||distance(position,a.position)>9} onClick={()=>onReact(a.id,'startle')}>Call nearby</button></div>
       </div><button disabled={busy||!alive(a)||world.supplies.feed<1||distance(position,a.position)>7} onClick={()=>onFeed(a.id)}>Feed</button></article>
     })}</div>
-    <p className="shire-note">Durations are shortened game rules. The retained rabbit is reused; development visuals for other species still await accepted production assets.</p>
+    <p className="shire-note">Durations are shortened game rules. Directions mark the animal’s last observed position. Livestock and river life use original Blender-authored assets alongside the retained rabbit.</p>
   </>
 }

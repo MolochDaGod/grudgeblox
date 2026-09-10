@@ -6,6 +6,7 @@ import * as SkeletonUtils from 'three/addons/utils/SkeletonUtils.js'
 export class LoadManager {
   private static instance: LoadManager
   private cache = new Map<string, THREE.Mesh>()
+  private pending = new Map<string, Promise<THREE.Mesh>>()
   dracoLoader = new DRACOLoader()
   gltfLoader = new GLTFLoader()
 
@@ -31,8 +32,11 @@ export class LoadManager {
       return Promise.resolve(clonedMesh)
     }
 
-    // If not, load the model and store the mesh in the cache
-    return new Promise((resolve, reject) => {
+    const pending = instance.pending.get(path)
+    if (pending) return pending.then((mesh) => instance.cloneMesh(mesh))
+
+    // Share one source load when a herd or household requests the same asset together.
+    const loading = new Promise<THREE.Mesh>((resolve, reject) => {
       instance.gltfLoader.load(
         path,
         (gltf) => {
@@ -41,9 +45,7 @@ export class LoadManager {
           if (mesh) {
             // Cache the original mesh
             instance.cache.set(path, mesh)
-            // Resolve with a clone of the mesh
-            const clonedMesh = instance.cloneMesh(mesh)
-            resolve(clonedMesh)
+            resolve(mesh)
           } else {
             reject(new Error('No mesh found in the GLTF model'))
           }
@@ -58,7 +60,9 @@ export class LoadManager {
           reject(error)
         }
       )
-    })
+    }).finally(() => instance.pending.delete(path))
+    instance.pending.set(path, loading)
+    return loading.then((mesh) => instance.cloneMesh(mesh))
   }
 
   private cloneMesh(mesh: THREE.Mesh): THREE.Mesh {
@@ -80,10 +84,14 @@ export class LoadManager {
 
   static releaseClone(mesh: THREE.Object3D) {
     const materials = new Set<THREE.Material>()
+    const skeletons = new Set<THREE.Skeleton>()
     mesh.traverse((object) => {
       if (!(object instanceof THREE.Mesh)) return
+      if (object instanceof THREE.SkinnedMesh) skeletons.add(object.skeleton)
       for (const material of Array.isArray(object.material) ? object.material : [object.material]) materials.add(material)
     })
+    // SkeletonUtils gives each clone its own bone texture; shared source geometry stays cached.
+    skeletons.forEach((skeleton) => skeleton.dispose())
     materials.forEach((material) => material.dispose())
   }
 

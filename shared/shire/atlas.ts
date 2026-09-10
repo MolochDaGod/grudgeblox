@@ -71,7 +71,7 @@ export function atlasHeight(x:number,z:number){
   const uncarved=y
   for(const river of riversAt(x,z)){const half=river.width/2,blend=1-smooth((river.distance-half)/Math.max(12,half));if(blend>0){const bed=river.stage-river.depth*(1-smooth(river.distance/half));y=Math.min(y,uncarved*(1-blend)+(bed+0.35*smooth((river.distance-half)/half))*blend)}}
   const pd=Math.hypot((x-pool.x)/pool.rx,(z-pool.z)/pool.rz);if(pd<2.5)y+=(Math.max(y,pool.stage+1.5)-y)*(1-smooth((pd-1.2)/1.3));if(pd<1.15){const mix=1-smooth((pd-0.9)/0.25);y=y*(1-mix)+(pool.stage-2.2*(1-smooth(pd)))*mix}
-  for(const b of ATLAS_BRIDGES){const along=Math.abs(b.turn?z-b.z:x-b.x)-b.length/2,across=Math.abs(b.turn?x-b.x:z-b.z);if(along>=0&&along<24&&across<b.width/2+4){const blend=(1-smooth(along/24))*(1-smooth((across-b.width/2)/4));y=y*(1-blend)+bridgeDeck(b)*blend}}
+  for(const b of ATLAS_BRIDGES){const along=Math.abs(b.turn?z-b.z:x-b.x)-b.length/2,across=Math.abs(b.turn?x-b.x:z-b.z);if(along<0&&across<b.width/2+.4)y=Math.min(y,bridgeDeck(b)-.4*smooth(-along/1.5));if(along>=0&&along<24&&across<b.width/2+4){const blend=(1-smooth(along/24))*(1-smooth((across-b.width/2)/4));y=y*(1-blend)+bridgeDeck(b)*blend}}
   return y
 }
 
@@ -105,4 +105,4 @@ export function buildingBlocked(p:Point,w:TerrainContext){if(!isAtlas(w))return 
   return townPlots(s).some(b=>{const dx=p.x-b.x,dz=p.z-b.z,c=Math.cos(b.yaw),sn=Math.sin(b.yaw),x=dx*c-dz*sn,z=dx*sn+dz*c;return Math.abs(x)<(b.kind==='hall'?12.6:4.8)*b.scale+0.26&&z>-6.8*b.scale-0.26&&z<1.1*b.scale+0.26&&p.y<atlasHeight(b.x,b.z)+7*b.scale&&p.y+1.55>atlasHeight(b.x,b.z)})
 }
 export function bridgeBlocked(p:Point,w:TerrainContext){if(!isAtlas(w))return false;for(const site of ATLAS_BRIDGES){const dx=p.x-site.x,dz=p.z-site.z,along=site.turn?dz:dx,across=site.turn?dx:dz;if(Math.abs(along)>site.length/2+0.26||Math.abs(across)>site.width/2+0.26)continue;const deck=bridgeDeck(site);if(p.y<deck&&p.y+1.55>deck-0.4)return true;if(Math.abs(across)>site.width/2-0.6&&p.y<deck+0.85&&p.y+1.55>deck)return true}return false}
-export function arrival(s:Settlement,w:TerrainContext){return isAtlas(w)?{x:s.x,y:0,z:s.z+(s.name==='Hobbiton'?-45:105),yaw:0,pitch:0}:{x:s.x-32,y:0,z:s.z,yaw:-Math.PI/2,pitch:0}}
+export function arrival(s:Settlement,w:TerrainContext){if(isAtlas(w)&&s.name==='Hay Gate')return {x:83900,y:0,z:12894,yaw:Math.PI,pitch:0};return isAtlas(w)?{x:s.x,y:0,z:s.z+(s.name==='Hobbiton'?-45:105),yaw:0,pitch:0}:{x:s.x-32,y:0,z:s.z,yaw:-Math.PI/2,pitch:0}}

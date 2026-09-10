@@ -6,6 +6,7 @@ export function breedingIssue(w:World,damId:string,sireId:string,observer:Point=
   if(!dam||!sire)return 'Choose a female and a male from your animal list.'
   if(w.combat?.actors.some(a=>(a.id===damId||a.id===sireId)&&a.vitality.hp===0))return 'Defeated animals cannot breed. Wait for their recovery.'
   if(dam.id===sire.id||dam.species!==sire.species||dam.sex!=='female'||sire.sex!=='male')return 'Select a female and a male of the same species.'
+  if(dam.parents?.includes(sire.id)||sire.parents?.includes(dam.id)||dam.parents?.some(p=>sire.parents?.includes(p)))return 'Choose an unrelated pair. Parents, offspring and siblings cannot breed together.'
   const species=SPECIES[dam.species]
   if(dam.age<species.maturity||sire.age<species.maturity)return 'Young animals must grow into adults first.'
   if(distance(observer,dam.position)>9||distance(observer,sire.position)>12)return 'Move closer to both selected parents first.'
@@ -13,6 +14,6 @@ export function breedingIssue(w:World,damId:string,sireId:string,observer:Point=
   if(dam.pregnant)return `These parents need time: young are due in ${Math.max(0,Math.ceil(dam.pregnant.due-w.time))} seconds.`
   const remaining=Math.ceil(Math.max(dam.cooldownUntil,sire.cooldownUntil)-w.time)
   if(remaining>0)return `These parents need time to recover: ${remaining} seconds remaining.`
-  if(w.animals.length+w.animals.filter(a=>a.pregnant).length>=100)return 'Your current animal population is full.'
+  if(w.animals.length+w.animals.filter(a=>a.pregnant).length>=(w.life?1200:100))return 'Your current animal population is full.'
   return null
 }

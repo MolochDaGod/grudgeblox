@@ -1,5 +1,7 @@
 import { Excavation, Point, World, PLAYER_HEIGHT, PLAYER_RADIUS, FURNITURE, WORLD_LIMIT } from './model'
-import { TerrainContext, isAtlas, atlasHeight, inBounds, buildingBlocked, bridgeBlocked, fallFloor, landcover } from './atlas'
+import { TerrainContext, isAtlas, atlasHeight, inBounds, buildingBlocked, bridgeBlocked, bridgeAt, bridgeDeck, fallFloor, landcover } from './atlas'
+import { interiorClear } from './interiors'
+import { sceneryBlocked } from './sceneryCollision'
 
 export function height(x: number,z: number,context:TerrainContext=42) {
   if(isAtlas(context))return atlasHeight(x,z)
@@ -21,6 +23,8 @@ export function shapeDistance(p: Point,e: Excavation) {
 }
 /** Positive is earth; subtracting a full 3D distance volume leaves actual roofs and walls. */
 export function density(x:number,y:number,z:number,seed:TerrainContext,edits:Excavation[]) {
+  const room=typeof seed==='object'?(seed as World).life?.interior:undefined
+  if(room&&Math.abs(x-room.origin.x)<room.width/2+2&&Math.abs(z-room.origin.z)<room.depth/2+2&&Math.abs(y-room.origin.y)<6)return Math.max(room.origin.y-y,Math.abs(x-room.origin.x)-room.width/2,Math.abs(z-room.origin.z)-room.depth/2,y-room.origin.y-4)
   let d=height(x,z,seed)-y
   for(const e of edits) {
     const radius=Math.hypot(e.size.x,e.size.z)+(e.shape==='sphere'?1:0)
@@ -32,13 +36,17 @@ export function density(x:number,y:number,z:number,seed:TerrainContext,edits:Exc
 }
 export function solid(p:Point,w:Pick<World,'seed'|'edits'>&Partial<Pick<World,'generator'>>) { return density(p.x,p.y,p.z,w,w.edits)>0.015 }
 export function terrainClear(p:Point,w:Pick<World,'seed'|'edits'>&Partial<Pick<World,'generator'>>) {
+  const room=(w as World).life?.interior
+  const nearby=room||w.edits.some(e=>Math.abs(p.x-e.center.x)<Math.hypot(e.size.x,e.size.z)+1&&Math.abs(p.z-e.center.z)<Math.hypot(e.size.x,e.size.z)+1)
+  if(!nearby)return [[0,0],[PLAYER_RADIUS,0],[-PLAYER_RADIUS,0],[0,PLAYER_RADIUS],[0,-PLAYER_RADIUS]].every(([dx,dz])=>height(p.x+dx,p.z+dz,w)-p.y-.09<=.015)
   for(const dy of [0.09,0.4,0.9,PLAYER_HEIGHT-0.08]) for(const [dx,dz] of [[0,0],[PLAYER_RADIUS,0],[-PLAYER_RADIUS,0],[0,PLAYER_RADIUS],[0,-PLAYER_RADIUS]]) {
     if(solid({x:p.x+dx,y:p.y+dy,z:p.z+dz},w))return false
   }
   return true
 }
 export function clear(p:Point,w:World) {
-  if(!inBounds(p.x,p.z,w) || buildingBlocked(p,w) || bridgeBlocked(p,w) || !terrainClear(p,w))return false
+  const room=interiorClear(p,w);if(room!==undefined)return room
+  if(!inBounds(p.x,p.z,w) || buildingBlocked(p,w) || bridgeBlocked(p,w) || sceneryBlocked(p,w) || !terrainClear(p,w))return false
   for(const f of w.furniture) {
     if(f.kind==='lamp')continue
     const sz=f.kind==='door'&&f.fit?{x:f.fit.width,y:f.fit.height,z:0.25}:FURNITURE[f.kind].size,dx=p.x-f.position.x,dz=p.z-f.position.z,c=Math.cos(f.yaw),s=Math.sin(f.yaw)
@@ -75,7 +83,16 @@ export function hasOutdoorExit(start:Point,w:World):boolean {
   return false
 }
 export function surfaceAt(x:number,z:number,w:Pick<World,'seed'|'edits'>&Partial<Pick<World,'generator'>>,from=height(x,z,w)+1) {
-  for(let y=from;y>fallFloor(w)-5;y-=0.2) if(density(x,y,z,w,w.edits)>0)return y+0.2
+  const bridge=isAtlas(w)?bridgeAt(x,z):undefined,deck=bridge&&bridgeDeck(bridge)
+  // A bridge supports actors above its deck while preserving the river beneath it.
+  if(deck!==undefined&&from>=deck)return Math.max(deck,height(x,z,w))
+  const nearby=w.edits.some(e=>Math.abs(e.center.x-x)<Math.hypot(e.size.x,e.size.z)+1&&Math.abs(e.center.z-z)<Math.hypot(e.size.x,e.size.z)+1)
+  if(!nearby&&!(w as World).life?.interior)return height(x,z,w)
+  for(let y=from;y>fallFloor(w)-5;y-=0.2)if(density(x,y,z,w,w.edits)>0){
+    let low=y,high=y+.2
+    for(let i=0;i<7;i++){const mid=(low+high)/2;if(density(x,mid,z,w,w.edits)>0)low=mid;else high=mid}
+    return high
+  }
   return height(x,z,w)
 }
 export function rayTerrain(origin:Point,direction:Point,w:Pick<World,'seed'|'edits'>&Partial<Pick<World,'generator'>>,max=10) {

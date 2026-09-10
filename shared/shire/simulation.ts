@@ -6,6 +6,7 @@ import { entrancePlan, fitDoor } from './building'
 import { advanceWildlife } from './wildlife'
 import { cinderlordSite } from './cinderlord'
 import { ensureCombat, advanceCombat, validateCombat, combatActor, living, playerStrike, playerGuard, playerHeal, playerRespawn, encounterTravel, observePlayer, resetPlayerTracking, heal } from './combat'
+import { advanceLife, applyLifeAction, beforeLifeAction, afterLifeAction, validateLife } from './life'
 
 export function createWorld(name='A home in the Shire',seed=42,generator:World['generator']='shire-1'):World {
   const context={seed,generator},spawn=isAtlas(context)?{x:0,z:-45,yaw:0}: {x:-56,z:22,yaw:-0.7},player={...spawn,y:height(spawn.x,spawn.z,context)+0.08,pitch:0}
@@ -39,24 +40,27 @@ function safeOutdoorDestination(w:World,point:Point):Point {
 }
 export function advanceWorld(w:World,seconds:number){
   if(!Number.isFinite(seconds))throw Error('Invalid world time step.')
+  if(w.life?.paused)return
   ensureCombat(w);const dt=Math.max(0,Math.min(seconds,120));w.time+=dt
   advanceCombat(w,dt)
-  advanceWildlife(w,dt)
+  if(!w.life?.interior)advanceWildlife(w,dt)
   for(const a of [...w.animals]) {
     if(!living(combatActor(w,a.id)))continue
     a.age+=dt;const spec=SPECIES[a.species]
-    if(a.pregnant&&a.pregnant.due<=w.time&&w.animals.length<100){
+    if(a.pregnant&&a.pregnant.due<=w.time&&w.animals.length<(w.life?1200:100)){
       const sire=a.pregnant.sire;w.animals.push({id:id(),name:`${spec.label} ${w.animals.filter(b=>b.species===a.species).length+1}`,species:a.species,sex:(w.animals.length%2)?'male':'female',age:0,home:{x:a.home.x+1,y:a.home.y,z:a.home.z+1},position:{...a.position},fedUntil:w.time+300,parents:[a.id,sire],cooldownUntil:0,mood:'resting',tint:a.tint})
       a.pregnant=undefined;a.cooldownUntil=w.time+120
     }
   }
-  ensureCombat(w)
+  advanceLife(w,dt);ensureCombat(w)
 }
 export function applyAction(w:World,a:WorldAction):string {
   ensureCombat(w)
+  beforeLifeAction(w,a)
   if(!living(combatActor(w,'player'))&&!['respawn','save','checkpoint'].includes(a.type))throw Error('You are defeated. Recover at home before acting.')
   let message='Saved.'
   switch(a.type){
+    case 'life':message=applyLifeAction(w,a.action);break
     case 'checkpoint': {observePlayer(w,a.player);break}
     case 'strike':message=playerStrike(w,a.id);break
     case 'guard':message=playerGuard(w);break
@@ -132,7 +136,7 @@ export function applyAction(w:World,a:WorldAction):string {
   if(a.type==='use-furniture'&&w.furniture.find(f=>f.id===a.id)?.kind==='bed'){
     const p=combatActor(w,'player')!;if(living(p)){heal(w,p,p.vitality.maxHp,'rest');p.vitality.effects=[];p.vitality.stamina=100;w.combat!.healingDraughts=3;message='Rested, restored health and replenished three healing draughts.'}
   }
-  w.revision++;return message
+  afterLifeAction(w,a);w.revision++;return message
 }
 
 export function validateWorld(value:unknown): asserts value is World {
@@ -141,7 +145,7 @@ export function validateWorld(value:unknown): asserts value is World {
   const point=(p:unknown)=>finitePoint(p)&&!(!w||!inBounds(p.x,p.z,w))&&p.y>=(isAtlas(w)?-125:-40)&&p.y<=(isAtlas(w)?600:100)
   const nonnegative=(n:unknown)=>typeof n==='number'&&Number.isFinite(n)&&n>=0
   if(!w||w.version!==1||!['shire-1',ATLAS_GENERATOR].includes(w.generator)||!validId(w.id)||typeof w.name!=='string'||!w.name.trim()||w.name.length>72||!Number.isSafeInteger(w.seed)||!nonnegative(w.time)||!Number.isSafeInteger(w.revision)||w.revision<0||!point(w.player)||!Number.isFinite(w.player.yaw)||!Number.isFinite(w.player.pitch)||!Number.isFinite(Date.parse(w.createdAt))||!Number.isFinite(Date.parse(w.savedAt))||(w.home&&!point(w.home)))throw Error('This save has an unsupported format or invalid world header.')
-  for(const [key,max] of [['edits',1500],['redo',1500],['furniture',1000],['crops',500],['animals',100]] as const)if(!Array.isArray(w[key])||w[key].length>max)throw Error(`Invalid ${key} in save.`)
+  for(const [key,max] of [['edits',1500],['redo',1500],['furniture',1000],['crops',500],['animals',w.life?1200:100]] as const)if(!Array.isArray(w[key])||w[key].length>max)throw Error(`Invalid ${key} in save.`)
   const records=[...w.edits,...w.redo,...w.furniture,...w.crops,...w.animals]
   if(records.some(r=>!r||!validId(r.id))||new Set(records.map(r=>r.id)).size!==records.length)throw Error('Invalid or duplicate object identity in save.')
   for(const e of [...w.edits,...w.redo])if(!point(e.center)||!finitePoint(e.size)||![e.size.x,e.size.y,e.size.z].every(v=>Number.isFinite(v)&&v>=0.2&&v<=(e.shape==='ramp'?24:8))||!Number.isFinite(e.yaw)||typeof e.entrance!=='boolean'||!['dig','fill'].includes(e.kind)||!['box','sphere','cylinder','ramp'].includes(e.shape)||(e.batch!==undefined&&!validId(e.batch))||(e.shape==='ramp'?e.kind!=='dig'||!Number.isFinite(e.slope)||Math.abs(e.slope!)>0.3:e.slope!==undefined))throw Error('Invalid terrain data in save.')
@@ -155,4 +159,5 @@ export function validateWorld(value:unknown): asserts value is World {
   }
   for(const [obj,keys] of [[w.supplies,['barleySeed','carrotSeed','barley','carrot','feed']],[w.storage,['barley','carrot']]] as const)if(!obj||keys.some(k=>!Object.hasOwn(obj,k))||Object.values(obj).some(v=>!Number.isSafeInteger(v)||v<0||v>1e7))throw Error('Invalid household supplies in save.')
   validateCombat(w)
+  validateLife(w)
 }

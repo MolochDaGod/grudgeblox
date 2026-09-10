@@ -1,7 +1,7 @@
 import * as T from 'three'
 import { World, Point } from '@shared/shire/model'
 import { CombatActor } from '@shared/shire/combatTypes'
-import { actorHeight } from '@shared/shire/combat'
+import { actorHeight, actorEnabled } from '@shared/shire/combat'
 import { hostileDefinition } from '@shared/shire/hostiles'
 import { height } from '@shared/shire/terrain'
 import { LoadManager } from '../LoadManager'
@@ -13,6 +13,9 @@ export class WorldCombatView {
   private failures=new Map<string,string>()
   private disposed=false
   private elapsed=0
+  private arrows=new Map<number,T.Group>()
+  private observedTime=-1
+  private observedAt=0
   private lastEvent:number|undefined
   constructor(private scene:T.Scene,private message:(text:string)=>void){}
   get roots(){return [...this.visuals.values()].map(v=>v.root)}
@@ -38,10 +41,11 @@ export class WorldCombatView {
     }catch(e){this.failures.set(a.id,(e as Error).message);this.message(`${a.name} could not load: ${(e as Error).message}`)}finally{this.pending.delete(a.id)}
   }
   update(dt:number,w:World,player:Point,assets:Map<string,string>){
-    this.elapsed+=dt
+    this.elapsed+=dt;this.projectiles(w)
     this.lastEvent??=w.combat?.events.at(-1)?.seq||0
     for(const a of w.combat?.actors||[]){
       if(a.kind!=='hostile')continue
+      if(!actorEnabled(w,a)||w.life?.interior){if(this.visuals.has(a.id))this.remove(a.id);continue}
       const distance=Math.hypot(a.position.x-player.x,a.position.z-player.z),d=hostileDefinition(a.species)!,v=this.visuals.get(a.id)
       if(!v){const url=assets.get(d.assetId);if(url&&distance<190&&!this.pending.has(a.id)&&!this.failures.has(a.id))void this.load(a,url);continue}
       if(distance>320){this.remove(a.id);continue}
@@ -63,11 +67,19 @@ export class WorldCombatView {
       const healthKey=`${label}:${a.phase}`
       if(v.health!==healthKey){v.health=healthKey;const ctx=v.canvas.getContext('2d')!;ctx.clearRect(0,0,512,80);ctx.fillStyle='rgba(15,24,20,.85)';ctx.fillRect(0,0,512,80);ctx.font='bold 25px sans-serif';ctx.fillStyle='#fff0d2';ctx.textAlign='center';ctx.fillText(label,256,29);ctx.fillStyle='#542627';ctx.fillRect(14,45,484,17);ctx.fillStyle=a.phase==='windup'?'#ffbd5c':'#b9ce7b';ctx.fillRect(14,45,484*a.vitality.hp/a.vitality.maxHp,17);v.texture.needsUpdate=true}
       const barWidth=Math.min(Math.max(2.8,d.radius*2),Math.max(.4,distance*.28));v.bar.scale.set(barWidth,barWidth*.16,1)
-      v.bar.visible=distance<55;v.ring.visible=a.phase==='windup'&&!dead;v.ring.material instanceof T.MeshBasicMaterial&&(v.ring.material.opacity=.35+.3*Math.sin(this.elapsed*10)**2)
-      v.model.traverse(o=>{if(o instanceof T.Mesh)for(const m of Array.isArray(o.material)?o.material:[o.material])if(m instanceof T.MeshStandardMaterial){m.userData.baseEmission??=m.emissive.clone();m.emissive.copy(m.userData.baseEmission);if(this.elapsed<v.flashUntil)m.emissive.add(new T.Color(.5,.08,.015))}})
+      v.bar.visible=distance<55;v.ring.visible=a.phase==='windup'&&!dead;v.ring.material instanceof T.MeshBasicMaterial&&(v.ring.material.opacity=w.life?.settings.reducedMotion?.6:.35+.3*Math.sin(this.elapsed*10)**2)
+      v.model.traverse(o=>{if(o instanceof T.Mesh)for(const m of Array.isArray(o.material)?o.material:[o.material])if(m instanceof T.MeshStandardMaterial){m.userData.baseEmission??=m.emissive.clone();m.emissive.copy(m.userData.baseEmission);if(this.elapsed<v.flashUntil&&!w.life?.settings.reducedMotion)m.emissive.add(new T.Color(.5,.08,.015))}})
     }
     for(const e of w.combat?.events||[])if(e.seq>this.lastEvent){this.lastEvent=e.seq;if(e.target==='player'&&e.type==='damage')this.message(`You took ${e.amount} ${e.damageType} damage.`);if(e.target==='player'&&e.type==='death')this.message('You are defeated. Recover at home to continue.');if(e.type==='blocked'&&e.target==='player')this.message('Blocked! Your guard reduced the blow.')}
   }
+  private projectiles(w:World){
+    if(w.time!==this.observedTime){this.observedTime=w.time;this.observedAt=this.elapsed}
+    const shots=w.combat?.projectiles||[],ids=new Set(shots.map(s=>s.id))
+    for(const [id,root]of this.arrows)if(!ids.has(id)){this.scene.remove(root);root.traverse(o=>{if(o instanceof T.Mesh){o.geometry.dispose();(o.material as T.Material).dispose()}});this.arrows.delete(id)}
+    for(const shot of shots){let root=this.arrows.get(shot.id);if(!root){root=new T.Group();const arrow=shot.source==='player';const mesh=new T.Mesh(arrow?new T.CylinderGeometry(.015,.015,.75,5):new T.IcosahedronGeometry(.12,0),new T.MeshStandardMaterial({color:arrow?0x927449:0x777c76}));if(arrow)mesh.rotation.x=Math.PI/2;root.add(mesh);if(arrow){const head=new T.Mesh(new T.ConeGeometry(.055,.16,4),new T.MeshStandardMaterial({color:0xc6cbcb}));head.rotation.x=Math.PI/2;head.position.z=.43;root.add(head)}this.arrows.set(shot.id,root);this.scene.add(root)}
+      const t=T.MathUtils.clamp((w.time+this.elapsed-this.observedAt-shot.launched)/(shot.arrives-shot.launched),0,1),p=new T.Vector3().lerpVectors(new T.Vector3().copy(shot.start),new T.Vector3().copy(shot.end),t);p.y+=Math.sin(t*Math.PI)*(shot.source==='player'?.15:1);root.position.copy(p);root.lookAt(shot.end.x,shot.end.y,shot.end.z);root.visible=!w.life?.interior&&t<1
+    }
+  }
   private remove(id:string){const v=this.visuals.get(id);if(!v)return;v.mixer.stopAllAction();v.mixer.uncacheRoot(v.model);LoadManager.releaseClone(v.model);v.bar.material.dispose();v.texture.dispose();v.ring.geometry.dispose();(v.ring.material as T.Material).dispose();this.scene.remove(v.root);this.visuals.delete(id)}
-  dispose(){this.disposed=true;for(const id of this.visuals.keys())this.remove(id)}
+  dispose(){this.disposed=true;for(const arrow of this.arrows.values()){this.scene.remove(arrow);arrow.traverse(o=>{if(o instanceof T.Mesh){o.geometry.dispose();(o.material as T.Material).dispose()}})}this.arrows.clear();for(const id of this.visuals.keys())this.remove(id)}
 }

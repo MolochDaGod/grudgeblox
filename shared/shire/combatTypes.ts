@@ -20,6 +20,7 @@ export interface CombatEvent {
   source:string; target:string; amount:number; damageType?:DamageType;
 }
 export interface CombatState {
+  projectiles?: Array<{ id:number; source:string; target:string; start:Point; end:Point; launched:number; arrives:number; damage:number }>;
   version:1; actors:CombatActor[]; events:CombatEvent[]; nextEvent:number;
   healingDraughts:number; peakY:number; lastPlayerY:number; grounded:boolean;
 }

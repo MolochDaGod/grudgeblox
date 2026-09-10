@@ -1,8 +1,8 @@
-import type { TerrainContext } from '@shared/shire/atlas'
 import { meshChunk } from '@shared/shire/terrain'
-import type { Excavation } from '@shared/shire/model'
-self.onmessage=(event:MessageEvent<{key:string;cx:number;cz:number;seed:TerrainContext;edits:Excavation[];revision:number}>)=>{
+import type {TerrainWork,TerrainResult} from './terrainWork'
+self.onmessage=(event:MessageEvent<TerrainWork>)=>{
   const {key,cx,cz,seed,edits,revision}=event.data
-  try{const mesh=meshChunk(cx,cz,seed,edits,0.5);self.postMessage({key,revision,...mesh},{transfer:[mesh.positions.buffer,mesh.normals.buffer,mesh.colors.buffer]})}
-  catch(e){self.postMessage({key,revision,error:(e as Error).message})}
+  const stamp=edits.map(e=>e.id).join(':')
+  try{const mesh=meshChunk(cx,cz,seed,edits,0.5);self.postMessage({key,revision,stamp,...mesh} satisfies TerrainResult,{transfer:[mesh.positions.buffer,mesh.normals.buffer,mesh.colors.buffer]})}
+  catch(e){self.postMessage({key,revision,stamp,error:(e as Error).message} satisfies TerrainResult)}
 }

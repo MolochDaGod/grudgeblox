@@ -31,10 +31,10 @@ function instances(root:T.Group,kind:TreeKind|'understory',low:boolean,list:Inst
   mesh.castShadow=!low;mesh.receiveShadow=true;mesh.computeBoundingSphere();mesh.userData.atlasVegetation=true;root.add(mesh)
 }
 /** Six tree silhouettes, two detail levels and instanced undergrowth. */
-export function addWoodland(root:T.Group,ax:number,az:number,w:World){const buckets=new Map<string,Instance[]>();let trees=0,understory=0
+export function addWoodland(root:T.Group,ax:number,az:number,w:World,prepared?:WoodlandPoint[]){const buckets=new Map<string,Instance[]>();let trees=0,understory=0
   const put=(key:string,p:WoodlandPoint,y:number,scale=p.scale)=>{const list=buckets.get(key)||[];list.push({x:p.x-ax,y,z:p.z-az,scale,yaw:p.yaw,tint:p.tint});buckets.set(key,list)}
-  for(let ix=Math.floor((ax-1300)/WOODLAND_CELL);ix<=Math.floor((ax+1300)/WOODLAND_CELL);ix++)for(let iz=Math.floor((az-1300)/WOODLAND_CELL);iz<=Math.floor((az+1300)/WOODLAND_CELL);iz++){
-    const p=woodlandPoint(ix,iz,w.seed);if(!p)continue;const d=Math.hypot(p.x-ax,p.z-az);if(d>1300)continue
+  const candidates=prepared||(()=>{const list:WoodlandPoint[]=[];for(let ix=Math.floor((ax-1300)/WOODLAND_CELL);ix<=Math.floor((ax+1300)/WOODLAND_CELL);ix++)for(let iz=Math.floor((az-1300)/WOODLAND_CELL);iz<=Math.floor((az+1300)/WOODLAND_CELL);iz++){const p=woodlandPoint(ix,iz,w.seed);if(p)list.push(p)}return list})()
+  for(const p of candidates){const d=Math.hypot(p.x-ax,p.z-az);if(d>1300)continue
     const low=d>260,y=height(p.x,p.z,w);put(`${p.kind}-${low?'low':'high'}`,p,y);trees++
     if(d<450&&p.wooded&&p.understory<0.42&&pathClearance(p.x+2,p.z+2)>2){put('understory-high',{...p,x:p.x+2,z:p.z+2},height(p.x+2,p.z+2,w),0.6+p.understory*1.7);understory++}
   }

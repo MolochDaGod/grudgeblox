@@ -64,13 +64,21 @@ function tree(g:T.Group,x:number,y:number,z:number,scale:number,willow=false){po
 /** Stream scenery and distant terrain around the full-size atlas coordinate, with local mesh vertices. */
 export class AtlasLandscape {
   private root=new T.Group()
+  private worker:Worker
+  private disposed=false
+  private pending=false
+  private failed=false
+  private desired?:{ax:number;az:number}
+  private tileCache=new Map<string,T.Group>()
+  private prepared?:{near:{positions:Float32Array;colors:Float32Array};far:{positions:Float32Array;colors:Float32Array};woodland:import('@shared/shire/atlasScenery').WoodlandPoint[]}
   private anchor=''
   private center={value:new T.Vector2()}
   private townKey=''
   private townRoot=new T.Group()
-  constructor(private scene:T.Scene,private w:World){scene.add(this.root,this.townRoot)}
+  constructor(private scene:T.Scene,private w:World,private message:(text:string)=>void=()=>{}){scene.add(this.root,this.townRoot);this.worker=new Worker(new URL('./atlas-scenery.worker.ts',import.meta.url));this.worker.onmessage=e=>{this.pending=false;const data=e.data;if(data.error){this.failed=true;this.message('Distant scenery could not finish. Save and reopen the world to retry.');return}if(!this.disposed&&!data.error&&this.desired?.ax===data.ax&&this.desired?.az===data.az){this.prepared=data;this.rebuildGround(data.ax,data.az);this.prepared=undefined}this.requestTile()};this.worker.onerror=()=>{this.pending=false;this.failed=true;this.message('Distant scenery stopped. Save and reopen the world to retry.')}}
+  private requestTile(){if(this.failed||this.pending||!this.desired||this.tileCache.has(this.desired.ax+':'+this.desired.az)||this.disposed)return;this.pending=true;this.worker.postMessage({...this.desired,seed:this.w.seed})}
   update(player:Point){this.center.value.set(player.x,player.z);const ax=Math.round(player.x/384)*384,az=Math.round(player.z/384)*384,key=`${ax}:${az}`
-    if(key!==this.anchor){this.anchor=key;this.rebuildGround(ax,az)}
+    if(key!==this.anchor){this.anchor=key;this.desired={ax,az};const cached=this.tileCache.get(key);if(cached){this.scene.remove(this.root);this.root=cached;this.scene.add(this.root)}else this.requestTile()}
     const towns=ATLAS_TOWNS.filter(s=>Math.hypot(player.x-s.x,player.z-s.z)<1100),tk=towns.map(s=>s.id).join(':')
     if(tk!==this.townKey){this.townKey=tk;this.scene.remove(this.townRoot);disposeObject(this.townRoot);this.townRoot=new T.Group();this.townRoot.position.set(ax,0,az);this.scene.add(this.townRoot);for(const s of towns)this.town(s,ax,az);this.batch(this.townRoot)}
   }
@@ -92,38 +100,18 @@ export class AtlasLandscape {
     const geo=new T.BufferGeometry();geo.setAttribute('position',new T.Float32BufferAttribute(vertices,3));geo.computeVertexNormals();const material=new T.MeshStandardMaterial({color:0xbba879,roughness:1,side:T.DoubleSide,polygonOffset:true,polygonOffsetFactor:-1,polygonOffsetUnits:-1}),mesh=new T.Mesh(geo,material);mesh.receiveShadow=true;this.root.add(mesh)
   }
   private ground(ax:number,az:number,size:number,segments:number,hole:number){
-    const positions:number[]=[],colors:number[]=[],cache=new Map<string,{y:number;color:number[]}>(),step=size/segments
-    const vertex=(x:number,z:number)=>{const key=`${x}:${z}`;let v=cache.get(key);if(!v){const gx=x+ax,gz=z+az,c=landcover(gx,gz),shade=0.96+0.04*Math.sin(gx/57)*Math.cos(gz/69),color=new T.Color(c===10?0x99966b:c===3?0x526641:c===4||c===5?0x6f8256:c===8?0xa2a073:0x879855).multiplyScalar(shade);v={y:height(gx,gz,this.w),color:[color.r,color.g,color.b]};cache.set(key,v)}positions.push(x,v.y,z);colors.push(...v.color)}
-    const refinement=new Uint8Array(segments*segments),fine=Math.ceil(step/2)
-    if(hole<1000)for(let ix=0;ix<segments;ix++)for(let iz=0;iz<segments;iz++){
-      const river=riverAt(ax-size/2+(ix+0.5)*step,az-size/2+(iz+0.5)*step)
-      if(river&&river.distance<river.width/2+step*1.5||pathClearance(ax-size/2+(ix+0.5)*step,az-size/2+(iz+0.5)*step)<step*1.5)refinement[ix*segments+iz]=1
-    }
-    const refined=(ix:number,iz:number)=>ix>=0&&iz>=0&&ix<segments&&iz<segments&&refinement[ix*segments+iz]===1
-    for(let ix=0;ix<segments;ix++)for(let iz=0;iz<segments;iz++){
-      const x=-size/2+ix*step,z=-size/2+iz*step,divisions=refined(ix,iz)?fine:1,d=step/divisions
-      // Coarse neighbours share every fine riverbank edge vertex. A centre fan
-      // prevents T-junction cracks without flattening the carved river profile.
-      const edges=[refined(ix-1,iz),refined(ix,iz+1),refined(ix+1,iz),refined(ix,iz-1)]
-      if(divisions===1&&edges.some(Boolean)){
-        const corners=[[x,z],[x,z+step],[x+step,z+step],[x+step,z]]
-        for(let edge=0;edge<4;edge++){
-          const a=corners[edge],b=corners[(edge+1)%4],n=edges[edge]?fine:1
-          for(let k=0;k<n;k++){vertex(x+step/2,z+step/2);vertex(a[0]+(b[0]-a[0])*k/n,a[1]+(b[1]-a[1])*k/n);vertex(a[0]+(b[0]-a[0])*(k+1)/n,a[1]+(b[1]-a[1])*(k+1)/n)}
-        }
-      }else for(let a=0;a<divisions;a++)for(let b=0;b<divisions;b++){const xx=x+a*d,zz=z+b*d;for(const [dx,dz]of [[0,0],[d,d],[d,0],[0,0],[0,d],[d,d]])vertex(xx+dx,zz+dz)}
-    }
+    const data=hole<1000?this.prepared!.near:this.prepared!.far,positions=data.positions,colors=data.colors
     const geo=new T.BufferGeometry();geo.setAttribute('position',new T.Float32BufferAttribute(positions,3));geo.setAttribute('color',new T.Float32BufferAttribute(colors,3));geo.computeVertexNormals()
     const material=new T.MeshStandardMaterial({vertexColors:true,roughness:1});material.customProgramCacheKey=()=>`atlas-ground-${ax}-${az}-${hole}`
     material.onBeforeCompile=shader=>{shader.uniforms.atlasCenter=this.center;shader.vertexShader='varying vec2 atlasXZ;\n'+shader.vertexShader;shader.vertexShader=shader.vertexShader.replace('#include <begin_vertex>',`#include <begin_vertex>\natlasXZ = position.xz + vec2(${ax.toFixed(1)},${az.toFixed(1)});`);shader.fragmentShader='varying vec2 atlasXZ;uniform vec2 atlasCenter;\n'+shader.fragmentShader;shader.fragmentShader=shader.fragmentShader.replace('#include <clipping_planes_fragment>',hole<1000?`#include <clipping_planes_fragment>\nif(distance(atlasXZ,atlasCenter)<118.0) discard;`:`#include <clipping_planes_fragment>\nif(abs(atlasXZ.x-(${ax.toFixed(1)}))<1599.9 && abs(atlasXZ.y-(${az.toFixed(1)}))<1599.9) discard;`)}
     const mesh=new T.Mesh(geo,material);mesh.receiveShadow=true;this.root.add(mesh)
   }
-  private rebuildGround(ax:number,az:number){this.scene.remove(this.root);this.root.traverse(o=>{if(o instanceof T.InstancedMesh)o.dispose()});disposeObject(this.root);this.root=new T.Group();this.root.position.set(ax,0,az);this.scene.add(this.root);const paths=pathsNear(ax,az,1900);this.ground(ax,az,3200,160,118);this.ground(ax,az,16000,120,1350)
+  private rebuildGround(ax:number,az:number){this.scene.remove(this.root);if(!this.tileCache.size)disposeObject(this.root);this.root=new T.Group();this.root.position.set(ax,0,az);this.scene.add(this.root);const paths=pathsNear(ax,az,1900);this.ground(ax,az,3200,160,118);this.ground(ax,az,16000,120,1350)
     for(const r of nearbyRiverSegments(ax,az,1800))this.ribbon(this.root,[r.a,r.b],r.width,ax,az,0x71999a,true)
     if(Math.hypot(ax-BYWATER_POOL.x,az-BYWATER_POOL.z)<2500){const lake=new T.Mesh(new T.CircleGeometry(1,80),new T.MeshStandardMaterial({color:0x71999a,roughness:0.23,metalness:0.2}));lake.rotation.x=-Math.PI/2;lake.scale.set(BYWATER_POOL.rx,BYWATER_POOL.rz,1);lake.position.set(BYWATER_POOL.x-ax,BYWATER_POOL.stage+0.03,BYWATER_POOL.z-az);this.root.add(lake)}
     for(const p of paths)this.pathRibbon(p,ax,az)
     const vegetation=new T.Group();this.root.add(vegetation)
-    addWoodland(this.root,ax,az,this.w)
+    addWoodland(this.root,ax,az,this.w,this.prepared!.woodland)
     for(let i=1;i<HIGH_HAY.length;i++){const a=HIGH_HAY[i-1],b=HIGH_HAY[i],p=projection(ax,az,a,b);if(p.d>1600)continue;const len=Math.hypot(b[0]-a[0],b[1]-a[1]),lo=Math.max(0,p.t-1700/len),hi=Math.min(1,p.t+1700/len);for(let t=lo;t<=hi;t+=8/len){const x=a[0]+(b[0]-a[0])*t,z=a[1]+(b[1]-a[1])*t;if(Math.hypot(x-83900,z-12900)<8||!dryScenery(x,z,5)||pathClearance(x,z)<5)continue;ball(vegetation,x-ax,height(x,z,this.w)+2,z-az,4.8,3,4.8,0x4f683b)}}
     const nearest=ATLAS_PLACES.filter(p=>Math.hypot(p.x-ax,p.z-az)<1700)
     for(const p of nearest){const x=p.x-ax,z=p.z-az,y=height(p.x,p.z,this.w)
@@ -132,10 +120,10 @@ export class AtlasLandscape {
       if(p.id==='bucklebury-ferry'){const r=riverAt(p.x,p.z);if(r){const deck=box(vegetation,x,r.stage+0.45,z,6,0.3,3.4,wood);for(const end of [-1,1])post(vegetation,x+end*(r.width/2+2),r.stage+1.3,z,0.15,2.6,wood);box(vegetation,x,r.stage+1.7,z+1.2,r.width+5,0.025,0.025,0xb8a787);deck.rotation.y=0.25}}
       if(p.id==='three-farthing-stone')box(vegetation,x,y+0.8,z,0.8,1.6,0.7,stone)
       if(p.id==='scary-quarry'){for(let i=0;i<24;i++){const dx=Math.sin(i*3.8)*(20+i*2),dz=Math.cos(i*3.8)*(20+i*2),yy=height(p.x+dx,p.z+dz,this.w);box(vegetation,x+dx,yy+1.1,z+dz,2+i%4,2.2+i%3,2.8,0x9e9c87)}}
-      if(p.id==='hay-gate'){const gateX=83900-ax;for(const side of [-1,1])post(vegetation,gateX+side*4,y+2,z,0.32,4,wood);box(vegetation,gateX,y+1.2,z,7.5,0.2,0.2,wood);box(vegetation,gateX,y+2.5,z,7.5,0.2,0.2,wood)}
+      if(p.id==='hay-gate'){const gateX=83900-ax;for(const side of [-1,1])post(vegetation,gateX+side*4,y+2,z,0.32,4,wood);}
     }
     for(const b of ATLAS_BRIDGES)if(Math.hypot(b.x-ax,b.z-az)<1700)this.bridge(vegetation,b.x,b.z,ax,az,b.length,b.width,b.turn?Math.PI/2:0,b.wooden)
-    this.batch(vegetation)
+    this.batch(vegetation);this.tileCache.set(ax+':'+az,this.root);while(this.tileCache.size>4){const [key,old]=this.tileCache.entries().next().value!;if(old===this.root)break;old.traverse(o=>{if(o instanceof T.InstancedMesh)o.dispose()});disposeObject(old);this.tileCache.delete(key)}
   }
   private bridge(g:T.Group,x:number,z:number,ax:number,az:number,length:number,width:number,yaw=0,wooden=false){const r=riverAt(x,z);if(!r)return;const bridge=new T.Group(),color=wooden?wood:stone;bridge.position.set(x-ax,r.stage+1.1,z-az);bridge.rotation.y=yaw;box(bridge,0,0,0,length,0.4,width,color);for(const side of [-1,1]){box(bridge,0,0.6,side*(width/2-0.15),length,wooden?0.15:0.9,0.3,color);for(let t=-length/2;t<=length/2;t+=wooden?3:8)box(bridge,t,wooden?-0.5:-1.6,side*width/3,wooden?0.2:1.6,wooden?3:3.2,wooden?0.2:1.2,color)}g.add(bridge)}
   private town(s:AtlasTown,ax:number,az:number){const plots=townPlots(s),g=this.townRoot
@@ -162,5 +150,6 @@ export class AtlasLandscape {
     for(const [material,geometries]of groups){const merged=mergeGeometries(geometries,false);geometries.forEach(x=>x.dispose());if(merged){const mesh=new T.Mesh(merged,material);mesh.castShadow=true;mesh.receiveShadow=true;g.add(mesh)}}
     for(const o of remove){o.removeFromParent();o.geometry.dispose()}
   }
-  dispose(){this.scene.remove(this.root,this.townRoot);this.root.traverse(o=>{if(o instanceof T.InstancedMesh)o.dispose()});disposeObject(this.root);disposeObject(this.townRoot)}
+  setVisible(visible:boolean){this.root.visible=visible;this.townRoot.visible=visible}
+  dispose(){this.disposed=true;this.worker.terminate();for(const tile of this.tileCache.values())if(tile!==this.root){tile.traverse(o=>{if(o instanceof T.InstancedMesh)o.dispose()});disposeObject(tile)}this.tileCache.clear();this.scene.remove(this.root,this.townRoot);this.root.traverse(o=>{if(o instanceof T.InstancedMesh)o.dispose()});disposeObject(this.root);disposeObject(this.townRoot)}
 }
