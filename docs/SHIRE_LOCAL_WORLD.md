@@ -95,3 +95,5 @@ The previous guide is preserved as `evidence\immersive-2026-09-10\SHIRE_LOCAL_WO
 `scripts\shire-local.ps1` supports Prepare, Build, Start, Stop and Status. Start opens a browser with `-OpenBrowser`. Stop verifies the owned process. The listener binds to loopback; occupied ports leave other processes alone. E: is required, with no C:/D: fallback. The launcher directs `front\.shire-next` and new caches to E: and preserves the unrelated `.next`.
 
 The administration worker remains at `E:\GrudgeBloxData\TheMiddleEarth\admin-worker`. Its `run.mjs` performs one bounded operational pass; `WORKER.md` explains usage. It is not a scheduled monitor, and operational health does not establish gameplay or visual acceptance.
+
+Workbench 1.8 model delivery, source clip playback and optional ambient wildlife are described in [SHIRE_WORKBENCH_INTEGRATION.md](SHIRE_WORKBENCH_INTEGRATION.md). The local production build and isolated runtime checks passed; existing player data is retained.

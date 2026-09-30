@@ -16,3 +16,6 @@ shared/package-lock.json
 !**/.env.example
 /logs
 /front/.shire-next
+
+# Managed local game models remain in the E: Workbench vault.
+/front/public/workbench/
