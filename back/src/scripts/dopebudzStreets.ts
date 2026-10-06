@@ -3,7 +3,7 @@
  * Set GAME_SCRIPT=dopebudzStreets.ts on the live server (port 8001 / Railway).
  *
  * Districts match Dope Budz hubs: Grove, Harbor, Neon, Mesa, Fogtown, Little Beach.
- * 18 deed pads (BUDZ / SOL), growhouse benches, mission terminals, Motor Row cars,
+ * 18 deed pads (Practice BUDZ (session only) / SOL), growhouse benches, mission terminals, Motor Row cars,
  * highway traffic cubes, combat-yard thugs. ProximityPrompt + NetworkComponent.
  */
 import Rapier from "../physics/rapier.js";
@@ -22,7 +22,7 @@ import { Cube } from "../ecs/entity/Cube.js";
 import { MapWorld } from "../ecs/entity/MapWorld.js";
 import { Mesh } from "../ecs/entity/Mesh.js";
 import { TriggerCube } from "../ecs/entity/TriggerCube.js";
-import { DopeBudzRuntime } from "./dopebudzRuntime.js";
+import { DopeBudzRuntime, PRACTICE_BUDZ } from "./dopebudzRuntime.js";
 
 const ASSETS =
   process.env.DOPEBUDZ_ASSETS_URL ||
@@ -143,7 +143,7 @@ for (const d of DISTRICTS) {
     });
     const currency = sol ? "SOL" : "BUDZ";
     const price = sol ? 0.28 + i * 0.07 : 160 + idx * 18;
-    const formattedPrice = currency === "SOL" ? `${price.toFixed(2)} SOL` : `${price} BUDZ`;
+    const formattedPrice = currency === "SOL" ? `${price.toFixed(2)} SOL` : `${price} ${PRACTICE_BUDZ}`;
     const prompt = new ProximityPromptComponent(pad.entity.id, {
       text: `E · Deed ${idx + 1} · ${formattedPrice}`,
       onInteract: (player) => runtime.interactWithLot(idx, player),

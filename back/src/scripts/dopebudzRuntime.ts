@@ -14,6 +14,14 @@ import { ChatComponent } from '../ecs/component/tag/TagChatComponent.js'
 import { ScriptableSystem } from '../ecs/system/ScriptableSystem.js'
 
 type Currency = 'BUDZ' | 'SOL'
+
+/**
+ * The Streets BUDZ balance is a session-only practice counter (starts at
+ * DOPEBUDZ_STARTING_BUDZ, resets on disconnect). It is not the wallet's
+ * $BUDZ token, so every player-facing string says so.
+ */
+export const PRACTICE_BUDZ = 'Practice BUDZ'
+export const PRACTICE_BUDZ_FULL = 'Practice BUDZ (session only)'
 type BenchPhase = 'empty' | 'growing' | 'ready'
 
 interface PlayerProgress {
@@ -162,7 +170,7 @@ export class DopeBudzRuntime {
       if (progress.budz < this.config.growCost) {
         this.sendToPlayer(
           player.id,
-          `Planting costs ${this.config.growCost} BUDZ. Your balance is ${this.formatBalance(progress)}.`
+          `Planting costs ${this.config.growCost} ${PRACTICE_BUDZ}. Your balance is ${this.formatBalance(progress)}.`
         )
         return
       }
@@ -196,7 +204,7 @@ export class DopeBudzRuntime {
     this.resetBench(bench)
     this.sendToPlayer(
       player.id,
-      `Harvest complete: +${this.config.growReward} BUDZ and +2 REP. ${this.formatStatus(progress)}`
+      `Harvest complete: +${this.config.growReward} ${PRACTICE_BUDZ} and +2 REP. ${this.formatStatus(progress)}`
     )
   }
 
@@ -234,7 +242,7 @@ export class DopeBudzRuntime {
     progress.activeMission = undefined
     this.sendToPlayer(
       player.id,
-      `${active.title} completed at ${terminal.title}: +${active.reward} BUDZ and +5 REP. ${this.formatStatus(progress)}`
+      `${active.title} completed at ${terminal.title}: +${active.reward} ${PRACTICE_BUDZ} and +5 REP. ${this.formatStatus(progress)}`
     )
   }
 
@@ -263,7 +271,7 @@ export class DopeBudzRuntime {
       const progress = this.getProgress(player)
       this.sendToPlayer(
         player.id,
-        `Welcome to Dope Budz Streets. Claim a lot, grow a crop, or run a terminal route. ${this.formatStatus(progress)}`
+        `Welcome to Dope Budz Streets. Claim a lot, grow a crop, or run a terminal route. ${PRACTICE_BUDZ_FULL} is play money for this visit, not your wallet $BUDZ. ${this.formatStatus(progress)}`
       )
     }
 
@@ -391,10 +399,10 @@ export class DopeBudzRuntime {
   }
 
   private formatBalance(progress: PlayerProgress): string {
-    return `${Math.round(progress.budz)} BUDZ / ${progress.sol.toFixed(2)} SOL`
+    return `${Math.round(progress.budz)} ${PRACTICE_BUDZ_FULL} / ${progress.sol.toFixed(2)} SOL`
   }
 
   private formatAmount(amount: number, currency: Currency): string {
-    return currency === 'SOL' ? `${amount.toFixed(2)} SOL` : `${Math.round(amount)} BUDZ`
+    return currency === 'SOL' ? `${amount.toFixed(2)} SOL` : `${Math.round(amount)} ${PRACTICE_BUDZ}`
   }
 }
