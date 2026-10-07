@@ -25,10 +25,7 @@
     "lag:up": "sudo tc qdisc add dev lo root netem delay 100ms",
     "lag:down": "sudo tc qdisc del dev lo root netem",
     "workspace:build": "powershell.exe -NoProfile -ExecutionPolicy Bypass -File \"C:\\grudgegit\\grudgeblox/Build-Workspace.ps1\"",
-    "workspace:menu": "powershell.exe -NoProfile -ExecutionPolicy Bypass -File \"C:\\grudgegit\\grudgeblox/Project-Console.ps1\"",
-    "postbuild": "node .storage/sync-release.cjs build",
-    "storage:build": "powershell -NoProfile -File .storage/Build-Local.ps1",
-    "storage:release": "node .storage/sync-release.cjs package"
+    "workspace:menu": "powershell.exe -NoProfile -ExecutionPolicy Bypass -File \"C:\\grudgegit\\grudgeblox/Project-Console.ps1\""
   },
   "devDependencies": {
     "concurrently": "^8.2.2",
