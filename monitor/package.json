@@ -4,8 +4,10 @@
   "description": "Health monitoring for Notblox game servers (Sends to Discord)",
   "main": "dist/monitor.js",
   "scripts": {
-    "build": "tsc",
-    "start": "node dist/monitor.js"
+    "build": "powershell.exe -NoProfile -ExecutionPolicy Bypass -File \"C:\\grudgegit\\grudgeblox/Build-Workspace.ps1\" -PackageRelative \"monitor\" -Script \"build\" -NoLaunchPrompt",
+    "start": "node dist/monitor.js",
+    "workspace:build": "powershell.exe -NoProfile -ExecutionPolicy Bypass -File \"C:\\grudgegit\\grudgeblox/Build-Workspace.ps1\"",
+    "workspace:menu": "powershell.exe -NoProfile -ExecutionPolicy Bypass -File \"C:\\grudgegit\\grudgeblox/Project-Console.ps1\""
   },
   "dependencies": {
     "dotenv": "^16.0.3"

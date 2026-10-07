@@ -10,10 +10,12 @@
   },
   "scripts": {
     "dev": "next dev -p 4000",
-    "build": "next build",
+    "build": "powershell.exe -NoProfile -ExecutionPolicy Bypass -File \"C:\\grudgegit\\grudgeblox/Build-Workspace.ps1\" -PackageRelative \"front\" -Script \"build\" -NoLaunchPrompt",
     "start": "next start",
     "lint": "next lint",
-    "serve": "serve -s public/assets -l 4001 --cors"
+    "serve": "serve -s public/assets -l 4001 --cors",
+    "workspace:build": "powershell.exe -NoProfile -ExecutionPolicy Bypass -File \"C:\\grudgegit\\grudgeblox/Build-Workspace.ps1\"",
+    "workspace:menu": "powershell.exe -NoProfile -ExecutionPolicy Bypass -File \"C:\\grudgegit\\grudgeblox/Project-Console.ps1\""
   },
   "overrides": {
     "minimatch": "^10.2.1"

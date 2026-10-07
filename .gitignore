@@ -19,3 +19,6 @@ shared/package-lock.json
 
 # Managed local game models remain in the E: Workbench vault.
 /front/public/workbench/
+
+# This device only; public installers collect their own drive choices.
+.storage/device.json

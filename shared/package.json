@@ -6,8 +6,10 @@
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "scripts": {
-    "build": "tsc --build tsconfig.json",
-    "dev": "tsc --watch --project tsconfig.json"
+    "build": "powershell.exe -NoProfile -ExecutionPolicy Bypass -File \"C:\\grudgegit\\grudgeblox/Build-Workspace.ps1\" -PackageRelative \"shared\" -Script \"build\" -NoLaunchPrompt",
+    "dev": "tsc --watch --project tsconfig.json",
+    "workspace:build": "powershell.exe -NoProfile -ExecutionPolicy Bypass -File \"C:\\grudgegit\\grudgeblox/Build-Workspace.ps1\"",
+    "workspace:menu": "powershell.exe -NoProfile -ExecutionPolicy Bypass -File \"C:\\grudgegit\\grudgeblox/Project-Console.ps1\""
   },
   "devDependencies": {
     "@types/node": "^24.13.3",
