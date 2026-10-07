@@ -5,9 +5,9 @@ import { createHash } from 'node:crypto'
 import { registerHostiles } from './register-shire-hostiles.mjs'
 
 const repo=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'..')
-const root=process.env.GRUDGE_SHIRE_DATA_ROOT||'E:\\GrudgeBloxData\\TheMiddleEarth'
-if(!/^E:[\\/]/i.test(root))throw Error('Shire storage must be on E: as directed by Al.')
-await fs.access('E:\\')
+const root=process.env.GRUDGE_SHIRE_DATA_ROOT||'F:\\Data\\GrudgeBlox\\TheMiddleEarth'
+if(!/^F:[\\/]/i.test(root))throw Error('Shire persistent storage must be on F:.')
+await fs.access('F:\\')
 for(const folder of ['assets','saves','cache','builds','evidence'])await fs.mkdir(path.join(root,folder),{recursive:true})
 const sha=bytes=>createHash('sha256').update(bytes).digest('hex')
 const verify=async(file,expected)=>{const bytes=await fs.readFile(file);if(expected&&sha(bytes)!==expected.toLowerCase())throw Error(`Hash mismatch: ${file}`);return bytes}

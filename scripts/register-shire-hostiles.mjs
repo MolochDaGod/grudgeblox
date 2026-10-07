@@ -20,4 +20,4 @@ export async function registerHostiles(root) {
   const temporary=`${manifestPath}.hostiles.tmp`;await fs.writeFile(temporary,JSON.stringify(manifest,null,2));await fs.rename(temporary,manifestPath)
   return additions.map(({id,byteSize,sha256})=>({id,byteSize,sha256}))
 }
-if(process.argv[1]&&path.resolve(process.argv[1])===fileURLToPath(import.meta.url))console.log(JSON.stringify(await registerHostiles(process.env.GRUDGE_SHIRE_DATA_ROOT||'E:\\GrudgeBloxData\\TheMiddleEarth'),null,2))
+if(process.argv[1]&&path.resolve(process.argv[1])===fileURLToPath(import.meta.url))console.log(JSON.stringify(await registerHostiles(process.env.GRUDGE_SHIRE_DATA_ROOT||'F:\\Data\\GrudgeBlox\\TheMiddleEarth'),null,2))

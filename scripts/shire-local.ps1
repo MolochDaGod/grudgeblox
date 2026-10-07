@@ -1,6 +1,6 @@
 param(
   [ValidateSet('Prepare','Build','Start','Stop','Status')][string]$Mode='Start',
-  [string]$DataRoot='E:\GrudgeBloxData\TheMiddleEarth',
+  [string]$DataRoot='F:\Data\GrudgeBlox\TheMiddleEarth',
   [ValidateRange(1024,65535)][int]$Port=4100,
   [switch]$OpenBrowser
 )
@@ -8,7 +8,7 @@ $ErrorActionPreference='Stop'
 $shireRepo=Split-Path $PSScriptRoot -Parent
 $shireFront=Join-Path $shireRepo 'front'
 $shireRoot=[System.IO.Path]::GetFullPath($DataRoot)
-if($shireRoot -notmatch '^E:\\' -or -not (Test-Path -LiteralPath 'E:\')) { throw 'The configured E: storage is unavailable. No alternate drive will be used.' }
+if($shireRoot -notmatch '^F:\\' -or -not (Test-Path -LiteralPath 'F:\')) { throw 'The configured F: storage is unavailable. No alternate drive will be used.' }
 $shireLockHash=[System.Security.Cryptography.SHA256]::Create()
 $shireLockKey=([BitConverter]::ToString($shireLockHash.ComputeHash([Text.Encoding]::UTF8.GetBytes($shireRoot.TrimEnd('\').ToLowerInvariant())))).Replace('-','')
 $shireLockHash.Dispose()
@@ -29,30 +29,32 @@ if($Mode -eq 'Stop') {
     Stop-Process -Id $shireRecord.processId
   }
   Remove-Item -LiteralPath $shireLedger
-  Write-Output 'The owned Shire server has stopped. Saved worlds remain on E:.'
+  Write-Output 'The owned Shire server has stopped. Saved worlds remain on F:.'
   exit 0
 }
 if($Mode -eq 'Status') {
   if(Test-Path -LiteralPath $shireLedger){Get-Content -LiteralPath $shireLedger}else{Write-Output 'No owned Shire server is recorded.'}
   exit 0
 }
-foreach($shireFolder in @('assets','saves','cache','cache\temp','cache\node-compile','builds','builds\next','evidence')){
+foreach($shireFolder in @('assets','saves','cache','evidence')){
   New-Item -ItemType Directory -Path (Join-Path $shireRoot $shireFolder) -Force | Out-Null
 }
 $shireVolume=Get-Volume -DriveLetter E
 if($shireVolume.SizeRemaining -lt 1GB){throw 'At least 1 GB free on E: is required to build and run this local world.'}
 $shireLink=Join-Path $shireFront '.shire-next'
-$shireOutput=Join-Path $shireRoot 'builds\next'
+$shireWork='E:\build\GrudgeBlox'
+$shireOutput='D:\build\GrudgeBlox\shire-next'
+foreach($shireFolder in @($shireWork,(Join-Path $shireWork 'temp'),(Join-Path $shireWork 'node-compile'),$shireOutput)){New-Item -ItemType Directory -Path $shireFolder -Force | Out-Null}
 if(Test-Path -LiteralPath $shireLink){
   $shireItem=Get-Item -LiteralPath $shireLink -Force
-  if($shireItem.LinkType -ne 'Junction' -or [System.IO.Path]::GetFullPath([string]$shireItem.Target) -ne $shireOutput){throw 'The Shire build path already exists with a different destination. It was preserved.'}
+  if($shireItem.LinkType -ne 'Junction' -or [System.IO.Path]::GetFullPath(@($shireItem.Target)[0]) -ne $shireOutput){throw 'The Shire build path already exists with a different destination. It was preserved.'}
 }else{New-Item -ItemType Junction -Path $shireLink -Target $shireOutput | Out-Null}
 $env:GRUDGE_LOCAL_WORLD='shire'
 $env:GRUDGE_SHIRE_DATA_ROOT=$shireRoot
 $env:NEXT_TELEMETRY_DISABLED='1'
-$env:TEMP=Join-Path $shireRoot 'cache\temp'
+$env:TEMP=Join-Path $shireWork 'temp'
 $env:TMP=$env:TEMP
-$env:NODE_COMPILE_CACHE=Join-Path $shireRoot 'cache\node-compile'
+$env:NODE_COMPILE_CACHE=Join-Path $shireWork 'node-compile'
 # Generated server modules live on E:; resolve the existing pnpm links from their original D: paths.
 $env:NODE_PATH=Join-Path $shireFront 'node_modules'
 if($Mode -eq 'Prepare' -or -not(Test-Path -LiteralPath (Join-Path $shireRoot 'assets\manifest.json'))){
@@ -70,11 +72,15 @@ if($Mode -eq 'Build'){
   $shireEnvTypesBefore=[System.IO.File]::ReadAllBytes($shireEnvTypesPath)
   try{
     & $shireNode $shireNext build 2>&1 | Tee-Object -FilePath (Join-Path $shireRoot 'evidence\build.log')
-    if($LASTEXITCODE -ne 0){throw 'The Shire build failed. Its build log is on E:.'}
+    if($LASTEXITCODE -ne 0){throw 'The Shire build failed. Its build log is on F:.'}
   }finally{
     # Next regenerates this shared file for its selected output folder. Restore its exact prior bytes.
     [System.IO.File]::WriteAllBytes($shireEnvTypesPath,$shireEnvTypesBefore)
     Pop-Location
+  }
+  if(Test-Path -LiteralPath (Join-Path $shireRepo '.storage\publish_release.py')){
+    & 'C:\Program Files\Python314\python.exe' (Join-Path $shireRepo '.storage\publish_release.py') --project GrudgeBlox --source $shireOutput --kind web-build-materials
+    if($LASTEXITCODE -ne 0){throw 'The completed web build could not be archived locally.'}
   }
   exit 0
 }
@@ -102,10 +108,10 @@ $shireServer=Start-Process -FilePath $shireNode -ArgumentList @($shireNext,'star
 $shireReady=$false
 for($shireAttempt=0;$shireAttempt -lt 30;$shireAttempt++){
   try{$shireCheck=Invoke-RestMethod "http://127.0.0.1:$Port/api/shire" -TimeoutSec 2;if($shireCheck.storage -eq $shireRoot){$shireReady=$true;break}}catch{}
-  if($shireServer.HasExited){throw 'The local server exited. Its logs are in the E: evidence folder.'}
+  if($shireServer.HasExited){throw 'The local server exited. Its logs are in the F: evidence folder.'}
   Start-Sleep -Milliseconds 300
 }
-if(-not $shireReady){throw 'The local server has not reported ready. Check its E: logs before opening the game.'}
+if(-not $shireReady){throw 'The local server has not reported ready. Check its F: logs before opening the game.'}
 Write-Output "Ready: $shireUrl"
 Write-Output "Saves, assets, caches and builds: $shireRoot"
 if($OpenBrowser){Start-Process $shireUrl}

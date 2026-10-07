@@ -6,7 +6,7 @@ const globals=globalThis as typeof globalThis & {shireStore?:LocalWorldStore}
 export function localStore(){
   if(process.env.GRUDGE_LOCAL_WORLD!=='shire')throw Error('Start The Middle-earth with its local launcher to enable local saves.')
   const root=process.env.GRUDGE_SHIRE_DATA_ROOT
-  if(!root||!path.isAbsolute(root))throw Error('An explicit local storage root is required. Use the E: launcher.')
+  if(!root||!path.isAbsolute(root))throw Error('An explicit local storage root is required. Use the local project launcher.')
   return globals.shireStore??=new LocalWorldStore(root)
 }
 export function guardLocal(request:Request,write=false){
