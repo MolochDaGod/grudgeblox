@@ -1,11 +1,12 @@
 import * as T from 'three'
+import { workbenchModelUrl } from './workbenchContract'
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js'
 import { clone } from 'three/examples/jsm/utils/SkeletonUtils.js'
-import { World, Point } from '@shared/shire/model'
+import type { World, Point } from '@shared/shire/model'
 import { height, clear } from '@shared/shire/terrain'
 import { waterAt } from '@shared/shire/atlas'
 
-type Entry={key:string;name:string;model:string;spawn:boolean;habitat:string;length_m:number;clips:string[];animation_status:string;preferred_clip?:string;role?:string}
+type Entry={key:string;name:string;model:string;spawn:boolean;habitat:string;length_m:number;clips:string[];animation_status:string;preferred_clip?:string;role?:string;revision?:string;sha256?:string}
 type Actor={root:T.Group;model:T.Object3D;mixer:T.AnimationMixer;entry:Entry;origin:T.Vector3;direction:T.Vector3}
 /** Independent ambient population; original models and every source clip remain in the library. */
 export class WorkbenchLibrary {
@@ -17,7 +18,7 @@ export class WorkbenchLibrary {
     void fetch('/api/workbench',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({entries:this.entries.length,actors:this.actors.length,updated:data.updated||'',live_updates:true})}).catch(()=>{})
   }catch(error){console.warn('Workbench library refresh',error)}finally{this.refreshing=false}}
   async instantiate(key:string){const entry=this.entries.find(e=>e.key===key);if(!entry)throw Error('Workbench asset missing')
-    let promise=this.cache.get(key);if(!promise){promise=new GLTFLoader().loadAsync('/workbench/'+entry.model).then(g=>{g.scene.animations=g.animations;return g.scene});this.cache.set(key,promise)}
+    let promise=this.cache.get(key);if(!promise){promise=new GLTFLoader().loadAsync(workbenchModelUrl(entry)).then(g=>{g.scene.animations=g.animations;return g.scene});this.cache.set(key,promise);const pending=promise;void pending.catch(()=>{if(this.cache.get(key)===pending)this.cache.delete(key)})}
     const source=await promise,model=clone(source);model.animations=source.animations;model.userData.workbench=entry;return model
   }
   private permitted(world:World,x:number,z:number,habitat:string){const floor=height(x,z,world),water=waterAt(x,z,world);return habitat==='water'?Number.isFinite(water)&&water-floor>.5:habitat==='air'||(!Number.isFinite(water)||floor>=water)&&clear({x,y:floor+.15,z},world)}
