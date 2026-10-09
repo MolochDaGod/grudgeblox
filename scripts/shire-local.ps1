@@ -126,7 +126,10 @@ try{
   if($Mode -eq 'Build'){
     Push-Location $shireFront
     try{
-      & $shireNode $shireNext build 2>&1 | Tee-Object -FilePath (Join-Path $shireLogs 'build.log')
+      $shireArgumentsJson=& $shireNode (Join-Path $shireRuntime 'scripts\shire-next-build-args.mjs') (Join-Path $shireFront 'node_modules\next\package.json')
+      if($LASTEXITCODE -ne 0){throw 'The staged installed Next version could not be verified.'}
+      $shireBuildArguments=@($shireArgumentsJson | ConvertFrom-Json)
+      & $shireNode $shireNext @shireBuildArguments 2>&1 | Tee-Object -FilePath (Join-Path $shireLogs 'build.log')
       if($LASTEXITCODE -ne 0){throw 'Shire build failed. See the D: build log.'}
     }finally{Pop-Location}
     return

@@ -6,6 +6,7 @@ import { fileURLToPath } from 'node:url'
 import { spawnSync } from 'node:child_process'
 import { serveWorkbench, workbenchHeartbeat, workbenchRoot } from '../front/lib/workbenchServer.ts'
 import { workbenchModelUrl } from '../front/game/shire/workbenchContract.ts'
+import { shireNextBuildArguments } from './shire-next-build-args.mjs'
 
 const project = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
 const validation = process.env.SHIRE_VALIDATION_ROOT
@@ -258,6 +259,62 @@ test('Stage copies a committed fixture to D, records its revision and preserves 
   assert.notEqual(start.status, 0)
   assert.match(start.stderr, /Existing Next dependencies are missing/)
   assert.ok(!(await readdir(path.join(runtime, 'front'))).includes('node_modules'))
+})
+
+test('Next build selection preserves legacy CLI behavior and retains webpack on Next 16', () => {
+  assert.deepEqual(shireNextBuildArguments('15.5.25'), ['build'])
+  assert.deepEqual(shireNextBuildArguments('16.4.0'), ['build', '--webpack'])
+  assert.deepEqual(shireNextBuildArguments('16.4.0+fixture'), ['build', '--webpack'])
+  for (const invalid of [undefined, null, '', '16', '16.4.0 --turbo', '0.0.0', '016.4.0']) {
+    assert.throws(() => shireNextBuildArguments(invalid), /version/)
+  }
+})
+
+test('Next build helper reads the selected installed package and fails before launching wrong metadata', async () => {
+  const packageFile = path.join(root, 'installed-next.json')
+  const helper = path.join(project, 'scripts/shire-next-build-args.mjs')
+  const select = () => spawnSync(process.execPath, [helper, packageFile], { encoding: 'utf8' })
+  for (const [version, expected] of [
+    ['15.5.25', ['build']], ['16.4.0', ['build', '--webpack']],
+  ]) {
+    await writeFile(packageFile, JSON.stringify({ name: 'next', version }))
+    const result = select()
+    assert.equal(result.status, 0, result.stderr)
+    assert.deepEqual(JSON.parse(result.stdout), expected)
+  }
+  await writeFile(packageFile, JSON.stringify({ name: 'fixture-other-package', version: '16.4.0' }))
+  const wrong = select()
+  assert.notEqual(wrong.status, 0)
+  assert.match(wrong.stderr, /not Next/)
+  await writeFile(packageFile, '{"name":"next","version":"invalid"}')
+  const malformed = select()
+  assert.notEqual(malformed.status, 0)
+  assert.match(malformed.stderr, /version/)
+})
+
+test('Next configuration uses one Shire worker and preserves Windows webpack entries and aliases', async () => {
+  const { runInNewContext } = await import('node:vm')
+  const source = await readFile(path.join(project, 'front/next.config.js'), 'utf8')
+  const configuration = localWorld => {
+    const module = { exports: {} }
+    runInNewContext(source, { module, process: { platform: 'win32', env: { GRUDGE_LOCAL_WORLD: localWorld } } })
+    return module.exports
+  }
+  const shire = configuration('shire')
+  assert.equal(shire.experimental.cpus, 1)
+  assert.equal(shire.experimental.externalDir, true)
+  assert.equal(shire.distDir, '.shire-next')
+  assert.equal(shire.typescript.tsconfigPath, 'shire.tsconfig.json')
+  assert.equal(configuration(undefined).experimental.cpus, undefined)
+  const input = { resolve: {}, entry: async () => ({
+    main: ['./D:/synthetic/entry.js'], other: { import: './D:/synthetic/other.js' }, relative: './entry.js',
+  }) }
+  const webpack = shire.webpack(input)
+  const entries = await webpack.entry()
+  assert.deepEqual(Array.from(entries.main), ['D:/synthetic/entry.js'])
+  assert.equal(entries.other.import, 'D:/synthetic/other.js')
+  assert.equal(entries.relative, './entry.js')
+  assert.deepEqual(JSON.parse(JSON.stringify(webpack.resolve.extensionAlias)), { '.js': ['.ts', '.tsx', '.js'] })
 })
 
 after(async () => {
