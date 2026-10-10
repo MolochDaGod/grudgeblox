@@ -4,6 +4,7 @@ import { createWorld, validateWorld } from '../shared/shire/simulation'
 import { ensureLife } from '../shared/shire/life'
 import { height } from '../shared/shire/terrain'
 
+async function main(){
 const base='http://127.0.0.1:4100',output='D:/grudgegit/grudgeblox/shire/validation/npc-live'
 const bootstrap=await(await fetch(`${base}/api/shire`)).json()
 assert.equal(bootstrap.storage,'C:\\RuntimeData\\grudgegit\\grudgeblox\\TheMiddleEarth')
@@ -31,3 +32,5 @@ if(process.argv.includes('--prepare')){
   const report={passed:travelled&&grazed&&consumed&&next,worldId:fixture.worldId,cowId:fixture.cowId,travelled,grazed,consumed,next,samples}
   await fs.writeFile(`${output}/report.json`,JSON.stringify(report,null,2));console.log(JSON.stringify({...report,samples:samples.length}));assert.ok(report.passed)
 }
+}
+void main().catch(error=>{console.error(error);process.exitCode=1})
