@@ -92,8 +92,14 @@ try{
   }
   if(-not(Test-Path -LiteralPath $shireStamp)){throw 'Stage the committed C: source on D: first with -Mode Stage, after build resources are approved.'}
   $shireStaged=Get-Content -LiteralPath $shireStamp -Raw | ConvertFrom-Json
-  if($shireStaged.source -ne $shireSource -or $shireStaged.revision -ne $shireRevision){throw 'The staged source does not match this C: checkout revision. Select a fresh staged runtime.'}
-  if(& git -C $shireSource status --porcelain --untracked-files=normal){throw 'Commit current source edits and stage them before building or launching.'}
+  $shireHasSourceProof=$shireStaged.consoleBuild -and @($shireStaged.sourceFiles).Count -gt 0
+  if([IO.Path]::GetFullPath($shireStaged.source) -ne [IO.Path]::GetFullPath($shireSource) -or (-not $shireHasSourceProof -and $shireStaged.revision -ne $shireRevision)){throw 'The staged source does not match this C: checkout revision. Select a fresh staged runtime.'}
+  if($shireHasSourceProof){
+    foreach($shireProof in $shireStaged.sourceFiles){
+      $shireCurrent=Join-Path $shireSource $shireProof.path
+      if(-not(Test-Path -LiteralPath $shireCurrent -PathType Leaf) -or (Get-FileHash -LiteralPath $shireCurrent -Algorithm SHA256).Hash.ToLowerInvariant() -ne $shireProof.sha256){throw "The current source differs from its Console build: $($shireProof.path). Rebuild Shire through Project Console."}
+    }
+  }elseif(& git -C $shireSource status --porcelain --untracked-files=normal){throw 'The legacy stage has no current-source proof. Build Shire through Project Console; dirty source is preserved.'}
   if(Test-Path -LiteralPath $shireLedger){
     $shireRecord=Get-Content -LiteralPath $shireLedger -Raw | ConvertFrom-Json
     $shireRecordedProcess=Get-CimInstance Win32_Process -Filter "ProcessId=$($shireRecord.processId)"
@@ -108,7 +114,8 @@ try{
       return
     }
   }
-  $shireNode=(Get-Command node.exe -ErrorAction Stop).Source
+  $shireNode=(Get-Content -LiteralPath 'C:\github\ProjectLaunchers\workspace-tools\catalog.json' -Raw|ConvertFrom-Json).tools.node
+  if(-not(Test-Path -LiteralPath $shireNode -PathType Leaf)){throw 'The retained registered Node runtime is unavailable.'}
   if($Mode -ne 'Prepare' -and -not(Test-Path -LiteralPath $shireNext)){throw "Existing Next dependencies are missing from $shireFront. No download or alternate source dependency folder was used."}
   foreach($shireFolder in @($shireLogs,(Join-Path $shireWork 'temp'),(Join-Path $shireWork 'node-compile'))){[IO.Directory]::CreateDirectory($shireFolder) | Out-Null}
   $env:GRUDGE_LOCAL_WORLD='shire'
