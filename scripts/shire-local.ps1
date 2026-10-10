@@ -8,6 +8,12 @@ param(
   [switch]$OpenBrowser
 )
 $ErrorActionPreference='Stop'
+function Get-ShireSourceHash([string]$Path){
+  $stream=[IO.File]::OpenRead($Path)
+  $hasher=[Security.Cryptography.SHA256]::Create()
+  try{return ([BitConverter]::ToString($hasher.ComputeHash($stream))).Replace('-','').ToLowerInvariant()}
+  finally{$hasher.Dispose();$stream.Dispose()}
+}
 $shireSource=Split-Path $PSScriptRoot -Parent
 $shireConfig=Get-Content -LiteralPath (Join-Path $shireSource '.workspace-build.json') -Raw | ConvertFrom-Json
 $shireBuildRoot=[IO.Path]::GetFullPath($shireConfig.buildRoot)
@@ -97,7 +103,7 @@ try{
   if($shireHasSourceProof){
     foreach($shireProof in $shireStaged.sourceFiles){
       $shireCurrent=Join-Path $shireSource $shireProof.path
-      if(-not(Test-Path -LiteralPath $shireCurrent -PathType Leaf) -or (Get-FileHash -LiteralPath $shireCurrent -Algorithm SHA256).Hash.ToLowerInvariant() -ne $shireProof.sha256){throw "The current source differs from its Console build: $($shireProof.path). Rebuild Shire through Project Console."}
+      if(-not(Test-Path -LiteralPath $shireCurrent -PathType Leaf) -or (Get-ShireSourceHash $shireCurrent) -ne $shireProof.sha256){throw "The current source differs from its Console build: $($shireProof.path). Rebuild Shire through Project Console."}
     }
   }elseif(& git -C $shireSource status --porcelain --untracked-files=normal){throw 'The legacy stage has no current-source proof. Build Shire through Project Console; dirty source is preserved.'}
   if(Test-Path -LiteralPath $shireLedger){
