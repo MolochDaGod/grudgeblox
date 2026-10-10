@@ -2,6 +2,7 @@ import { Animal, AnimalActivity, Furnishing, World, Point, SPECIES, distance } f
 import { clear, height, surfaceAt, WATER_LEVEL } from './terrain'
 import { waterAt, bridgeAt, bridgeDeck, isAtlas } from './atlas'
 import { navigationTarget } from './navigation'
+import { animalGoalIntent, interruptAnimalGoal } from './animalGoals'
 
 export const WILDLIFE:Record<Animal['species'],{routine:AnimalActivity;range:number;fear:number;pace:number;description:string}>={
   sheep:{routine:'grazing',range:3,fear:2.1,pace:0.8,description:'Graze in a loose flock and move away together when startled.'},
@@ -43,43 +44,31 @@ export function advanceWildlife(w:World,seconds:number){
       if(support)a.position.y=Math.max(a.position.y,bridgeDeck(support))
       if(w.life&&(Math.hypot(a.position.x-w.player.x,a.position.z-w.player.z)>500||w.life.riding===a.id))continue
       if(w.combat?.actors.find(b=>b.id===a.id)?.vitality.hp===0)continue
-      const spec=SPECIES[a.species],rule=WILDLIFE[a.species],phase=phaseOf(a),cycle=(time+phase)%18,hungry=a.fedUntil<time
+      const spec=SPECIES[a.species],rule=WILDLIFE[a.species],phase=phaseOf(a),hungry=a.fedUntil<time
       const info=w.life?.animals[a.id],nearby=distance(w.player,a.position)<rule.fear,calm=(a.calmUntil||0)>time||!!info?.owner&&info.affinity>=20
       if(nearby&&!calm)a.startledUntil=Math.max(a.startledUntil||0,time+2)
       const scared=(a.startledUntil||0)>time
-      const angle=time*0.11+phase,home=a.home
-      let activity:AnimalActivity=rule.routine,speed=rule.pace,target:Point={x:home.x+Math.sin(angle)*rule.range,y:home.y,z:home.z+Math.cos(angle*0.83)*rule.range}
+      const angle=time*0.11+phase
+      let activity:AnimalActivity='watching',speed=0,target:Point={...a.position}
       const mother=a.parents&&previous.find(b=>b.id===a.parents![0])
-      const feeder=w.furniture.filter(f=>f.kind==='feeder'&&(f.stock||0)>0&&Math.hypot(f.position.x-a.position.x,f.position.z-a.position.z)<14).sort((a0,b)=>distance(a.position,a0.position)-distance(a.position,b.position))[0]
       const shelter=w.furniture.find(f=>f.kind==='burrow'&&f.open&&distance(f.position,a.position)<12)
-      const perch=w.furniture.find(f=>f.kind==='perch'&&f.open&&distance(f.position,a.position)<16)
-      if(scared){
+      if(info?.following){interruptAnimalGoal(a);target={...w.player};activity='watching';speed=distance(w.player,a.position)>2.5?3.5:0;if(speed)activity='approaching feed'}
+      else if(scared){
+        interruptAnimalGoal(a)
         let x=a.position.x-w.player.x,z=a.position.z-w.player.z,l=Math.hypot(x,z);if(l<0.01){x=Math.sin(phase);z=Math.cos(phase);l=1}
-        target={x:a.position.x+x/l*3,y:a.position.y,z:a.position.z+z/l*3};activity='fleeing';speed*=2.2
+        target={x:a.position.x+x/l*3,y:a.position.y,z:a.position.z+z/l*3};activity='fleeing';speed=rule.pace*2.2
         if(a.species==='rabbit'&&shelter){const approach=shelterApproach(a,shelter);target=approach.target;if(distance(a.position,approach.entrance)<0.6){activity='sheltering';speed=0}}
         if(a.species==='frog')target=w.generator==='shire-1'?{x:25,y:WATER_LEVEL,z:112}:{...a.home}
-      }else if(mother&&a.age<spec.maturity&&distance(a.position,mother.position)>1.3){target={...mother.position};activity='following mother';speed*=1.4}
-      else if(hungry&&feeder&&spec.habitat==='pasture'){
-        const x=a.position.x-feeder.position.x,z=a.position.z-feeder.position.z,l=Math.hypot(x,z)||1
-        target={x:feeder.position.x+x/l*1.25,y:feeder.position.y,z:feeder.position.z+z/l*1.25};activity='approaching feed'
-        if(distance(a.position,target)<0.7){feeder.stock=(feeder.stock||0)-1;a.fedUntil=time+240;activity='feeding';speed=0}
-      }else if(a.species==='bird'&&perch&&cycle>8){
-        target={x:perch.position.x,y:perch.position.y+1.78,z:perch.position.z};activity='perching';if(distance(a.position,target)<0.15)speed=0
-      }else if(cycle>10&&!['fish','bird'].includes(a.species)){
-        speed=0;activity=a.species==='llama'?'watching':a.species==='chicken'?'pecking':a.species==='pig'?'rooting':a.species==='frog'?'basking':a.species==='sheep'||a.species==='cattle'?'grazing':'resting'
-      }else if(a.species==='sheep'||a.species==='fish'){
-        const group=previous.filter(b=>b.species===a.species&&Math.hypot(b.position.x-a.position.x,b.position.z-a.position.z)<18),cx=group.reduce((n,b)=>n+b.position.x,0)/group.length,cz=group.reduce((n,b)=>n+b.position.z,0)/group.length
-        target.x=(target.x+cx)/2;target.z=(target.z+cz)/2
-      }
-      if(info?.following){target={...w.player};activity='watching';speed=distance(w.player,a.position)>2.5?3.5:0;if(speed)activity='approaching feed'}
-      if(w.life&&speed>0&&spec.habitat==='pasture'&&(info?.following||activity==='approaching feed'||activity==='following mother'||activity==='sheltering')){const route=navigationTarget(w,a.id,a.position,target);if(route)target=route;else speed=0}
+      }else if(mother&&a.age<spec.maturity&&distance(a.position,mother.position)>1.3){interruptAnimalGoal(a);target={...mother.position};activity='following mother';speed=rule.pace*1.4}
+      else{const intent=animalGoalIntent(w,a,time,dt);target=intent.target;activity=intent.activity;speed=intent.speed?rule.pace:0}
+      if(speed>0&&spec.habitat==='pasture'&&(info?.following||scared||activity==='following mother'||activity==='sheltering')){const route=navigationTarget(w,a.id,a.position,target);if(route)target=route;else speed=0}
       if(speed>0){
         const dx=target.x-a.position.x,dz=target.z-a.position.z,l=Math.hypot(dx,dz),move=Math.min(l,speed*dt),p={x:a.position.x+(l?dx/l*move:0),y:a.position.y,z:a.position.z+(l?dz/l*move:0)}
         const bridge=isAtlas(w)?bridgeAt(p.x,p.z):undefined
         const ground=spec.habitat==='pasture'?surfaceAt(p.x,p.z,w,Math.max(height(p.x,p.z,w)+1,bridge?bridgeDeck(bridge)+1:-Infinity)):height(p.x,p.z,w)
         const water=waterAt(p.x,p.z,w)
         if(spec.habitat==='water')p.y=Math.max(ground+0.2,Math.min(water-0.25,water-0.8+Math.sin(angle)*0.18))
-        else if(spec.habitat==='air'){const desired=activity==='perching'?target.y:ground+(scared?5:3.1)+Math.sin(angle)*0.45;p.y+=Math.max(-speed*dt,Math.min(speed*dt,desired-p.y))}
+        else if(spec.habitat==='air'){const desired=!scared?target.y:ground+5;p.y+=Math.max(-speed*dt,Math.min(speed*dt,desired-p.y))}
         else p.y=spec.habitat==='bank'?Math.max(ground,water-0.05):ground
         if(allowed(w,a,p))a.position=p;else if(activity!=='perching')activity='watching'
       }

@@ -4,6 +4,7 @@ import { clear, density, height, surfaceAt, WATER_LEVEL, terrainClear, hasOutdoo
 import { breedingIssue } from './animalCare'
 import { entrancePlan, fitDoor } from './building'
 import { advanceWildlife } from './wildlife'
+import { validAnimalGoal } from './animalGoals'
 import { cinderlordSite } from './cinderlord'
 import { ensureCombat, advanceCombat, validateCombat, combatActor, living, playerStrike, playerGuard, playerHeal, playerRespawn, encounterTravel, observePlayer, resetPlayerTracking, heal } from './combat'
 import { advanceLife, applyLifeAction, beforeLifeAction, afterLifeAction, validateLife } from './life'
@@ -151,7 +152,9 @@ export function validateWorld(value:unknown): asserts value is World {
   for(const e of [...w.edits,...w.redo])if(!point(e.center)||!finitePoint(e.size)||![e.size.x,e.size.y,e.size.z].every(v=>Number.isFinite(v)&&v>=0.2&&v<=(e.shape==='ramp'?24:8))||!Number.isFinite(e.yaw)||typeof e.entrance!=='boolean'||!['dig','fill'].includes(e.kind)||!['box','sphere','cylinder','ramp'].includes(e.shape)||(e.batch!==undefined&&!validId(e.batch))||(e.shape==='ramp'?e.kind!=='dig'||!Number.isFinite(e.slope)||Math.abs(e.slope!)>0.3:e.slope!==undefined))throw Error('Invalid terrain data in save.')
   for(const f of w.furniture){if(!Object.hasOwn(FURNITURE,f.kind)||!point(f.position)||!Number.isFinite(f.yaw)||typeof f.open!=='boolean'||(f.stock!==undefined&&(f.kind!=='feeder'||!Number.isInteger(f.stock)||f.stock<0||f.stock>12)))throw Error('Invalid furnishing in save.');if(f.fit&&(f.kind!=='door'||![f.fit.width,f.fit.height,f.fit.openingWidth,f.fit.openingHeight].every(n=>Number.isFinite(n)&&n>0&&n<=10)||f.fit.openingWidth>f.fit.width||f.fit.openingHeight>f.fit.height))throw Error('Invalid doorway fit in save.')}
   for(const c of w.crops)if(!point(c.position)||!['barley','carrot'].includes(c.kind)||!nonnegative(c.planted)||c.planted>w.time||typeof c.watered!=='boolean'||typeof c.harvested!=='boolean')throw Error('Invalid crop in save.')
+  if(w.grazing!==undefined&&(!w.grazing||Array.isArray(w.grazing)||Object.keys(w.grazing).length>4096||Object.entries(w.grazing).some(([key,r])=>!/^(-?\d+):(-?\d+)$/.test(key)||!r||!nonnegative(r.amount)||r.amount>1||!nonnegative(r.at)||r.at>w.time)))throw Error('Invalid pasture resources in save.')
   for(const a of w.animals){
+    if(a.goal!==undefined&&!validAnimalGoal(a.goal,w.time))throw Error('Invalid animal goal in save.')
     if(!Object.hasOwn(SPECIES,a.species)||typeof a.name!=='string'||a.name.length>100||!point(a.position)||!point(a.home)||![a.age,a.fedUntil,a.cooldownUntil,a.tint].every(nonnegative)||a.tint>1||!['male','female'].includes(a.sex)||!['grazing','walking','resting','hungry'].includes(a.mood)||(a.activity!==undefined&&!ANIMAL_ACTIVITIES.includes(a.activity))||(a.startledUntil!==undefined&&!nonnegative(a.startledUntil))||(a.calmUntil!==undefined&&!nonnegative(a.calmUntil)))throw Error('Invalid animal in save.')
     const pair=(mother:string,father:string)=>{const dam=w.animals.find(b=>b.id===mother),sire=w.animals.find(b=>b.id===father);return dam&&sire&&mother!==father&&a.id!==father&&dam.species===a.species&&sire.species===a.species&&dam.sex==='female'&&sire.sex==='male'}
     if(a.parents&&(!Array.isArray(a.parents)||a.parents.length!==2||a.id===a.parents[0]||!pair(...a.parents)))throw Error('Invalid parent lineage in save.')

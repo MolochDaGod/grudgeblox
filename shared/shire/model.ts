@@ -1,6 +1,8 @@
 /** Local world state. These IDs are world-local, never fleet account or bag IDs. */
 import type { CombatState } from './combatTypes'
 import type { LifeState, LifeAction, PlayStyle } from './lifeTypes'
+import type { AnimalGoal } from './animalGoals'
+import type { GrazingRecord } from './pasture'
 export type Point = { x: number; y: number; z: number }
 export type Species = 'sheep' | 'chicken' | 'rabbit' | 'cattle' | 'pig' | 'horse' | 'fish' | 'llama' | 'bird' | 'frog'
 export type FurnitureKind = 'table' | 'chair' | 'bed' | 'shelf' | 'chest' | 'door' | 'lamp' | 'fence' | 'feeder' | 'perch' | 'burrow'
@@ -9,12 +11,13 @@ export interface Excavation { id: string; kind: 'dig' | 'fill'; shape: 'box' | '
 export interface DoorFit { width:number; height:number; openingWidth:number; openingHeight:number }
 export interface Furnishing { id: string; kind: FurnitureKind; position: Point; yaw: number; open: boolean; fit?:DoorFit; stock?:number }
 export interface Crop { id: string; kind: 'barley' | 'carrot'; position: Point; planted: number; watered: boolean; harvested: boolean }
-export const ANIMAL_ACTIVITIES = ['grazing','pecking','hopping','rooting','cantering','browsing','schooling','circling','basking','resting','fleeing','following mother','approaching feed','feeding','perching','sheltering','watching'] as const
+export const ANIMAL_ACTIVITIES = ['grazing','pecking','hopping','rooting','cantering','browsing','schooling','circling','basking','resting','fleeing','following mother','approaching feed','feeding','perching','sheltering','watching','walking to rest'] as const
 export type AnimalActivity = typeof ANIMAL_ACTIVITIES[number]
-export interface Animal { id: string; name: string; species: Species; sex: 'female' | 'male'; age: number; home: Point; position: Point; fedUntil: number; parents?: [string,string]; pregnant?: { sire: string; due: number }; cooldownUntil: number; mood: 'grazing' | 'walking' | 'resting' | 'hungry'; tint: number; activity?:AnimalActivity; startledUntil?:number; calmUntil?:number }
+export interface Animal { id: string; name: string; species: Species; sex: 'female' | 'male'; age: number; home: Point; position: Point; fedUntil: number; parents?: [string,string]; pregnant?: { sire: string; due: number }; cooldownUntil: number; mood: 'grazing' | 'walking' | 'resting' | 'hungry'; tint: number; activity?:AnimalActivity; startledUntil?:number; calmUntil?:number; goal?:AnimalGoal }
 export interface World {
   life?: LifeState;
   combat?: CombatState;
+  grazing?: Record<string,GrazingRecord>;
   version: 1; generator: 'shire-1'|'shire-atlas-1'; id: string; name: string; seed: number; revision: number; createdAt: string; savedAt: string; time: number;
   player: Point & { yaw: number; pitch: number }; home?: Point; edits: Excavation[]; redo: Excavation[]; furniture: Furnishing[]; crops: Crop[]; animals: Animal[];
   supplies: { barleySeed: number; carrotSeed: number; barley: number; carrot: number; feed: number }; storage: { barley: number; carrot: number };
