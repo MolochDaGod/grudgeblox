@@ -19,6 +19,7 @@ import type { InputAction } from '@shared/shire/lifeTypes'
 import { navigationTarget } from '@shared/shire/navigation'
 import { MouseTravelInput } from './MouseTravelInput'
 import { RiderPose } from './RiderPose'
+import { PastureView } from './PastureView'
 export type { ToolSettings } from '@shared/shire/building'
 
 export interface ViewState { x:number;y:number;z:number;fps:number;pending:number;target:string;targetId?:string;targetKind?:'animal'|'crop'|'furniture'|'enemy'|'resident'|LifeTarget;region:string;locked:boolean;yaw?:number;caption?:string;preview?:string;enemy?:string }
@@ -27,6 +28,7 @@ import type {TerrainWork as Work,TerrainResult} from './terrainWork'
 
 export class ShireScene {
   readonly scene=new T.Scene()
+  private pasture=new PastureView()
   readonly camera=new T.PerspectiveCamera(65,1,0.06,5500)
   readonly renderer:T.WebGLRenderer
   world:World
@@ -98,6 +100,7 @@ export class ShireScene {
   private loopHandle=0
 
   constructor(private container:HTMLElement,w:World,callbacks:ShireScene['callbacks']){
+    this.scene.add(this.pasture.root)
     this.world=w;this.player={...w.player};this.callbacks=callbacks
     if(isAtlas(w)){this.terrainMaterial.customProgramCacheKey=()=>'atlas-near';this.terrainMaterial.onBeforeCompile=shader=>{shader.uniforms.atlasPlayer=this.farCenter;shader.uniforms.atlasOrigin=this.atlasOrigin;shader.vertexShader='varying vec2 atlasNearXZ;uniform vec2 atlasOrigin;\n'+shader.vertexShader;shader.vertexShader=shader.vertexShader.replace('#include <begin_vertex>','#include <begin_vertex>\natlasNearXZ=(modelMatrix*vec4(position,1.0)).xz+atlasOrigin;');shader.fragmentShader='varying vec2 atlasNearXZ;uniform vec2 atlasPlayer;\n'+shader.fragmentShader;shader.fragmentShader=shader.fragmentShader.replace('#include <clipping_planes_fragment>','#include <clipping_planes_fragment>\nif(distance(atlasNearXZ,atlasPlayer)>118.0) discard;')}}
     this.renderer=new T.WebGLRenderer({antialias:true,powerPreference:'high-performance'});this.renderer.setPixelRatio(Math.min(window.devicePixelRatio,1.5));this.renderer.outputColorSpace=T.SRGBColorSpace;this.renderer.toneMapping=T.ACESFilmicToneMapping;this.renderer.toneMappingExposure=isAtlas(w)?0.87:1.05;this.renderer.shadowMap.enabled=true;this.renderer.shadowMap.type=T.PCFShadowMap
@@ -179,6 +182,7 @@ export class ShireScene {
     const keep=new Set<string>()
     for(const f of w.furniture){if(w.life?.interior||Math.hypot(f.position.x-this.player.x,f.position.z-this.player.z)>180)continue;keep.add(f.id);const signature=JSON.stringify(f);if(this.objectSignatures.get(f.id)!==signature){this.removeObject(f.id);const obj=furnitureVisual(f);obj.position.set(f.position.x,f.position.y,f.position.z);obj.rotation.y=f.yaw;obj.userData={kind:'furniture',id:f.id,label:FURNITURE[f.kind].label+(f.kind==='feeder'?` · ${f.stock||0}/12 feed`:f.kind==='perch'||f.kind==='burrow'?f.open?' · open':' · closed':'')};this.addObject(f.id,obj,signature)}}
     for(const crop of w.crops){if(crop.harvested||w.life?.interior||Math.hypot(crop.position.x-this.player.x,crop.position.z-this.player.z)>180)continue;keep.add(crop.id);const progress=crop.watered?Math.min(1,(w.time-crop.planted)/60):0,stage=Math.floor(progress*5),signature=`${stage}:${crop.watered}`;if(this.objectSignatures.get(crop.id)!==signature){this.removeObject(crop.id);const obj=cropVisual(crop.kind,stage/5,crop.watered);obj.position.set(crop.position.x,crop.position.y,crop.position.z);obj.userData={kind:'crop',id:crop.id,label:`${crop.kind} · ${!crop.watered?'needs water':progress>=1?'ready to harvest':'growing'}`};this.addObject(crop.id,obj,signature)}}
+    this.pasture.update(w)
     for(const animal of w.animals){if(w.life?.interior||Math.hypot(animal.position.x-this.player.x,animal.position.z-this.player.z)>160)continue;keep.add(animal.id);let obj=this.objects.get(animal.id);if(!obj){obj=animalVisual(animal);obj.position.set(animal.position.x,animal.position.y,animal.position.z);obj.userData={...obj.userData,kind:'animal',id:animal.id,label:animal.name};this.addObject(animal.id,obj,animal.species)}obj.userData.label=`${animal.name}${animal.age<SPECIES[animal.species].maturity?' · young':''}${animal.pregnant?' · expecting young':''} · ${animal.activity||animal.mood}`;obj.scale.setScalar((this.animalModels.has(animal.id)?1:SPECIES[animal.species].scale)*(animal.age<SPECIES[animal.species].maturity?0.55:1))}
     for(const key of this.objects.keys())if(!keep.has(key))this.removeObject(key);this.refreshInteractables();this.loadAnimalModels()
   }

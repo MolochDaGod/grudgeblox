@@ -15,7 +15,8 @@ export interface ResidentLife {
   id: string; name: string; town: string; role: Profession; homeBuilding: string; workBuilding: string;
   friendship: number; conversations: number; lastGiftDay: number; destination: Point;
   activity: 'sleeping' | 'working' | 'walking' | 'at the inn' | 'at the market' | 'at the festival';
-  dialogue: string; female: boolean; insideBuilding?: string
+  dialogue: string; female: boolean; insideBuilding?: string;
+  workIndex?:number; workProgress?:number
 }
 export interface QuestProgress { state: 'available' | 'active' | 'ready' | 'complete'; acceptedAt?: number; completedAt?: number }
 export interface AnimalLife { owner: boolean; following: boolean; affinity: number; lastProduct: number; region: string }

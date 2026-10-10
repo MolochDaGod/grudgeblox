@@ -296,11 +296,25 @@ export function advanceLife(w:World,dt:number){
     const outsideWork=!night&&!festival&&!market&&!social&&['gardener','farmer','ranger'].includes(r.role)
     if(outsideWork&&dest){
       // Gardeners and farmers tend outdoor plots; wayfarers make a daily round of the lanes.
-      const town=ATLAS_TOWNS.find(t=>t.id===r.town),slot=r.role==='ranger'?Math.floor(w.time/60)%4:0
+      const town=ATLAS_TOWNS.find(t=>t.id===r.town),slot=r.role==='ranger'?(r.workIndex||0)%4:0
       const x=r.role==='ranger'?(town?.x||dest.position.x)+[-55,55,65,-45][slot]:dest.door.x+(r.role==='farmer'?24:-12)
       const z=r.role==='ranger'?(town?.z||dest.position.z)+[-35,-35,45,45][slot]:dest.door.z+12
       const proposed={x,y:height(x,z,w)+.08,z}
       if(clear(proposed,w)&&proposed.y>waterAt(x,z,w)+.15)r.destination=proposed
+      if(r.role==='gardener'||r.role==='farmer'){
+        const crop=w.crops.filter(c=>!c.harvested&&!c.watered&&flat(c.position,dest.door)<65).sort((c,d)=>flat(a.position,c.position)-flat(a.position,d.position))[0]
+        if(crop&&clear({...crop.position,y:crop.position.y+.08},w))r.destination={...crop.position,y:crop.position.y+.08}
+      }
+    }
+    if(a.targetId||flat(a.position,r.destination)>1.8||night||festival||market||social)r.workProgress=0
+    else{
+      r.workProgress=(r.workProgress||0)+dt
+      if(r.workProgress>=6){
+        const crop=w.crops.find(c=>!c.harvested&&!c.watered&&flat(c.position,a.position)<2&&dest&&flat(c.position,dest.door)<65)
+        if(crop&&(r.role==='gardener'||r.role==='farmer')){crop.watered=true;crop.planted=w.time}
+        r.workProgress=0;r.workIndex=((r.workIndex||0)+1)%4
+        l.stats[`npc-work:${r.id}`]=(l.stats[`npc-work:${r.id}`]||0)+1
+      }
     }
     if(flat(a.position,r.destination)>1.8){r.activity='walking';r.insideBuilding=undefined}else r.insideBuilding=(night||!outsideWork&&!festival&&!market&&!social)&&dest?dest.id:undefined
   }
@@ -331,6 +345,7 @@ export function validateLife(w:World){
   validatedSettings(l.settings)
   if(!Array.isArray(l.residents)||l.residents.length>250||new Set(l.residents.map(r=>r.id)).size!==l.residents.length)throw Error('Invalid residents in save.')
   for(const r of l.residents)if(!r||!w.combat?.actors.some(a=>a.id===r.id&&a.kind==='resident')||!text(r.name,100)||!text(r.town)||!Object.hasOwn(PROFESSIONS,r.role)||!text(r.homeBuilding)||!text(r.workBuilding)||!number(r.friendship,-100,100)||!number(r.conversations)||!number(r.lastGiftDay,-1)||!point(r.destination)||!['sleeping','working','walking','at the inn','at the market','at the festival'].includes(r.activity)||!text(r.dialogue,2000)||typeof r.female!=='boolean'||r.insideBuilding!==undefined&&(!text(r.insideBuilding)||!placeById(w,r.insideBuilding)))throw Error('Invalid resident history in save.')
+  for(const r of l.residents)if(r.workIndex!==undefined&&(!Number.isInteger(r.workIndex)||!number(r.workIndex,0,3))||r.workProgress!==undefined&&!number(r.workProgress,0,6))throw Error('Invalid resident task in save.')
   if(!object(l.quests)||Object.entries(l.quests).some(([k,p])=>!QUESTS.some(q=>q.id===k)||!p||!['available','active','ready','complete'].includes(p.state)||p.acceptedAt!==undefined&&!number(p.acceptedAt,0,w.time)||p.completedAt!==undefined&&!number(p.completedAt,0,w.time)))throw Error('Invalid quest history in save.')
   for(const [key,max]of [['discoveries',100],['resourcesRemoved',5000],['defeated',100]] as const)if(!Array.isArray(l[key])||l[key].length>max||l[key].some(s=>!text(s))||new Set(l[key]).size!==l[key].length)throw Error('Invalid discovery history in save.')
   if(!record(l.harvested)||!record(l.stats)||Object.keys(l.harvested).length>20000||!object(l.regions)||Object.entries(l.regions).some(([k,r])=>!safeKey(k)||!r||typeof r.populated!=='boolean'||!number(r.lastVisit,0,w.time))||!object(l.containers)||Object.entries(l.containers).some(([k,b])=>!safeKey(k)||!bag(b)))throw Error('Invalid household storage or resource history.')

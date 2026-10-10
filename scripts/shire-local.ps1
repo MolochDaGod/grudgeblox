@@ -1,121 +1,171 @@
+[CmdletBinding()]
 param(
-  [ValidateSet('Prepare','Build','Start','Stop','Status')][string]$Mode='Start',
-  [string]$DataRoot='F:\Data\GrudgeBlox\TheMiddleEarth',
+  [ValidateSet('Plan','Stage','Prepare','Build','Start','Stop','Status')][string]$Mode='Start',
+  [string]$DataRoot=$env:GRUDGE_SHIRE_DATA_ROOT,
+  [string]$RuntimeRoot,
+  [string]$WorkbenchRoot=$env:GRUDGE_WORKBENCH_ROOT,
   [ValidateRange(1024,65535)][int]$Port=4100,
   [switch]$OpenBrowser
 )
 $ErrorActionPreference='Stop'
-$shireRepo=Split-Path $PSScriptRoot -Parent
-$shireFront=Join-Path $shireRepo 'front'
-$shireRoot=[System.IO.Path]::GetFullPath($DataRoot)
-if($shireRoot -notmatch '^F:\\' -or -not (Test-Path -LiteralPath 'F:\')) { throw 'The configured F: storage is unavailable. No alternate drive will be used.' }
-$shireLockHash=[System.Security.Cryptography.SHA256]::Create()
-$shireLockKey=([BitConverter]::ToString($shireLockHash.ComputeHash([Text.Encoding]::UTF8.GetBytes($shireRoot.TrimEnd('\').ToLowerInvariant())))).Replace('-','')
-$shireLockHash.Dispose()
-$shireLaunchMutex=[System.Threading.Mutex]::new($false,"Local\GrudgeBloxShire_$shireLockKey")
-$shireLockHeld=$false
-try {
-  try {$shireLockHeld=$shireLaunchMutex.WaitOne(0)} catch [System.Threading.AbandonedMutexException] {$shireLockHeld=$true}
-  if(-not $shireLockHeld){throw 'This save folder already has a launcher operation in progress. Wait for it to finish.'}
-$shireNode=(Get-Command node.exe -ErrorAction Stop).Source
+function Get-ShireSourceHash([string]$Path){
+  $stream=[IO.File]::OpenRead($Path)
+  $hasher=[Security.Cryptography.SHA256]::Create()
+  try{return ([BitConverter]::ToString($hasher.ComputeHash($stream))).Replace('-','').ToLowerInvariant()}
+  finally{$hasher.Dispose();$stream.Dispose()}
+}
+$shireSource=Split-Path $PSScriptRoot -Parent
+$shireConfig=Get-Content -LiteralPath (Join-Path $shireSource '.workspace-build.json') -Raw | ConvertFrom-Json
+$shireBuildRoot=[IO.Path]::GetFullPath($shireConfig.buildRoot)
+if($shireBuildRoot -ne 'D:\grudgegit\grudgeblox'){throw 'Use the canonical D:\grudgegit\grudgeblox build root.'}
+$shireWork=Join-Path $shireBuildRoot 'shire'
+if(-not $DataRoot){$DataRoot='C:\RuntimeData\grudgegit\grudgeblox\TheMiddleEarth'}
+$shireData=[IO.Path]::GetFullPath($DataRoot)
+if($shireData -notmatch '^C:\\'){throw 'Shire save records must be on C:. Supply the retained C: data root explicitly.'}
+if(-not $RuntimeRoot){$RuntimeRoot=Join-Path $shireWork 'runtime'}
+$shireRuntime=[IO.Path]::GetFullPath($RuntimeRoot)
+if(-not $shireRuntime.StartsWith($shireBuildRoot+'\',[StringComparison]::OrdinalIgnoreCase)){throw 'Runtime, dependencies and builds must stay under the canonical D: project root.'}
+if(-not $WorkbenchRoot){
+  $shireProducerRoot=if($env:GAME_ASSET_BULK){$env:GAME_ASSET_BULK}else{$env:GAME_ASSET_VAULT}
+  if($shireProducerRoot){$WorkbenchRoot=Join-Path $shireProducerRoot 'Game integrations\shire'}
+}
+if($WorkbenchRoot){
+  if(-not [IO.Path]::IsPathRooted($WorkbenchRoot)){throw 'Use an absolute Workbench delivery folder.'}
+  $WorkbenchRoot=[IO.Path]::GetFullPath($WorkbenchRoot)
+}
+$shireFront=Join-Path $shireRuntime 'front'
 $shireNext=Join-Path $shireFront 'node_modules\next\dist\bin\next'
-$shireLedger=Join-Path $shireRoot 'cache\local-server.json'
-if($Mode -eq 'Stop') {
-  if(-not (Test-Path -LiteralPath $shireLedger)){ Write-Output 'No owned Shire server is recorded.'; exit 0 }
-  $shireRecord=Get-Content -LiteralPath $shireLedger -Raw | ConvertFrom-Json
-  $shireProcess=Get-CimInstance Win32_Process -Filter "ProcessId=$($shireRecord.processId)"
-  if($shireProcess){
-    if($shireProcess.Name -ne 'node.exe' -or -not $shireProcess.CommandLine.Contains($shireNext) -or -not $shireProcess.CommandLine.Contains('127.0.0.1')){throw 'The recorded process no longer matches this launcher. It was left running.'}
-    Stop-Process -Id $shireRecord.processId
+$shireOutput=Join-Path $shireFront '.shire-next'
+$shireLogs=Join-Path $shireWork 'logs'
+$shireLedger=Join-Path $shireWork 'local-server.json'
+$shireStamp=Join-Path $shireRuntime '.shire-source.json'
+$shireRevision=(& git -C $shireSource rev-parse HEAD)
+if($LASTEXITCODE -ne 0){throw 'The C: source revision could not be verified.'}
+$shireUrl="http://127.0.0.1:$Port/play/shire"
+if($Mode -eq 'Plan'){
+  [ordered]@{
+    source=$shireSource;sourceRevision=$shireRevision;runtime=$shireRuntime;build=$shireOutput
+    dependencies=(Join-Path $shireRuntime 'node_modules');temporary=(Join-Path $shireWork 'temp')
+    logs=$shireLogs;ledger=$shireLedger;data=$shireData;workbench=$WorkbenchRoot;url=$shireUrl
+    dependenciesPresent=(Test-Path -LiteralPath $shireNext)
+    assetsPresent=(Test-Path -LiteralPath (Join-Path $shireData 'assets\manifest.json'))
+    deliveryPresent=([bool]$WorkbenchRoot -and (Test-Path -LiteralPath (Join-Path $WorkbenchRoot 'library.json')))
+    buildPresent=(Test-Path -LiteralPath (Join-Path $shireOutput 'BUILD_ID'))
+    stagePresent=(Test-Path -LiteralPath $shireStamp)
+  } | ConvertTo-Json
+  return
+}
+# One project mutex covers the shared server ledger across all data/runtime selections.
+$shireHasher=[Security.Cryptography.SHA256]::Create()
+$shireLockKey=([BitConverter]::ToString($shireHasher.ComputeHash([Text.Encoding]::UTF8.GetBytes($shireBuildRoot.TrimEnd('\').ToLowerInvariant())))).Replace('-','')
+$shireHasher.Dispose()
+$shireMutex=[Threading.Mutex]::new($false,"Local\GrudgeBloxShire_$shireLockKey")
+$shireHeld=$false
+try{
+  try{$shireHeld=$shireMutex.WaitOne(0)}catch [Threading.AbandonedMutexException]{$shireHeld=$true}
+  if(-not $shireHeld){throw 'This save folder already has a launcher operation in progress.'}
+  if($Mode -eq 'Status'){
+    if(Test-Path -LiteralPath $shireLedger){Get-Content -LiteralPath $shireLedger}else{'No owned Shire server is recorded.'}
+    return
   }
-  Remove-Item -LiteralPath $shireLedger
-  Write-Output 'The owned Shire server has stopped. Saved worlds remain on F:.'
-  exit 0
-}
-if($Mode -eq 'Status') {
-  if(Test-Path -LiteralPath $shireLedger){Get-Content -LiteralPath $shireLedger}else{Write-Output 'No owned Shire server is recorded.'}
-  exit 0
-}
-foreach($shireFolder in @('assets','saves','cache','evidence')){
-  New-Item -ItemType Directory -Path (Join-Path $shireRoot $shireFolder) -Force | Out-Null
-}
-$shireVolume=Get-Volume -DriveLetter E
-if($shireVolume.SizeRemaining -lt 1GB){throw 'At least 1 GB free on E: is required to build and run this local world.'}
-$shireLink=Join-Path $shireFront '.shire-next'
-$shireWork='E:\build\GrudgeBlox'
-$shireOutput='D:\build\GrudgeBlox\shire-next'
-foreach($shireFolder in @($shireWork,(Join-Path $shireWork 'temp'),(Join-Path $shireWork 'node-compile'),$shireOutput)){New-Item -ItemType Directory -Path $shireFolder -Force | Out-Null}
-if(Test-Path -LiteralPath $shireLink){
-  $shireItem=Get-Item -LiteralPath $shireLink -Force
-  if($shireItem.LinkType -ne 'Junction' -or [System.IO.Path]::GetFullPath(@($shireItem.Target)[0]) -ne $shireOutput){throw 'The Shire build path already exists with a different destination. It was preserved.'}
-}else{New-Item -ItemType Junction -Path $shireLink -Target $shireOutput | Out-Null}
-$env:GRUDGE_LOCAL_WORLD='shire'
-$env:GRUDGE_SHIRE_DATA_ROOT=$shireRoot
-$env:NEXT_TELEMETRY_DISABLED='1'
-$env:TEMP=Join-Path $shireWork 'temp'
-$env:TMP=$env:TEMP
-$env:NODE_COMPILE_CACHE=Join-Path $shireWork 'node-compile'
-# Generated server modules live on E:; resolve the existing pnpm links from their original D: paths.
-$env:NODE_PATH=Join-Path $shireFront 'node_modules'
-if($Mode -eq 'Prepare' -or -not(Test-Path -LiteralPath (Join-Path $shireRoot 'assets\manifest.json'))){
-  & $shireNode (Join-Path $PSScriptRoot 'prepare-shire-assets.mjs')
-  if($LASTEXITCODE -ne 0){throw 'Local asset preparation failed. See the reported source or approval error.'}
-}
-if($Mode -eq 'Prepare'){exit 0}
-if($Mode -eq 'Build'){
+  if($Mode -eq 'Stop'){
+    if(-not(Test-Path -LiteralPath $shireLedger)){'No owned Shire server is recorded.';return}
+    $shireRecord=Get-Content -LiteralPath $shireLedger -Raw | ConvertFrom-Json
+    $shireProcess=Get-CimInstance Win32_Process -Filter "ProcessId=$($shireRecord.processId)"
+    if($shireProcess){
+      if($shireProcess.Name -ne 'node.exe' -or -not $shireProcess.CommandLine.Contains($shireRecord.next) -or -not $shireProcess.CommandLine.Contains('127.0.0.1')){throw 'The recorded process no longer matches this launcher. It was preserved.'}
+      Stop-Process -Id $shireRecord.processId
+    }
+    Remove-Item -LiteralPath $shireLedger
+    'The owned Shire server has stopped. Saved worlds remain on C:.'
+    return
+  }
+  if($Mode -eq 'Stage'){
+    if(Test-Path -LiteralPath $shireRuntime){throw 'The runtime folder already exists and was preserved. Choose a fresh -RuntimeRoot under the canonical D: project root.'}
+    $shireDirty=(& git -C $shireSource status --porcelain --untracked-files=normal)
+    if($shireDirty){throw 'Commit the source before staging. Dirty source work was preserved.'}
+    $shireFiles=@(& git -C $shireSource ls-files)
+    if($LASTEXITCODE -ne 0){throw 'The source file list could not be verified.'}
+    foreach($shireFile in $shireFiles){
+      $shireTarget=Join-Path $shireRuntime $shireFile
+      [IO.Directory]::CreateDirectory([IO.Path]::GetDirectoryName($shireTarget)) | Out-Null
+      [IO.File]::Copy((Join-Path $shireSource $shireFile),$shireTarget,$false)
+    }
+    $shireStageReceipt=@{source=$shireSource;revision=$shireRevision;files=$shireFiles.Count;stagedAt=(Get-Date).ToUniversalTime().ToString('o')} | ConvertTo-Json
+    [IO.File]::WriteAllText($shireStamp,$shireStageReceipt,[Text.UTF8Encoding]::new($false))
+    "Source staged at $shireRuntime. Install only the existing approved dependencies there after build resources are approved; this launcher does not download them."
+    return
+  }
+  if(-not(Test-Path -LiteralPath $shireStamp)){throw 'Stage the committed C: source on D: first with -Mode Stage, after build resources are approved.'}
+  $shireStaged=Get-Content -LiteralPath $shireStamp -Raw | ConvertFrom-Json
+  $shireHasSourceProof=$shireStaged.consoleBuild -and @($shireStaged.sourceFiles).Count -gt 0
+  if([IO.Path]::GetFullPath($shireStaged.source) -ne [IO.Path]::GetFullPath($shireSource) -or (-not $shireHasSourceProof -and $shireStaged.revision -ne $shireRevision)){throw 'The staged source does not match this C: checkout revision. Select a fresh staged runtime.'}
+  if($shireHasSourceProof){
+    foreach($shireProof in $shireStaged.sourceFiles){
+      $shireCurrent=Join-Path $shireSource $shireProof.path
+      if(-not(Test-Path -LiteralPath $shireCurrent -PathType Leaf) -or (Get-ShireSourceHash $shireCurrent) -ne $shireProof.sha256){throw "The current source differs from its Console build: $($shireProof.path). Rebuild Shire through Project Console."}
+    }
+  }elseif(& git -C $shireSource status --porcelain --untracked-files=normal){throw 'The legacy stage has no current-source proof. Build Shire through Project Console; dirty source is preserved.'}
   if(Test-Path -LiteralPath $shireLedger){
     $shireRecord=Get-Content -LiteralPath $shireLedger -Raw | ConvertFrom-Json
-    if(Get-Process -Id $shireRecord.processId -ErrorAction SilentlyContinue){throw 'Stop the owned Shire server before rebuilding its files.'}
+    $shireRecordedProcess=Get-CimInstance Win32_Process -Filter "ProcessId=$($shireRecord.processId)"
+    if($shireRecordedProcess){
+      if($Mode -ne 'Start'){throw 'Stop the owned Shire server before preparing or rebuilding.'}
+      if($shireRecordedProcess.Name -ne 'node.exe' -or -not $shireRecordedProcess.CommandLine.Contains($shireRecord.next) -or -not $shireRecordedProcess.CommandLine.Contains('127.0.0.1')){throw 'The recorded server identity is uncertain. It was preserved.'}
+      if($shireRecord.storage -ne $shireData -or $shireRecord.runtime -ne $shireRuntime -or $shireRecord.workbench -ne $WorkbenchRoot -or $shireRecord.port -ne $Port){throw 'An owned server is running with different paths or port. It was preserved.'}
+      $shireListener=Get-NetTCPConnection -LocalPort $Port -State Listen -ErrorAction SilentlyContinue
+      if(-not $shireListener -or @($shireListener | Where-Object {$_.OwningProcess -ne $shireRecord.processId -or $_.LocalAddress -ne '127.0.0.1'}).Count){throw 'The recorded server listener is unavailable or belongs to a different process.'}
+      "The local world is already running at $shireUrl"
+      if($OpenBrowser){Start-Process $shireUrl}
+      return
+    }
   }
-  Push-Location $shireFront
-  $shireEnvTypesPath=Join-Path $shireFront 'next-env.d.ts'
-  $shireEnvTypesBefore=[System.IO.File]::ReadAllBytes($shireEnvTypesPath)
-  try{
-    & $shireNode $shireNext build 2>&1 | Tee-Object -FilePath (Join-Path $shireRoot 'evidence\build.log')
-    if($LASTEXITCODE -ne 0){throw 'The Shire build failed. Its build log is on F:.'}
-  }finally{
-    # Next regenerates this shared file for its selected output folder. Restore its exact prior bytes.
-    [System.IO.File]::WriteAllBytes($shireEnvTypesPath,$shireEnvTypesBefore)
-    Pop-Location
+  $shireNode=(Get-Content -LiteralPath 'C:\github\ProjectLaunchers\workspace-tools\catalog.json' -Raw|ConvertFrom-Json).tools.node
+  if(-not(Test-Path -LiteralPath $shireNode -PathType Leaf)){throw 'The retained registered Node runtime is unavailable.'}
+  if($Mode -ne 'Prepare' -and -not(Test-Path -LiteralPath $shireNext)){throw "Existing Next dependencies are missing from $shireFront. No download or alternate source dependency folder was used."}
+  foreach($shireFolder in @($shireLogs,(Join-Path $shireWork 'temp'),(Join-Path $shireWork 'node-compile'))){[IO.Directory]::CreateDirectory($shireFolder) | Out-Null}
+  $env:GRUDGE_LOCAL_WORLD='shire'
+  $env:GRUDGE_SHIRE_DATA_ROOT=$shireData
+  $env:GRUDGE_WORKBENCH_ROOT=$WorkbenchRoot
+  $env:NEXT_TELEMETRY_DISABLED='1'
+  $env:TEMP=Join-Path $shireWork 'temp';$env:TMP=$env:TEMP
+  $env:NODE_COMPILE_CACHE=Join-Path $shireWork 'node-compile'
+  $env:NODE_PATH=Join-Path $shireFront 'node_modules'
+  if($Mode -eq 'Prepare'){
+    & $shireNode (Join-Path $shireRuntime 'scripts\prepare-shire-assets.mjs')
+    if($LASTEXITCODE -ne 0){throw 'Asset preparation failed. Existing retained data was preserved.'}
+    return
   }
-  if(Test-Path -LiteralPath (Join-Path $shireRepo '.storage\publish_release.py')){
-    & 'C:\Program Files\Python314\python.exe' (Join-Path $shireRepo '.storage\publish_release.py') --project GrudgeBlox --source $shireOutput --kind web-build-materials
-    if($LASTEXITCODE -ne 0){throw 'The completed web build could not be archived locally.'}
+  if($Mode -eq 'Build'){
+    Push-Location $shireFront
+    try{
+      $shireArgumentsJson=& $shireNode (Join-Path $shireRuntime 'scripts\shire-next-build-args.mjs') (Join-Path $shireFront 'node_modules\next\package.json')
+      if($LASTEXITCODE -ne 0){throw 'The staged installed Next version could not be verified.'}
+      $shireBuildArguments=@($shireArgumentsJson | ConvertFrom-Json)
+      & $shireNode $shireNext @shireBuildArguments 2>&1 | Tee-Object -FilePath (Join-Path $shireLogs 'build.log')
+      if($LASTEXITCODE -ne 0){throw 'Shire build failed. See the D: build log.'}
+    }finally{Pop-Location}
+    return
   }
-  exit 0
-}
-if(-not(Test-Path -LiteralPath (Join-Path $shireOutput 'BUILD_ID'))){throw 'Build the local world first with scripts\shire-local.ps1 -Mode Build.'}
-$shireUrl="http://127.0.0.1:$Port/play/shire"
-if(Test-Path -LiteralPath $shireLedger){
-  $shireRecord=Get-Content -LiteralPath $shireLedger -Raw | ConvertFrom-Json
-  $shireRecordedProcess=Get-CimInstance Win32_Process -Filter "ProcessId=$($shireRecord.processId)"
-  if($shireRecordedProcess){
-    if($shireRecordedProcess.Name -ne 'node.exe' -or -not $shireRecordedProcess.CommandLine.Contains($shireNext)){throw 'The recorded server identity is uncertain. It was preserved; a second world writer was not started.'}
-    if($shireRecord.port -ne $Port){throw "This E: save folder already has a running server on port $($shireRecord.port). A second writer on port $Port was refused."}
-    $shireExistingListener=Get-NetTCPConnection -LocalPort $Port -State Listen -ErrorAction SilentlyContinue
-    if(-not $shireExistingListener){throw 'The recorded local server is still starting or has lost its listener. It was preserved; check its E: logs before retrying.'}
-    if($shireExistingListener.OwningProcess -ne $shireRecord.processId){throw 'The selected port belongs to a different process. Both processes were preserved.'}
-    Write-Output "The local world is already running at $shireUrl"
-    if($OpenBrowser){Start-Process $shireUrl}
-    exit 0
+  if(-not(Test-Path -LiteralPath (Join-Path $shireData 'assets\manifest.json'))){throw 'The retained C: asset manifest is unavailable. Supply the existing data root; Start never initializes a replacement world store.'}
+  if(-not $WorkbenchRoot -or -not(Test-Path -LiteralPath (Join-Path $WorkbenchRoot 'library.json'))){throw 'The selected Workbench delivery manifest is unavailable. Qualify -WorkbenchRoot before launching.'}
+  if($WorkbenchRoot -match '^[EF]:\\'){throw 'Workbench heartbeat cannot write to E: releases or F: non-project data. Qualify the producer delivery root before launch.'}
+  if(-not(Test-Path -LiteralPath (Join-Path $shireOutput 'BUILD_ID'))){throw 'Build the staged local world first with -Mode Build, after build resources are approved.'}
+  if(Get-NetTCPConnection -LocalPort $Port -State Listen -ErrorAction SilentlyContinue){throw "Port $Port belongs to another process and was preserved."}
+  $shireServer=Start-Process -FilePath $shireNode -ArgumentList @(('"' + $shireNext + '"'),'start','-H','127.0.0.1','-p',[string]$Port) -WorkingDirectory $shireFront -WindowStyle Hidden -PassThru -RedirectStandardOutput (Join-Path $shireLogs 'server.log') -RedirectStandardError (Join-Path $shireLogs 'server-errors.log')
+  @{processId=$shireServer.Id;port=$Port;url=$shireUrl;storage=$shireData;runtime=$shireRuntime;next=$shireNext;workbench=$WorkbenchRoot;source=$shireSource;revision=$shireRevision;startedAt=(Get-Date).ToUniversalTime().ToString('o')} |
+    ConvertTo-Json | Set-Content -LiteralPath $shireLedger -Encoding utf8
+  $shireReady=$false
+  for($shireAttempt=0;$shireAttempt -lt 30;$shireAttempt++){
+    try{$shireCheck=Invoke-RestMethod "http://127.0.0.1:$Port/api/shire" -TimeoutSec 2;if($shireCheck.storage -eq $shireData){$shireReady=$true;break}}catch{}
+    if($shireServer.HasExited){throw 'The local server exited. See its D: logs.'}
+    Start-Sleep -Milliseconds 300
   }
-}
-if(Get-NetTCPConnection -LocalPort $Port -State Listen -ErrorAction SilentlyContinue){
-  throw "Port $Port belongs to another process. It was left untouched. Choose another local port."
-}
-$shireServer=Start-Process -FilePath $shireNode -ArgumentList @($shireNext,'start','-H','127.0.0.1','-p',[string]$Port) -WorkingDirectory $shireFront -WindowStyle Hidden -PassThru -RedirectStandardOutput (Join-Path $shireRoot 'evidence\server.log') -RedirectStandardError (Join-Path $shireRoot 'evidence\server-errors.log')
-@{processId=$shireServer.Id;port=$Port;url=$shireUrl;storage=$shireRoot;startedAt=(Get-Date).ToUniversalTime().ToString('o');source=$shireRepo} | ConvertTo-Json | Set-Content -LiteralPath $shireLedger -Encoding utf8
-$shireReady=$false
-for($shireAttempt=0;$shireAttempt -lt 30;$shireAttempt++){
-  try{$shireCheck=Invoke-RestMethod "http://127.0.0.1:$Port/api/shire" -TimeoutSec 2;if($shireCheck.storage -eq $shireRoot){$shireReady=$true;break}}catch{}
-  if($shireServer.HasExited){throw 'The local server exited. Its logs are in the F: evidence folder.'}
-  Start-Sleep -Milliseconds 300
-}
-if(-not $shireReady){throw 'The local server has not reported ready. Check its F: logs before opening the game.'}
-Write-Output "Ready: $shireUrl"
-Write-Output "Saves, assets, caches and builds: $shireRoot"
-if($OpenBrowser){Start-Process $shireUrl}
-} finally {
-  if($shireLockHeld){$shireLaunchMutex.ReleaseMutex()}
-  $shireLaunchMutex.Dispose()
+  if(-not $shireReady){throw 'The server has not reported ready. Check its D: logs before opening the game.'}
+  "Ready: $shireUrl"
+  "Saved worlds: $shireData; runtime and logs: $shireWork; Workbench delivery: $WorkbenchRoot"
+  if($OpenBrowser){Start-Process $shireUrl}
+}finally{
+  if($shireHeld){$shireMutex.ReleaseMutex()}
+  $shireMutex.Dispose()
 }
