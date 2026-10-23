@@ -6,7 +6,8 @@ import { pack, unpack } from 'msgpackr'
 import pako from 'pako'
 
 const httpUrl = new URL(process.env.SMOKE_HTTP_URL || 'http://127.0.0.1:8015')
-const wsUrl = process.env.SMOKE_WS_URL || `ws://${httpUrl.host}`
+// Derive the WebSocket URL from the HTTP URL so an https target always uses TLS (wss).
+const wsUrl = process.env.SMOKE_WS_URL || httpUrl.href.replace(/^http/, 'ws')
 const allowedOrigin = process.env.SMOKE_ALLOWED_ORIGIN || 'http://127.0.0.1:4015'
 const adminToken = process.env.SMOKE_ADMIN_TOKEN
 const burstSize = Number(process.env.SMOKE_MESSAGE_BURST || 100)
