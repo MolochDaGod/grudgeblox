@@ -1,0 +1,14 @@
+Storage reset status - 5 October 2026
+
+Source: D:\GrudgeBlox (D:\project\GrudgeBlox\website)
+Finished builds: D:\build\GrudgeBlox
+Next build output: D:\build\GrudgeBlox\shire-next
+Expanded runtime: D:\build\GrudgeBlox\shire-runtime
+Intermediate builds, dependencies and caches: E:\build\GrudgeBlox
+Persistent data: F:\Data\GrudgeBlox\TheMiddleEarth
+Verified release materials: F:\Releases\GrudgeBlox
+
+Source, saved local edits and existing asset provenance paths were preserved.
+The previously prepared Middle-earth assets and original GrudgePrompt3D model inputs were not recovered. Al confirmed GrudgePrompt3D was omitted from backup.
+The desktop shortcut opens the project files while those inputs remain unavailable. No asset-dependent build, save restoration or gameplay acceptance is claimed. Storage configuration and launcher syntax were checked.
+A successful supported build archives its materials on F:; unknown or missing input data is not fabricated.

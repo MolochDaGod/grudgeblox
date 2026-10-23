@@ -22,6 +22,8 @@ DerivedData
 *.xcuserstate
 project.xcworkspace
 .next/
+.shire-next/
+*.tsbuildinfo
 # Android/IntelliJ
 #
 build/
@@ -53,6 +55,7 @@ fastlane/Preview.html
 fastlane/screenshots
 
 *.glb
+!public/kit/**/*.glb
 *.blend
 .vercel
 .env*

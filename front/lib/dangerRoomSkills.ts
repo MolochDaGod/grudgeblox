@@ -92,6 +92,7 @@ export const METAVERSE_FIGHT_LINKS = {
   openPvp: 'https://open.grudge-studio.com/play',
   mineLobby: 'https://mine.grudge-studio.com/#/lobby',
   minePlay: 'https://mine.grudge-studio.com/#/play',
+  voxelStudio: 'https://grudox.grudge-studio.com/studio/',
   grudox: 'https://grudox.grudge-studio.com',
   warlordsCombat: 'https://client.grudge-studio.com/home-island?from=blox&unlock=1',
   productionLab: 'https://client.grudge-studio.com/production',

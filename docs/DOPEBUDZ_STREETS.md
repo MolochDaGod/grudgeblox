@@ -17,7 +17,7 @@ The `dopebudz-streets/` Railway service remains a **separate, optional JSON comp
 
 The main world now provides session-authoritative:
 
-- 18 claimable lots with BUDZ/SOL session balances and owner labels
+- 18 claimable lots with Practice BUDZ (session only) / SOL session balances and owner labels. Practice BUDZ is a per-visit counter (`DOPEBUDZ_STARTING_BUDZ`, default 500), not the wallet's $BUDZ token, and the HUD/chat say so
 - grow benches with plant, timed-ready, and harvest states
 - terminal-route jobs with completion rewards and reputation
 - player status, owned-lot, and current-job HUD queries
@@ -66,7 +66,7 @@ Docker Compose service `game_dopebudz_streets` maps host `8005 → 8001`. Front 
 
 ## Cities
 
-Grove City, Harbor Heights, Neon Strip, Mesa Flats, Fogtown, Little Beach — 18 deed lots (BUDZ or SOL), grow benches, street / sales / robbery terminals, Motor Row cars.
+Grove City, Harbor Heights, Neon Strip, Mesa Flats, Fogtown, Little Beach — 18 deed lots (Practice BUDZ or SOL), grow benches, street / sales / robbery terminals, Motor Row cars.
 
 ## Kits
 

@@ -7,6 +7,7 @@ import { ClientMessage } from '@shared/network/client/base'
 import pako from 'pako'
 import { config } from '@shared/network/config'
 import { resolveWebSocketServerUrl } from './serverUrl'
+import { FLEET } from '@/lib/fleetConfig'
 
 const CONNECTION_TIMEOUT_MS = 8000
 
@@ -16,14 +17,19 @@ export class WebSocketManager {
   private websocket: WebSocket | null = null
   private messageHandlers: Map<ServerMessageType, MessageHandler> = new Map()
   private serverUrl: string
+  private openedConnections = 0
+
+  get connectionEpoch(): number { return this.openedConnections }
 
   timeSinceLastServerUpdate: number = 0
-  constructor(game: Game, port: number = 8001) {
-    // Production: NEXT_PUBLIC_SERVER_URL=wss://blox-game.grudge-studio.com (port appended)
-    // Or full URL with port already: wss://host:8001
-    // Local loopback without a port uses the single backend on 8001.
-    // Production hosts without a port retain the configured per-world port.
-    this.serverUrl = resolveWebSocketServerUrl(process.env.NEXT_PUBLIC_SERVER_URL, port)
+  constructor(game: Game, port: number = 8001, roomUrl?: string) {
+    // Production: NEXT_PUBLIC_SERVER_URL=wss://grudgeblox-production.up.railway.app (no extra port)
+    // Local: ws://127.0.0.1 → world port. Per-room websocketUrl always wins.
+    this.serverUrl = resolveWebSocketServerUrl(
+      process.env.NEXT_PUBLIC_SERVER_URL || FLEET.ws,
+      port,
+      roomUrl,
+    )
 
     this.addMessageHandler(ServerMessageType.FIRST_CONNECTION, (message) => {
       const connectionMessage = message as ConnectionMessage
@@ -45,7 +51,9 @@ export class WebSocketManager {
       if (!this.isConnected()) {
         this.disconnect()
         const websocket = new WebSocket(this.serverUrl)
+        websocket.binaryType = 'arraybuffer'
         this.websocket = websocket
+        console.log('[blox-ws] connecting', this.serverUrl)
         let settled = false
 
         const rejectConnection = (message: string) => {
@@ -64,6 +72,7 @@ export class WebSocketManager {
         websocket.addEventListener('open', (event) => {
           if (settled) return
           settled = true
+          this.openedConnections++
           window.clearTimeout(timeout)
           console.log('WebSocket connection opened:', event)
           resolve()
@@ -110,26 +119,17 @@ export class WebSocketManager {
     console.log('WebSocket connection opened:', event)
   }
 
-  send(message: ClientMessage) {
-    if (!this.isConnected()) {
-      console.error("Websocket not connected, can't send message", message)
-      return
-    }
-
-    if (!this.websocket) {
-      console.error("Websocket not initialized, can't send message", message)
-      return
-    }
+  send(message: ClientMessage): boolean {
+    if (!this.isConnected() || !this.websocket) return false
 
     try {
       // Compress with msgpackr
       const packed = pack(message)
       this.websocket.send(packed)
+      return true
     } catch (error) {
-      console.error(
-        `Failed to send message: ${error instanceof Error ? error.message : 'Unknown error'}`,
-        message
-      )
+      // Input retries on the next writable frame; avoid per-frame console floods.
+      return false
     }
   }
   private isConnected(): boolean {
@@ -137,9 +137,17 @@ export class WebSocketManager {
   }
 
   private async onMessage(event: MessageEvent) {
-    const buffer = await event.data.arrayBuffer()
-    // Decompress the zlib first
-    const decompressed = pako.inflate(buffer)
+    if (event.currentTarget !== this.websocket) return
+    const source = this.websocket
+    const raw = event.data
+    const bytes =
+      raw instanceof ArrayBuffer
+        ? new Uint8Array(raw)
+        : raw instanceof Blob
+          ? new Uint8Array(await raw.arrayBuffer())
+          : new Uint8Array(raw as Uint8Array)
+    if (source !== this.websocket) return
+    const decompressed = pako.inflate(bytes)
     // Then decompress the msgpackr
     const message: ServerMessage = unpack(decompressed)
 

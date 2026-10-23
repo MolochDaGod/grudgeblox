@@ -4,6 +4,7 @@ on:
     branches: [main]
     paths-ignore:
       - 'front/**'
+  workflow_dispatch:
 
 env:
   REGISTRY: ghcr.io

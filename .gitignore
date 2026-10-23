@@ -5,6 +5,7 @@ dist/
 build/
 .next/
 out/
+*.tsbuildinfo
 
 # Lockfiles — managed at root by pnpm
 back/package-lock.json
@@ -14,3 +15,16 @@ shared/package-lock.json
 .env*
 !.env.example
 !**/.env.example
+/logs
+/front/.shire-next
+
+# Managed local game models remain in the E: Workbench vault.
+/front/public/workbench/
+
+# This device only; public installers collect their own drive choices.
+.storage/device.json
+
+# Retained local ignore rules
+/Builds/
+/Working/
+/Releases/

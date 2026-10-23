@@ -8,18 +8,22 @@ import { DRACOLoader } from 'three/examples/jsm/loaders/DRACOLoader.js'
 // three@0.183: examples/jsm path is supported via package exports
 import { raceCdnUrl, FLEET } from './fleetConfig'
 import type { FleetCharacter } from './fleetCharacters'
-import { getAvatarVisualCorrection } from './avatarVisualProfile'
+import {
+  getAvatarSourceOrientation,
+  getAvatarVisualCorrection,
+} from './avatarVisualProfile'
+import { avatarAppearanceSig, isKitUrl, kitRaceUrl, kitWeaponUrl } from './fourCharacterKit'
 import {
   attachAvatarHitboxes,
   attachWeaponColliderToHand,
   createWeaponCollider,
 } from './avatarCombat'
 import { FootIkLite } from './footIkLite'
-
-const TARGET_HEIGHT_M = 1.8
+import { CANONICAL_CHARACTER_HEIGHT_M } from '@shared/avatar/characterTransformContract'
 
 export type AvatarLoadContext = {
   worldSlug?: string
+  isCurrent?: () => boolean
 }
 
 export type AvatarTransformBounds = {
@@ -43,7 +47,7 @@ function makeLoader(): GLTFLoader {
   return loader
 }
 
-function fitHeight(root: THREE.Object3D, targetH = TARGET_HEIGHT_M) {
+function fitHeight(root: THREE.Object3D, targetH = CANONICAL_CHARACTER_HEIGHT_M) {
   root.updateMatrixWorld(true)
   const box = new THREE.Box3().setFromObject(root)
   const size = box.getSize(new THREE.Vector3())
@@ -55,12 +59,62 @@ function fitHeight(root: THREE.Object3D, targetH = TARGET_HEIGHT_M) {
   root.position.y -= box2.min.y
 }
 
-function resolveUrl(character: FleetCharacter): string {
+export function resolveAvatarUrl(character: FleetCharacter): string {
   if (character.model3d) {
     if (character.model3d.startsWith('http')) return character.model3d
+    if (character.model3d.startsWith('/kit/')) return character.model3d
+    if (character.model3d.startsWith('races/')) return `/kit/4character/${character.model3d}`
+    if (character.model3d.startsWith('/')) return character.model3d
     return `${FLEET.assets}/${character.model3d.replace(/^\//, '')}`
   }
-  return raceCdnUrl(character.raceId)
+  return kitRaceUrl(character.raceId) || raceCdnUrl(character.raceId)
+}
+
+function resolveUrl(character: FleetCharacter): string {
+  return resolveAvatarUrl(character)
+}
+
+function findBone(root: THREE.Object3D, names: string[]): THREE.Object3D | null {
+  const want = names.map((n) => n.toLowerCase())
+  let found: THREE.Object3D | null = null
+  root.traverse((o) => {
+    if (found) return
+    const n = (o.name || '').toLowerCase()
+    if (want.some((w) => n === w || n.endsWith(w))) found = o
+  })
+  return found
+}
+
+function applySourceOrientation(
+  scene: THREE.Object3D,
+  clips: THREE.AnimationClip[],
+  modelUrl: string,
+) {
+  const profile = getAvatarSourceOrientation(modelUrl)
+  if (!profile) return null
+
+  const roots: THREE.Object3D[] = []
+  scene.traverse((object) => {
+    if (object.name === profile.rootNodeName) roots.push(object)
+  })
+  if (roots.length !== 1) {
+    throw new Error(`${profile.sourceId} expected one ${profile.rootNodeName}; found ${roots.length}`)
+  }
+
+  const sourceRoot = roots[0]
+  if (
+    clips.some((clip) =>
+      clip.tracks.some((track) => track.name.split('.')[0] === sourceRoot.name)
+    )
+  ) {
+    throw new Error(`${profile.rootNodeName} is animated and cannot be the orientation seam`)
+  }
+
+  // Root_normalized already parents the original skeleton and skinned meshes.
+  // Rotate this stable source adapter before binding the unchanged mixer.
+  sourceRoot.rotation.y += profile.yawRadians
+  sourceRoot.userData.sourceOrientation = profile
+  return profile
 }
 
 function yBounds(root: THREE.Object3D) {
@@ -140,6 +194,8 @@ export type LoadedAvatar = {
   footIk: FootIkLite
   hitboxCount: number
   transformBounds?: AvatarTransformBounds
+  clips: THREE.AnimationClip[]
+  mixer: THREE.AnimationMixer
 }
 
 /**
@@ -156,10 +212,41 @@ export async function loadGrudgeAvatar(
   root.name = `grudge_avatar_${character.id}`
   root.userData.characterId = character.id
   root.userData.raceId = character.raceId
+  root.userData.kitUrl = url
   root.add(gltf.scene)
-  // grudge6 art-forward often +X; face +Z for Notblox camera
-  gltf.scene.rotation.y = Math.PI / 2
-  fitHeight(root, TARGET_HEIGHT_M)
+  const clips = gltf.animations?.length ? gltf.animations : []
+  const sourceProfile = applySourceOrientation(gltf.scene, clips, url)
+  // Bundled race yaw is handled by its source profile above. Legacy grudge6
+  // Toon assets keep their existing +π/2 rule.
+  if (!isKitUrl(url)) {
+    gltf.scene.rotation.y = Math.PI / 2
+  }
+  fitHeight(root, CANONICAL_CHARACTER_HEIGHT_M)
+  if (sourceProfile) {
+    // This is the existing non-animated presentation group above the untouched
+    // GLB scene/skeleton. The ECS mesh remains at the capsule body origin.
+    root.position.y += sourceProfile.presentationContactPlaneY
+    root.userData.presentationContactPlaneY = sourceProfile.presentationContactPlaneY
+  }
+
+  const mixer = new THREE.AnimationMixer(gltf.scene)
+
+  try {
+    const weaponUrl = kitWeaponUrl(character.classId)
+    const weaponGltf = await loader.loadAsync(weaponUrl)
+    const hand = findBone(root, [
+      'mixamorigRightHand',
+      'mixamorig_righthand',
+      'righthand',
+      'hand_r',
+    ])
+    if (hand) {
+      weaponGltf.scene.scale.setScalar(1)
+      hand.add(weaponGltf.scene)
+    }
+  } catch {
+    /* weapon optional */
+  }
   const transformBounds = applyTopAnchoredVisualCorrection(
     root,
     gltf.scene,
@@ -188,13 +275,29 @@ export async function loadGrudgeAvatar(
   const weaponCollider = createWeaponCollider(0.3)
   attachWeaponColliderToHand(root, weaponCollider)
   const footIk = new FootIkLite(root, { weight: 0.85, maxStep: 0.32 })
+  if (sourceProfile) {
+    // FootIkLite writes the imported leg bones every frame. A rigid contact
+    // mount must not be followed by bone-space correction for these authored
+    // Mixamo clips; leaving it enabled caused the failed deformed-leg build.
+    footIk.enabled = false
+  }
 
   root.userData.hitboxCount = boxes.length
   root.userData.weaponCollider = weaponCollider
   root.userData.footIk = footIk
+  root.userData.clips = clips
+  root.userData.mixer = mixer
 
   root.userData.avatarTransformBounds = transformBounds
-  return { root, weaponCollider, footIk, hitboxCount: boxes.length, transformBounds }
+  return {
+    root,
+    weaponCollider,
+    footIk,
+    hitboxCount: boxes.length,
+    transformBounds,
+    clips,
+    mixer,
+  }
 }
 
 /**
@@ -207,9 +310,29 @@ export async function applyAvatarToMesh(
 ): Promise<LoadedAvatar | null> {
   try {
     const loaded = await loadGrudgeAvatar(character, context)
+    if (context.isCurrent && !context.isCurrent()) {
+      // This load has private GLTF resources and has never been attached.
+      loaded.mixer.stopAllAction()
+      loaded.mixer.uncacheRoot(loaded.mixer.getRoot())
+      const geometries = new Set<THREE.BufferGeometry>()
+      const materials = new Set<THREE.Material>()
+      const textures = new Set<THREE.Texture>()
+      loaded.root.traverse((object) => {
+        if (!(object instanceof THREE.Mesh)) return
+        geometries.add(object.geometry)
+        for (const material of Array.isArray(object.material) ? object.material : [object.material]) {
+          materials.add(material)
+          Object.values(material).forEach((value) => { if (value instanceof THREE.Texture) textures.add(value) })
+        }
+      })
+      geometries.forEach((geometry) => geometry.dispose())
+      materials.forEach((material) => material.dispose())
+      textures.forEach((texture) => texture.dispose())
+      return null
+    }
     // Clear children except helpers
     const keep: THREE.Object3D[] = []
-    meshRoot.children.forEach((c) => {
+    ;[...meshRoot.children].forEach((c) => {
       if (c.name.startsWith('__keep')) keep.push(c)
       else meshRoot.remove(c)
     })
@@ -217,8 +340,13 @@ export async function applyAvatarToMesh(
     meshRoot.add(loaded.root)
     meshRoot.userData.grudgeAvatar = true
     meshRoot.userData.characterId = character.id
+    meshRoot.userData.raceId = character.raceId
+    meshRoot.userData.classId = character.classId
+    meshRoot.userData.kitSig = avatarAppearanceSig(character)
     meshRoot.userData.weaponCollider = loaded.weaponCollider
     meshRoot.userData.footIk = loaded.footIk
+    meshRoot.userData.mixer = loaded.mixer
+    ;(meshRoot as THREE.Object3D & { animations?: THREE.AnimationClip[] }).animations = loaded.clips
     return loaded
   } catch (e) {
     console.warn('[grudgeAvatar] load failed', e)

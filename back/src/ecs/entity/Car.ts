@@ -13,6 +13,8 @@ import {
 } from '../component/physics/PhysicsPropertiesComponent.js'
 import { TextComponent } from '@shared/component/TextComponent.js'
 import { ConvexHullColliderComponent } from '../component/physics/ConvexHullColliderComponent.js'
+import { BoxColliderComponent } from '../component/physics/BoxColliderComponent.js'
+import { serverLoadsGltfColliders } from '../../physics/colliderBudget.js'
 import { VehicleComponent } from '@shared/component/VehicleComponent.js'
 import {
   ColliderPropertiesComponent,
@@ -69,6 +71,10 @@ export interface CarParams {
   }
 }
 
+// The raycast-wheel centre that makes a radius-1.4 wheel meet the stable
+// convex-hull contact plane of the bundled car sources (measured at +0.2933).
+const DEFAULT_WHEEL_CONNECTION_Y = 0.3
+
 export class Car {
   entity: Entity
 
@@ -89,7 +95,12 @@ export class Car {
     // Create 4 wheels
     const frontLeftWheel = new WheelComponent({
       entityId: this.entity.id,
-      positionComponent: new PositionComponent(this.entity.id, -3.46, -0.0287, 4.14),
+      positionComponent: new PositionComponent(
+        this.entity.id,
+        -3.46,
+        DEFAULT_WHEEL_CONNECTION_Y,
+        4.14
+      ),
       rotationComponent: new RotationComponent(this.entity.id, 0, 0, 0),
       radius: wheelRadius?.frontLeft ?? 1.4,
       suspensionStiffness: 10000,
@@ -101,7 +112,12 @@ export class Car {
     })
     const frontRightWheel = new WheelComponent({
       entityId: this.entity.id,
-      positionComponent: new PositionComponent(this.entity.id, 3.46, -0.0287, 4.14),
+      positionComponent: new PositionComponent(
+        this.entity.id,
+        3.46,
+        DEFAULT_WHEEL_CONNECTION_Y,
+        4.14
+      ),
       rotationComponent: new RotationComponent(this.entity.id, 0, 0, 0),
       radius: wheelRadius?.frontRight ?? 1.4,
       suspensionStiffness: 10000,
@@ -113,7 +129,12 @@ export class Car {
     })
     const backLeftWheel = new WheelComponent({
       entityId: this.entity.id,
-      positionComponent: new PositionComponent(this.entity.id, -3.46, -0.0287, -4.14),
+      positionComponent: new PositionComponent(
+        this.entity.id,
+        -3.46,
+        DEFAULT_WHEEL_CONNECTION_Y,
+        -4.14
+      ),
       rotationComponent: new RotationComponent(this.entity.id, 0, 0, 0),
       radius: wheelRadius?.backLeft ?? 1.4,
       suspensionStiffness: 10000,
@@ -126,7 +147,12 @@ export class Car {
 
     const backRightWheel = new WheelComponent({
       entityId: this.entity.id,
-      positionComponent: new PositionComponent(this.entity.id, 3.46, -0.0287, -4.14),
+      positionComponent: new PositionComponent(
+        this.entity.id,
+        3.46,
+        DEFAULT_WHEEL_CONNECTION_Y,
+        -4.14
+      ),
       rotationComponent: new RotationComponent(this.entity.id, 0, 0, 0),
       radius: wheelRadius?.backRight ?? 1.4,
       suspensionStiffness: 10000,
@@ -182,12 +208,16 @@ export class Car {
         }
       )
     )
-    this.entity.addComponent(
-      new ConvexHullColliderComponent(
-        this.entity.id,
-        meshUrl ?? 'https://notbloxo.fra1.cdn.digitaloceanspaces.com/Notblox-Assets/vehicle/Car.glb'
+    if (serverLoadsGltfColliders()) {
+      this.entity.addComponent(
+        new ConvexHullColliderComponent(
+          this.entity.id,
+          meshUrl ?? 'https://notbloxo.fra1.cdn.digitaloceanspaces.com/Notblox-Assets/vehicle/Car.glb'
+        )
       )
-    )
+    } else {
+      this.entity.addComponent(new BoxColliderComponent(this.entity.id))
+    }
     this.entity.addComponent(
       new PhysicsPropertiesComponent(
         this.entity.id,

@@ -8,6 +8,7 @@
  * Fleet: grudge6 Bip001 bones preferred; Mixamo names as fallback.
  */
 import * as THREE from 'three'
+import { RENDER_LAYER, layerMask, raycastLayersFor } from '@/game/renderLayers'
 
 export type HitPart = 'head' | 'torso' | 'arm' | 'leg' | 'body'
 
@@ -81,7 +82,7 @@ export const AVATAR_HITBOX_DEFS: HitboxDef[] = [
   },
 ]
 
-export const HITBOX_LAYER = 2
+export const HITBOX_LAYER = RENDER_LAYER.HITBOX
 
 function findBone(root: THREE.Object3D, names: string[]): THREE.Object3D | null {
   for (const n of names) {
@@ -124,8 +125,7 @@ export function attachAvatarHitboxes(
     mesh.userData.dmgMult = def.dmg
     mesh.userData.playerId = opts?.playerId ?? 'local'
     mesh.userData.isHitbox = true
-    mesh.layers.set(0)
-    mesh.layers.enable(HITBOX_LAYER)
+    mesh.layers.set(HITBOX_LAYER)
     mesh.visible = !!opts?.debug
     bone.add(mesh)
     out.push({ mesh, part: def.part, dmg: def.dmg })
@@ -148,6 +148,7 @@ export function createWeaponCollider(radius = 0.28): THREE.Mesh {
   mesh.name = 'weapon_collider'
   mesh.visible = false
   mesh.userData.isWeaponCollider = true
+  mesh.layers.set(RENDER_LAYER.FX)
   return mesh
 }
 
@@ -193,8 +194,7 @@ export function raycastProjectile(
   raycaster.set(origin, direction.clone().normalize())
   raycaster.far = maxDist
   raycaster.near = 0.05
-  // Include all layers for mixed solids + hitboxes
-  raycaster.layers.enableAll()
+  raycaster.layers.mask = layerMask(raycastLayersFor('projectile'))
 
   const hits = raycaster.intersectObjects(targets, true)
   for (const h of hits) {
@@ -245,6 +245,7 @@ export class FlyingProjectile {
       new THREE.SphereGeometry(0.08, 8, 8),
       new THREE.MeshBasicMaterial({ color: opts.color }),
     )
+    this.mesh.layers.set(RENDER_LAYER.FX)
     this.mesh.position.copy(opts.from)
   }
 

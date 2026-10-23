@@ -4,10 +4,13 @@ import { SerializedEntityType } from '@shared/network/server/serialized.js'
 import { TrimeshCollidersComponent } from '@back/ecs/component/physics/TrimeshColliderComponent.js'
 import { KinematicRigidBodyComponent } from '@back/ecs/component/physics/KinematicRigidBodyComponent.js'
 import { PositionComponent } from '@shared/component/PositionComponent.js'
+import { SizeComponent } from '@shared/component/SizeComponent.js'
 import { ServerMeshComponent } from '@shared/component/ServerMeshComponent.js'
 import { NetworkDataComponent } from '@shared/network/NetworkDataComponent.js'
 import { PhysicsPropertiesComponent } from '@back/ecs/component/physics/PhysicsPropertiesComponent.js'
 import { ColliderPropertiesComponent } from '@back/ecs/component/physics/ColliderPropertiesComponent.js'
+import { BoxColliderComponent } from '@back/ecs/component/physics/BoxColliderComponent.js'
+import { serverLoadsGltfColliders } from '../../physics/colliderBudget.js'
 
 export class MapWorld {
   entity: Entity
@@ -21,7 +24,7 @@ export class MapWorld {
 
     this.entity.addComponent(
       new ColliderPropertiesComponent(this.entity.id, {
-        friction: 0.0,
+        friction: serverLoadsGltfColliders() ? 0.0 : 0.8,
         restitution: 0.1,
       })
     )
@@ -34,7 +37,12 @@ export class MapWorld {
     )
     this.entity.addComponent(new KinematicRigidBodyComponent(this.entity.id))
 
-    this.entity.addComponent(new TrimeshCollidersComponent(this.entity.id, mapUrl))
+    if (serverLoadsGltfColliders()) {
+      this.entity.addComponent(new TrimeshCollidersComponent(this.entity.id, mapUrl))
+    } else {
+      this.entity.addComponent(new SizeComponent(this.entity.id, 500, 2, 500))
+      this.entity.addComponent(new BoxColliderComponent(this.entity.id))
+    }
     this.entity.addComponent(
       new NetworkDataComponent(this.entity.id, this.entity.type, [serverMeshComponent])
     )

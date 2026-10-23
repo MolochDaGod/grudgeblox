@@ -5,155 +5,234 @@ import { OrbitCameraFollowSystem } from './ecs/system'
 import { WebSocketManager } from './WebsocketManager'
 import { ProximityPromptSystem } from './ecs/system/ProximityPromptSystem'
 import { Entity } from '@shared/entity/Entity'
+import {
+  emptyGamepadFrame,
+  movementFromStick,
+  pollFirstGamepad,
+  skillSlotEdge,
+  type GamepadFrame,
+} from './gamepad'
+import { nextHudMode, type HudMode } from './hudLayers'
+
+export type PlayHudState = {
+  pointerLocked: boolean
+  gamepadConnected: boolean
+  prompt: string | null
+  hudMode: HudMode
+}
+import { config } from '@shared/network/config'
+import { InputTransmission } from './InputTransmission'
 
 export class InputManager {
   pcUser: boolean = true
+  gamepadConnected = false
+  nearestPrompt: string | null = null
+  hudMode: HudMode = 'full'
+  private lastSelectHeld = false
   inputState: InputMessage = {
     t: ClientMessageType.INPUT,
-    // UP
     u: false,
-    // DOWN
     d: false,
-    // LEFT
     l: false,
-    // RIGHT
     r: false,
-    // SPACE
     s: false,
-    // YAW (looking direction)
     y: 0,
-    // INTERACTION
     i: false,
   }
   proximityPromptSystem = new ProximityPromptSystem()
 
   private cameraFollowSystem: OrbitCameraFollowSystem
+  private keys = { u: false, d: false, l: false, r: false, s: false, i: false }
+  private lastSkillHeld: number | null = null
+  private pendingSkills: number[] = []
 
   constructor(
     private webSocketManager: WebSocketManager,
     cameraFollowSystem: OrbitCameraFollowSystem
   ) {
     this.cameraFollowSystem = cameraFollowSystem
+    window.addEventListener('keydown', this.handleKeyDown)
+    window.addEventListener('keyup', this.handleKeyUp)
+  }
 
-    // Add event listeners to handle user input
-    window.addEventListener('keydown', this.handleKeyDown.bind(this))
-    window.addEventListener('keyup', this.handleKeyUp.bind(this))
+  dispose() {
+    window.removeEventListener('keydown', this.handleKeyDown)
+    window.removeEventListener('keyup', this.handleKeyUp)
   }
 
   private isGameFocused(event: KeyboardEvent) {
-    return event.target === document.body
+    const target = event.target
+    if (!(target instanceof HTMLElement)) return true
+    const tag = target.tagName
+    if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return false
+    return target === document.body || Boolean(document.pointerLockElement)
   }
 
   public handleJoystickMove(joystick: IJoystickUpdateEvent) {
     if (this.pcUser) this.pcUser = false
-    // Calculate angle from current looking direction vs joystick direction
     const joystickAngleRad = Math.atan2(joystick.x!, joystick.y!)
-
-    // Adjust the joystick angle by the camera's azimuth angle
     const adjustedJoystickAngleRad = joystickAngleRad + this.cameraFollowSystem.y
-
-    // Calculate the difference between the current looking direction and the joystick direction
     this.inputState.y = adjustedJoystickAngleRad
     this.inputState.u = true
   }
 
   update(entities: Entity[], dt: number) {
-    if (this.pcUser) this.inputState.y = this.cameraFollowSystem.y
+    const pad = this.readGamepad()
+    this.gamepadConnected = pad.connected
+    this.cameraFollowSystem.applyGamepadLook(pad.rightX, pad.rightY, Math.max(0, dt) / 1000)
+
+    if (
+      pad.connected &&
+      (pad.leftX || pad.leftY || pad.rightX || pad.rightY || pad.buttons.south || pad.buttons.west)
+    ) {
+      this.pcUser = true
+    }
+
+    const stick = movementFromStick(pad.leftX, pad.leftY)
+    const jump = this.keys.s || pad.buttons.south
+    const interact = this.keys.i || pad.buttons.west
+
+    if (this.pcUser) {
+      this.inputState.u = this.keys.u || stick.u
+      this.inputState.d = this.keys.d || stick.d
+      this.inputState.l = this.keys.l || stick.l
+      this.inputState.r = this.keys.r || stick.r
+      this.inputState.y = this.cameraFollowSystem.y
+    }
+    this.inputState.s = jump
+    this.inputState.i = interact
+
+    const skill = skillSlotEdge(this.lastSkillHeld, pad.skillSlot)
+    this.lastSkillHeld = pad.skillSlot
+    if (skill != null) this.pendingSkills.push(skill)
+
+    if (pad.buttons.select && !this.lastSelectHeld) this.cycleHudMode()
+    this.lastSelectHeld = pad.buttons.select
+
+    this.nearestPrompt = this.proximityPromptSystem.getPromptText(entities)
     this.proximityPromptSystem.update(entities, dt)
   }
 
-  public handleJoystickStop(joystick: IJoystickUpdateEvent) {
-    // Stop moving forward
+  consumeSkillSlot(): number | null {
+    return this.pendingSkills.shift() ?? null
+  }
+
+  hudState(): PlayHudState {
+    return {
+      pointerLocked: this.cameraFollowSystem.pointerLocked,
+      gamepadConnected: this.gamepadConnected,
+      prompt: this.nearestPrompt,
+      hudMode: this.hudMode,
+    }
+  }
+
+  cycleHudMode(): HudMode {
+    this.hudMode = nextHudMode(this.hudMode)
+    return this.hudMode
+  }
+
+  public handleJoystickStop(_joystick: IJoystickUpdateEvent) {
     this.inputState.u = false
   }
 
-  private handleKeyDown(event: KeyboardEvent) {
+  setJump(on: boolean) {
+    this.keys.s = on
+    this.inputState.s = on
+  }
+
+  setInteract(on: boolean) {
+    this.keys.i = on
+    this.inputState.i = on
+  }
+
+  private readGamepad(): GamepadFrame {
+    if (typeof navigator === 'undefined' || typeof navigator.getGamepads !== 'function') {
+      return emptyGamepadFrame()
+    }
+    try {
+      return pollFirstGamepad(navigator.getGamepads())
+    } catch {
+      return emptyGamepadFrame()
+    }
+  }
+
+  private readonly handleKeyDown = (event: KeyboardEvent) => {
     if (!this.pcUser) this.pcUser = true
     if (!this.isGameFocused(event)) return
     switch (event.code) {
       case 'KeyW':
       case 'ArrowUp':
-        this.inputState.u = true
+        this.keys.u = true
+        if (event.code.startsWith('Arrow')) event.preventDefault()
         break
       case 'KeyS':
       case 'ArrowDown':
-        this.inputState.d = true
+        this.keys.d = true
+        if (event.code.startsWith('Arrow')) event.preventDefault()
         break
       case 'KeyA':
       case 'ArrowLeft':
-        this.inputState.l = true
+        this.keys.l = true
+        if (event.code.startsWith('Arrow')) event.preventDefault()
         break
       case 'KeyD':
       case 'ArrowRight':
-        this.inputState.r = true
+        this.keys.r = true
+        if (event.code.startsWith('Arrow')) event.preventDefault()
         break
       case 'Space':
-        this.inputState.s = true
+        this.keys.s = true
+        event.preventDefault()
         break
       case 'KeyE':
-        this.inputState.i = true
+        this.keys.i = true
+        break
+      case 'KeyH':
+        if (!event.repeat) this.cycleHudMode()
         break
     }
   }
 
-  private handleKeyUp(event: KeyboardEvent) {
+  private readonly handleKeyUp = (event: KeyboardEvent) => {
     switch (event.code) {
       case 'KeyW':
       case 'ArrowUp':
-        this.inputState.u = false
+        this.keys.u = false
         break
       case 'KeyS':
       case 'ArrowDown':
-        this.inputState.d = false
+        this.keys.d = false
         break
       case 'KeyA':
       case 'ArrowLeft':
-        this.inputState.l = false
+        this.keys.l = false
         break
       case 'KeyD':
       case 'ArrowRight':
-        this.inputState.r = false
+        this.keys.r = false
         break
       case 'Space':
-        this.inputState.s = false
+        this.keys.s = false
         break
       case 'KeyE':
-        this.inputState.i = false
+        this.keys.i = false
         break
     }
   }
 
-  private previousInputState: InputMessage | null = null
+  private transmission = new InputTransmission()
 
-  // TODO: To lower the bandiwdth even more, send at a maxrate of config.SERVER_TICKRATE
-  // Only sending when the input state changes
   sendInput(entities: Entity[]) {
-    // Check if the current input state is different from the previous one
-    if (
-      !this.previousInputState ||
-      !this.areInputStatesEqual(this.inputState, this.previousInputState)
-    ) {
-      // Send the updated input state to the WebSocketManager
-      this.webSocketManager.send(this.inputState)
-
-      // Update the previous input state
-      this.previousInputState = { ...this.inputState }
-
-      if (this.inputState.i) {
-        const message = this.proximityPromptSystem.getMessage(entities)
-        if (message) this.webSocketManager.send(message)
-      }
+    const now = performance.now()
+    const epoch = this.webSocketManager.connectionEpoch
+    if (!this.transmission.shouldSend(this.inputState, now, config.SERVER_TICKRATE, epoch)) return
+    const previous = this.transmission.previousFor(epoch)
+    if (!this.webSocketManager.send(this.inputState)) return
+    this.transmission.didSend(this.inputState, now, epoch)
+    // One interaction per press, not another interaction on each yaw update.
+    if (this.inputState.i && !previous?.i) {
+      const message = this.proximityPromptSystem.getMessage(entities)
+      if (message) this.webSocketManager.send(message)
     }
-  }
-
-  private areInputStatesEqual(state1: InputMessage, state2: InputMessage): boolean {
-    return (
-      state1.u === state2.u &&
-      state1.d === state2.d &&
-      state1.l === state2.l &&
-      state1.r === state2.r &&
-      state1.s === state2.s &&
-      state1.y === state2.y
-    )
   }
 }

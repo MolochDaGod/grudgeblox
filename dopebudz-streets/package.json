@@ -5,9 +5,11 @@
   "type": "module",
   "scripts": {
     "start": "node index.mjs",
-    "check": "node --check index.mjs && node --check compatibilityServer.mjs"
+    "check": "node --check index.mjs && node --check compatibilityServer.mjs",
+    "workspace:build": "powershell.exe -NoProfile -ExecutionPolicy Bypass -File \"C:\\grudgegit\\grudgeblox/Build-Workspace.ps1\"",
+    "workspace:menu": "powershell.exe -NoProfile -ExecutionPolicy Bypass -File \"C:\\grudgegit\\grudgeblox/Project-Console.ps1\""
   },
   "dependencies": {
-    "ws": "^8.18.3"
+    "ws": "^8.21.3"
   }
 }

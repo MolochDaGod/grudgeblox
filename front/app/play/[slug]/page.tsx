@@ -45,9 +45,19 @@ export async function generateMetadata({ params }: { params: Params }): Promise<
   }
 }
 
-export default async function GamePage({ params }: { params: Params }) {
+type Search = Promise<{ era?: string }>
+
+export default async function GamePage({
+  params,
+  searchParams,
+}: {
+  params: Params
+  searchParams?: Search
+}) {
   const { slug } = await params
   const gameInfo = getGamesBySlug(slug)
+  const query = searchParams ? await searchParams : {}
+  const initialEra = typeof query.era === 'string' ? query.era : undefined
 
-  return <GameContent gameInfo={gameInfo} />
+  return <GameContent gameInfo={gameInfo} initialEra={initialEra} />
 }

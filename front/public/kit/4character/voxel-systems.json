@@ -1,0 +1,17 @@
+{
+  "era": "voxel",
+  "roster": "GET /api/characters?era=voxel",
+  "slots": 4,
+  "bodies": "/kit/4character/races/{race}.glb",
+  "portraits": "/assets/models/avatarbaseraces/{race}-portrait.png",
+  "codex": {
+    "defs": "https://mine.grudge-studio.com/#/defs",
+    "lobby": "https://mine.grudge-studio.com/#/lobby",
+    "uiIcons": "/assets/ui-icons",
+    "tvsRoster": "https://assets.grudge-studio.com/models/voxels/tvs/unit-roster.json"
+  },
+  "grudox": "voxel",
+  "mine": "voxel",
+  "bloxWorlds": ["test", "combat", "lobby", "grudox", "streets"],
+  "law": "Mine + GRUDOX + Blox (including /play/combat) = voxel characters. combatEnabled is the 1-5 skill bar, not a Warlords era. Do not use loadRaceKit Toon as voxel play body."
+}

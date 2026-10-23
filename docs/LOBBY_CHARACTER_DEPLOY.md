@@ -14,15 +14,16 @@
 /play/test  (and /play/{slug})
   ├── Cover image + Online badge          ← Notblox
   ├── Display name                        ← Notblox playerName
-  ├── Fleet character roster              ← Mine-Loader multi-era pattern
-  │     eras: voxel · warlords · nexus
+  ├── Fleet character roster              ← sandbox = every era
+  │     Voxel + Warlords + Nexus + Armada + Game
   │     SSOT: Railway /api/characters?era=
+  │     Island maps: baked Island Terrain World Engine
   ├── Enter world → WebSocket multiplayer ← Notblox ECS + Rapier
   ├── Local avatar mesh                   ← grudge6 CDN GLB (visual)
   └── Weapon skills 1–5                   ← windup → hit / projectile impact
 ```
 
-Physics/network body remains Notblox ECS. **Avatar is a visual swap** on the local player mesh (`applyAvatarToMesh`).
+Physics/network body remains Notblox ECS. **Avatar is a visual swap** on **every** player mesh (`PlayerAvatarSystem` + `applyAvatarToMesh`). Appearance (race / class / kit path / VFX seq) replicates on `PlayerComponent` so remotes see the same skin, locomotion clips, and skill FX.
 
 ---
 
@@ -32,7 +33,8 @@ Physics/network body remains Notblox ECS. **Avatar is a visual swap** on the loc
 |------|------|
 | **blox.grudge-studio.com** | GrudgeBlox SPA (this repo front) |
 | mine.grudge-studio.com | Voxel Realms lobby / play (`#/lobby`, `#/play`) |
-| grudox.grudge-studio.com | GRUDOX rooms / nexus |
+| grudox.grudge-studio.com | GRUDOX voxel hub / cabinets |
+| **grudox.grudge-studio.com/studio/** | Creative Sandbox **Voxel Studio** (modes, maker, AI lobby) |
 | id.grudge-studio.com | Grudge ID SSO |
 | assets.grudge-studio.com | grudge6 race GLBs |
 | client.grudge-studio.com | Warlords + character API rewrites |
@@ -44,12 +46,24 @@ Optional rewrite `/api/characters` → Railway game API (same as fleet satellite
 
 ## Worlds (`public/gameData.json`)
 
-| Slug | Era | Combat | Port |
-|------|-----|--------|------|
-| `test` | voxel | yes | 8001 |
-| `combat` | warlords | yes | 8002 |
-| `lobby` | voxel | no | 8003 |
-| `grudox` | nexus | yes | 8004 |
+Lobby sections: **Eras** `/eras` · **Islands** `/islands` · **Maps** `/maps`.
+
+| Slug | Section | Script / map | Port |
+|------|---------|--------------|------|
+| `island-harbor-atoll` (`island`) | islands | `ISLAND_MAP=harbor-atoll` | 8006 |
+| `island-volcanic-ridge` | islands | volcanic-ridge | 8007 |
+| `island-frozen-fjord` | islands | frozen-fjord | 8008 |
+| `island-alpine-mesh` | islands | Super Terrain alpine | 8009 |
+| `island-granite-csg` | islands | Super Terrain granite | 8010 |
+| `island-spline-forest` | islands | Super Terrain forest | 8011 |
+| `island-tunnel-cavern` | islands | Super Terrain cavern | 8012 |
+| `test` | maps | `gtaLobbyScript.ts` | 8001 |
+| `combat` | maps | `parkourScript.ts` | 8002 |
+| `lobby` | maps | lobby bridge | 8003 |
+| `grudox` | maps | GRUDOX sandbox | 8004 |
+| `streets` | maps | `dopebudzStreets.ts` | 8005 |
+
+Deploy: `docs/SANDBOX_DEPLOY.md`. Terrain: `docs/ISLAND_SANDBOX.md`. Super Terrain: https://github.com/vibe-stack/super-terrain
 
 ---
 
@@ -70,10 +84,13 @@ Optional rewrite `/api/characters` → Railway game API (same as fleet satellite
 
 ## Avatar rules
 
-1. Prefer `character.model3d` if absolute/CDN path  
-2. Else race kit: `WK_|BRB_|ELF_|DWF_|ORC_|UD_` GLB on assets CDN  
-3. Fit height **1.8 m** (Box3); art-forward **+π/2** for grudge6  
-4. Never leave Meshy capsules as production look  
+1. Prefer 4character Mixamo races at `/kit/4character/races/{race}.glb` (unzipped from `D:\Games\Models\4character.zip`)
+2. Else `character.model3d` if absolute/CDN path
+3. Else grudge6 race kit: `WK_|BRB_|ELF_|DWF_|ORC_|UD_` GLB on assets CDN  
+4. Fit height **1.8 m** (Box3); Mixamo kit yaw **0**; grudge6 Toon **+π/2**  
+5. Never leave Meshy capsules as production look
+6. Create/select is **4 slots** (`FleetCharacterSelect`). Signed-in POST Railway `/api/characters` (`era=voxel`). Guest looks are lobby-only.
+7. `PlayerComponent` serializes `{ n, r, k, c, m, fx, fxn }` so each client loads the same race + plays Idle/Walk/Run from the race GLB + spawns kit VFX on `fx:` world actions.  
 
 ---
 
@@ -92,8 +109,11 @@ Aligned with GrudgeBuilder `ProductionSkillCombatRuntime`:
 | From | To |
 |------|-----|
 | GrudgeBlox lobby | Mine-Loader `#/lobby` (same characterId storage keys) |
-| GrudgeBlox | GRUDOX hub for nexus rooms |
+| GrudgeBlox | GRUDOX hub (voxel era) |
+| GrudgeBlox / Mine | **Voxel Studio** `/studio/` (maker + game modes from `voxel-studio.zip`) |
 | Empty roster | Foundry `era=voxel` create with returnTo play URL |
+
+Studio monorepo SSOT: Mine-Loader `artifacts/voxel-studio` — see `Mine-Loader/docs/VOXEL_STUDIO_DEPLOY.md`.
 
 Storage: `grudge_active_character` / `grudge.activeCharId` / `grudge_auth_token`.
 

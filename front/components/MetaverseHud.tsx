@@ -8,13 +8,16 @@ import { Joystick } from 'react-joystick-component'
 import { Game } from '@/game/Game'
 import { SerializedMessageType } from '@shared/network/server/serialized'
 import { MessageComponent } from '@shared/component/MessageComponent'
-import { Maximize, Car, Crosshair, MessageSquare, Map as MapIcon } from 'lucide-react'
+import { Maximize, Car, Crosshair, MessageSquare, Map as MapIcon, Gamepad2 } from 'lucide-react'
 import { MicroGameCard } from './GameCard'
 import { GameInfo } from '@/types'
 import gameData from '../public/gameData.json'
 import { FLEET } from '@/lib/fleetConfig'
 import type { FleetCharacter } from '@/lib/fleetCharacters'
 import DopeBudzControls from './DopeBudzControls'
+import { formatNearbyPrompt } from '@/game/playHud'
+import { HUD_Z, hudLayerVisible, hudModeLabel, type HudMode } from '@/game/hudLayers'
+import { StudioItemIcon } from './StudioItemIcon'
 
 export interface MetaverseHudProps {
   messages: MessageComponent[]
@@ -27,8 +30,16 @@ export interface MetaverseHudProps {
   kills?: number
   killFeed?: Array<{ id: number; text: string }>
   softAim?: boolean
+  stamina?: number
+  maxStamina?: number
+  guarding?: boolean
+  combatAction?: string | null
   fightLinks?: Record<string, string>
   worldSlug?: string
+  pointerLocked?: boolean
+  gamepadConnected?: boolean
+  prompt?: string | null
+  hudMode?: HudMode
 }
 
 export default function MetaverseHud({
@@ -42,9 +53,18 @@ export default function MetaverseHud({
   kills = 0,
   killFeed = [],
   softAim = false,
+  stamina = 100,
+  maxStamina = 100,
+  guarding = false,
+  combatAction = null,
   fightLinks,
   worldSlug,
+  pointerLocked = false,
+  gamepadConnected = false,
+  prompt = null,
+  hudMode = 'full',
 }: MetaverseHudProps) {
+  const show = (layer: Parameters<typeof hudLayerVisible>[0]) => hudLayerVisible(layer, hudMode)
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const [notifications, setNotifications] = useState<
     Array<{ id: number; content: string; author: string }>
@@ -73,6 +93,7 @@ export default function MetaverseHud({
   }, [])
 
   const hpPct = Math.max(0, Math.min(100, (hp / Math.max(1, maxHp)) * 100))
+  const staminaPct = Math.max(0, Math.min(100, (stamina / Math.max(1, maxStamina)) * 100))
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
@@ -122,9 +143,12 @@ export default function MetaverseHud({
   })
 
   return (
-    <div className="fixed inset-0 z-50 pointer-events-none text-white">
+    <div className="fixed inset-0 pointer-events-none text-white" style={{ zIndex: HUD_Z.PANELS }}>
       {/* Notifications */}
-      <div className="fixed top-20 left-1/2 -translate-x-1/2 flex flex-col items-center gap-2">
+      <div
+        className="fixed top-20 left-1/2 -translate-x-1/2 flex flex-col items-center gap-2"
+        style={{ zIndex: HUD_Z.NOTIFICATIONS }}
+      >
         {notifications.map((n) => (
           <div
             key={n.id}
@@ -137,21 +161,36 @@ export default function MetaverseHud({
       </div>
 
       {/* Kill feed (multiplayer-gltf) */}
-      <div className="fixed top-14 right-3 z-[70] flex flex-col items-end gap-1 pointer-events-none">
-        {killFeed.map((k) => (
-          <div
-            key={k.id}
-            className="text-xs text-white px-2 py-0.5 rounded bg-black/60 border border-amber-800/30 shadow"
-          >
-            {k.text}
-          </div>
-        ))}
-      </div>
+      {show('FEED') && (
+        <div
+          className="fixed top-14 right-3 flex flex-col items-end gap-1 pointer-events-none"
+          style={{ zIndex: HUD_Z.FEED }}
+        >
+          {killFeed.map((k) => (
+            <div
+              key={k.id}
+              className="text-xs text-white px-2 py-0.5 rounded bg-black/60 border border-amber-800/30 shadow"
+            >
+              {k.text}
+            </div>
+          ))}
+        </div>
+      )}
+
+      {hudMode !== 'full' && show('FEED') && (
+        <div
+          className="pointer-events-none absolute bottom-3 left-3 rounded-md bg-black/55 px-2 py-1 text-[10px] text-white/60 border border-white/10"
+          style={{ zIndex: HUD_Z.FEED }}
+        >
+          {hudModeLabel(hudMode)} · H
+        </div>
+      )}
 
       {/* Top bar */}
+      {show('PANELS') && (
       <div className="absolute top-3 left-3 right-3 flex justify-between items-start gap-3">
-        <div className="pointer-events-auto bg-black/70 backdrop-blur-md border border-amber-800/40 rounded-xl px-4 py-3 max-w-xs shadow-lg">
-          <p className="text-[10px] uppercase tracking-[0.15em] text-amber-500/80">Metaverse lobby</p>
+        <div className="pointer-events-auto bg-slate-950/80 backdrop-blur-md border border-amber-400/30 rounded-2xl px-4 py-3 max-w-sm shadow-[inset_0_2px_10px_rgba(255,255,255,0.04),0_16px_45px_rgba(0,0,0,0.45)]">
+          <p className="text-[10px] uppercase tracking-[0.15em] text-amber-300/80">Studio-ready metaverse</p>
           <a href="/" className="text-lg font-bold text-amber-50 hover:text-amber-200 block">
             {worldTitle}
           </a>
@@ -161,8 +200,8 @@ export default function MetaverseHud({
             </p>
           )}
           {/* HP avatar fill (three-player-controller player-hud) */}
-          <div className="flex items-center gap-2 mt-2">
-            <div className="relative w-10 h-10 rounded border-2 border-emerald-500/70 overflow-hidden bg-black/50">
+          <div className="grid grid-cols-[auto_1fr_auto] items-center gap-2 mt-3">
+            <div className="relative w-11 h-11 rounded-xl border-2 border-emerald-500/70 overflow-hidden bg-slate-950/70 shadow-inner">
               <div
                 className="absolute bottom-0 left-0 right-0 transition-all"
                 style={{
@@ -175,15 +214,51 @@ export default function MetaverseHud({
                         : 'rgba(255,50,50,0.7)',
                 }}
               />
+              <StudioItemIcon id="heart" size={26} className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 drop-shadow" />
             </div>
-            <div>
+            <div className="min-w-[125px]">
               <p className="text-[10px] text-emerald-400 font-bold tracking-wider">HP</p>
               <p className="font-mono text-sm font-bold">{hp}/{maxHp}</p>
+              <div className="mt-1 h-1.5 rounded-full bg-black/60 overflow-hidden border border-white/10">
+                <div
+                className="h-full rounded-full bg-gradient-to-r from-emerald-500 to-lime-300 transition-all"
+                style={{ width: `${hpPct}%` }}
+                />
+              </div>
             </div>
             <div className="ml-2 pl-2 border-l border-white/10">
               <p className="text-[10px] text-amber-400 font-bold">KILLS</p>
               <p className="font-mono text-sm font-bold text-amber-200">{kills}</p>
             </div>
+          </div>
+          <div className="mt-2 grid grid-cols-[auto_1fr_auto] items-center gap-2">
+            <div className="relative w-8 h-8 rounded-lg border border-amber-400/50 bg-slate-950/70 flex items-center justify-center">
+              <StudioItemIcon id={guarding ? 'guard' : 'stamina'} size={22} />
+            </div>
+            <div>
+              <div className="flex justify-between text-[10px] font-bold">
+                <span className="text-amber-300">{guarding ? 'GUARD' : 'STAMINA'}</span>
+                <span className="font-mono text-white/70">{Math.round(stamina)}</span>
+              </div>
+              <div className="mt-1 h-1.5 rounded-full bg-black/60 overflow-hidden border border-white/10">
+                <div
+                className="h-full rounded-full bg-gradient-to-r from-orange-500 via-amber-300 to-yellow-100 transition-all"
+                style={{ width: `${staminaPct}%` }}
+                />
+              </div>
+            </div>
+            <div className="text-[10px] text-sky-200">{combatAction ?? (softAim ? 'SOFT AIM' : 'READY')}</div>
+          </div>
+          <div className="grid grid-cols-5 gap-1.5 mt-3">
+            {(['chest', 'crate', 'workbench', 'furnace', 'turret'] as const).map((id) => (
+              <div
+                key={id}
+                className="h-9 rounded-lg bg-slate-900/80 border border-white/10 flex items-center justify-center shadow-inner"
+                title={`Studio ${id}`}
+              >
+                <StudioItemIcon id={id} size={24} />
+              </div>
+            ))}
           </div>
           <div className="flex flex-wrap gap-2 mt-2 text-[10px]">
             <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-emerald-950/50 border border-emerald-800/40 text-emerald-200">
@@ -195,6 +270,11 @@ export default function MetaverseHud({
             <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-sky-950/50 border border-sky-800/40 text-sky-200">
               <MapIcon className="w-3 h-3" /> Tab board
             </span>
+            {gamepadConnected && (
+              <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-violet-950/50 border border-violet-700/40 text-violet-200">
+                <Gamepad2 className="w-3 h-3" /> pad live
+              </span>
+            )}
           </div>
           {worldSlug === 'streets' && (
             <DopeBudzControls
@@ -220,6 +300,14 @@ export default function MetaverseHud({
               className="text-[11px] px-2 py-1 rounded-md bg-black/60 border border-sky-700/40 text-sky-200 hover:bg-sky-950/50"
             >
               Mine play
+            </a>
+            <a
+              href={FLEET.grudoxStudio}
+              target="_blank"
+              rel="noreferrer"
+              className="text-[11px] px-2 py-1 rounded-md bg-black/60 border border-cyan-700/40 text-cyan-200 hover:bg-cyan-950/50"
+            >
+              Voxel Studio
             </a>
             <a
               href={fightLinks?.grudox || FLEET.grudox}
@@ -250,14 +338,39 @@ export default function MetaverseHud({
             </button>
           </div>
           <p className="text-[10px] text-white/40 bg-black/40 px-2 py-1 rounded">
-            WASD · Space · RMB aim · E · 1–5 skills · Tab
+            WASD · look · Space · RMB aim · E · 1–5 · pad · Tab · H hud
           </p>
         </div>
       </div>
+      )}
+
+      {!pointerLocked && show('LOOK_HINT') && (
+        <div
+          className="hidden lg:flex pointer-events-none absolute top-1/2 left-1/2 -translate-x-1/2 translate-y-10 rounded-lg bg-black/65 px-3 py-1.5 text-[11px] text-amber-100/90 border border-amber-800/40"
+          style={{ zIndex: HUD_Z.LOOK_HINT }}
+        >
+          Click the world to look · Esc releases the mouse
+        </div>
+      )}
+
+      {prompt && show('FEED') && (
+        <div
+          className="pointer-events-none absolute bottom-28 left-1/2 -translate-x-1/2 rounded-lg border border-emerald-700/50 bg-black/75 px-4 py-2 text-center shadow-xl"
+          style={{ zIndex: HUD_Z.FEED }}
+        >
+          <p className="text-[10px] uppercase tracking-widest text-emerald-400/80">Nearby</p>
+          <p className="text-sm font-semibold text-white">
+            {formatNearbyPrompt(prompt, gamepadConnected)}
+          </p>
+        </div>
+      )}
 
       {/* Scoreboard Tab */}
-      {scoreboard && (
-        <div className="fixed inset-0 z-[80] flex items-center justify-center bg-black/50 pointer-events-none">
+      {scoreboard && show('SCOREBOARD') && (
+        <div
+          className="fixed inset-0 flex items-center justify-center bg-black/50 pointer-events-none"
+          style={{ zIndex: HUD_Z.SCOREBOARD }}
+        >
           <div className="min-w-[320px] rounded-xl border border-white/15 bg-black/85 backdrop-blur-md overflow-hidden">
             <div className="px-4 py-2 text-center text-xs tracking-widest text-white/80 border-b border-white/10">
               SCOREBOARD
@@ -285,6 +398,7 @@ export default function MetaverseHud({
       )}
 
       {/* Chat panel */}
+      {show('PANELS') && (
       <div className="absolute bottom-4 right-4 hidden lg:flex flex-col w-[340px] pointer-events-auto space-y-2">
         <div className="grid grid-cols-4 gap-2">
           {gameData.slice(0, 4).map((game: GameInfo) => (
@@ -338,9 +452,10 @@ export default function MetaverseHud({
           )}
         </div>
       </div>
+      )}
 
-      {/* Mobile joystick */}
-      <div className="flex lg:hidden pointer-events-auto">
+      {/* Mobile joystick + jump / interact */}
+      <div className="flex lg:hidden pointer-events-auto" style={{ zIndex: HUD_Z.MOBILE_CONTROLS }}>
         <div className="absolute bottom-12 left-8">
           <Joystick
             size={100}
@@ -349,6 +464,34 @@ export default function MetaverseHud({
             move={(props) => gameInstance?.inputManager.handleJoystickMove(props)}
             stop={(props) => gameInstance?.inputManager.handleJoystickStop(props)}
           />
+        </div>
+        <div className="absolute bottom-32 right-4 flex flex-col-reverse gap-3 items-end">
+          <button
+            type="button"
+            className="bg-emerald-700/40 text-white font-bold rounded-full shadow-lg w-16 h-16 flex items-center justify-center border border-emerald-500/40"
+            onPointerDown={(event) => {
+              event.preventDefault()
+              gameInstance?.inputManager.setInteract(true)
+            }}
+            onPointerUp={() => gameInstance?.inputManager.setInteract(false)}
+            onPointerCancel={() => gameInstance?.inputManager.setInteract(false)}
+            onPointerLeave={() => gameInstance?.inputManager.setInteract(false)}
+          >
+            E
+          </button>
+          <button
+            type="button"
+            className="bg-gray-500/30 text-white font-bold rounded-full shadow-lg w-20 h-20 flex items-center justify-center border border-white/20"
+            onPointerDown={(event) => {
+              event.preventDefault()
+              gameInstance?.inputManager.setJump(true)
+            }}
+            onPointerUp={() => gameInstance?.inputManager.setJump(false)}
+            onPointerCancel={() => gameInstance?.inputManager.setJump(false)}
+            onPointerLeave={() => gameInstance?.inputManager.setJump(false)}
+          >
+            Jump
+          </button>
         </div>
       </div>
     </div>

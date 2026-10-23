@@ -31,7 +31,11 @@ export class ProximityPromptSystem {
     return player
   }
 
-  findNearestProximityPromptEntity(currentPlayer: Entity, entities: Entity[]): Entity | null {
+  findNearestProximityPromptEntity(
+    currentPlayer: Entity,
+    entities: Entity[],
+    options: { ignoreCooldown?: boolean } = {}
+  ): Entity | null {
     const playerPosition = currentPlayer.getComponent(PositionComponent)
     if (!playerPosition) return null
 
@@ -68,6 +72,7 @@ export class ProximityPromptSystem {
       }
     }
     if (
+      !options.ignoreCooldown &&
       nearestProximityPromptComponent &&
       this.isOnCooldown(currentPlayer, nearestProximityPromptComponent)
     ) {
@@ -86,6 +91,16 @@ export class ProximityPromptSystem {
 
     // Add a small buffer to the cooldown to avoid flickering
     return interactionAccumulator < proximityPromptComponent.interactionCooldown + 100
+  }
+
+  getPromptText(entities: Entity[]): string | null {
+    const currentPlayer = this.getCurrentPlayer(entities)
+    if (!currentPlayer) return null
+    const entity = this.findNearestProximityPromptEntity(currentPlayer, entities, {
+      ignoreCooldown: true,
+    })
+    if (!entity) return null
+    return entity.getComponent(ProximityPromptComponent)?.textComponent.text ?? 'Interact'
   }
 
   getMessage(entities: Entity[]): ProximityPromptInteractMessage | null {

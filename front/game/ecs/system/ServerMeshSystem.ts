@@ -9,7 +9,11 @@ import { AnimationComponent } from '../component/AnimationComponent'
 import { SerializedEntityType } from '@shared/network/server/serialized'
 
 export class ServerMeshSystem {
+  private disposed = false
+  dispose() { this.disposed = true }
+
   async update(entities: Entity[]): Promise<void> {
+    if (this.disposed) return
     const createEvents = EventSystem.getEventsWrapped(ComponentAddedEvent, ServerMeshComponent)
     const promises = createEvents.map((event: ComponentAddedEvent<ServerMeshComponent>) => {
       const entity = EntityManager.getEntityById(entities, event.entityId)
@@ -35,9 +39,18 @@ export class ServerMeshSystem {
     entity: Entity
   ): Promise<void> {
     const serverMeshComponent = event.component
+    if (serverMeshComponent.filePath.startsWith('island:')) {
+      return
+    }
 
     // Load the mesh from the serverMeshComponent
     const mesh = await LoadManager.glTFLoad(serverMeshComponent.filePath)
+    if (this.disposed || EntityManager.getEntityById(EntityManager.getInstance().getAllEntities(), entity.id) !== entity
+      || entity.getComponent(ServerMeshComponent) !== serverMeshComponent) {
+      // LoadManager owns geometry/textures; each returned clone owns its materials.
+      LoadManager.releaseClone(mesh)
+      return
+    }
     const meshComponent = new MeshComponent(entity.id, mesh)
 
     // // Debug : Add a box helper around the mesh (if player)

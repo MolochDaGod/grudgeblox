@@ -3,15 +3,18 @@
  *
  * Play surface: blox.grudge-studio.com (or vercel alias)
  * Character SSOT: Railway via GrudgeBuilder / fleet game-data
- * Voxel lobby peer: mine.grudge-studio.com
- * GRUDOX rooms: grudox.grudge-studio.com
+ * Voxel peers: mine.grudge-studio.com · grudox.grudge-studio.com (GRUDOX = voxel)
  */
 
 export const FLEET = {
   /** Public product host (metaverse DNS) */
   blox: 'https://blox.grudge-studio.com',
-  /** Vercel preview / fallback */
+  /** Vercel production alias */
   bloxVercel: 'https://grudgeblox.vercel.app',
+  /** Live Rapier/uWS room (Railway TLS on 443 — no :8001) */
+  ws: 'wss://grudgeblox-production.up.railway.app',
+  /** Optional custom WS host after Cloudflare grey-cloud CNAME */
+  wsCustom: 'wss://blox-game.grudge-studio.com',
   /** Auth */
   id: 'https://id.grudge-studio.com',
   /** Characters / account (Builder Railway via any fleet SPA rewrite) */
@@ -27,8 +30,12 @@ export const FLEET = {
   mine: 'https://mine.grudge-studio.com',
   mineLobby: 'https://mine.grudge-studio.com/#/lobby',
   minePlay: 'https://mine.grudge-studio.com/#/play',
+  /** Creative Sandbox Voxel Studio (Mine-Loader monorepo artifact) */
+  mineStudio: 'https://mine.grudge-studio.com/studio/',
   /** GRUDOX multiplayer hub */
   grudox: 'https://grudox.grudge-studio.com',
+  /** Voxel Studio tool surface on GRUDOX (BASE_PATH=/studio/) */
+  grudoxStudio: 'https://grudox.grudge-studio.com/studio/',
   /** Foundry create */
   foundry: 'https://character.grudge-studio.com',
   /** Production play lab (Warlords) */
@@ -85,14 +92,17 @@ export function getAuthToken(): string | null {
   }
 }
 
-export function buildLoginUrl(returnPath = '/play/test'): string {
-  const origin = typeof window !== 'undefined' ? window.location.origin : FLEET.blox
+export function buildLoginUrl(returnPath = '/play/test', origin: string = FLEET.blox): string {
   const redirect = encodeURIComponent(`${origin}${returnPath}`)
   return `${FLEET.id}/login?redirect_uri=${redirect}`
 }
 
-export function buildFoundryCreateUrl(returnPath = '/play/test'): string {
-  const origin = typeof window !== 'undefined' ? window.location.origin : FLEET.blox
+export function buildFoundryCreateUrl(
+  returnPath = '/play/test',
+  era = 'voxel',
+  origin: string = FLEET.blox,
+): string {
   const returnTo = encodeURIComponent(`${origin}${returnPath}`)
-  return `${FLEET.foundry}/?era=voxel&mode=create&returnTo=${returnTo}`
+  const e = (era || 'voxel').toLowerCase()
+  return `${FLEET.foundry}/foundry?era=${encodeURIComponent(e)}&mode=create&returnTo=${returnTo}`
 }

@@ -1,4 +1,5 @@
 import { EntityManager } from '@shared/system/EntityManager'
+import { resetClientSession } from './resetClientSession'
 import { config } from '@shared/network/config'
 import { InputManager } from './InputManager'
 import { WebSocketManager } from './WebsocketManager'
@@ -18,15 +19,19 @@ import {
   TextComponentSystem,
   InvisibilitySystem,
   VehicleSystem,
+  PlayerAvatarSystem,
+  IslandTerrainSystem,
 } from './ecs/system'
 import { Hud } from './Hud'
 import { Renderer } from './Renderer'
 import { EventSystem } from '@shared/system/EventSystem'
 import { MutableRefObject } from 'react'
-import { ClientMessageType, SetPlayerNameMessage } from '@shared/network/client'
+import { ClientMessageType, SetPlayerNameMessage, WorldActionMessage } from '@shared/network/client'
+import { sanitizeModel3d } from '@shared/avatar/appearancePolicy'
+import { kitModelKey } from '@/lib/fourCharacterKit'
 
 export class Game {
-  private static instance: Game
+  private static instance: Game | undefined
   entityManager = EntityManager
   currentPlayerEntityId: number | undefined
   private lastRenderTime = Date.now()
@@ -48,16 +53,18 @@ export class Game {
   private textComponentSystem: TextComponentSystem
   private vehicleSystem: VehicleSystem
   private invisibilitySystem: InvisibilitySystem
+  private playerAvatarSystem: PlayerAvatarSystem
+  private islandTerrainSystem: IslandTerrainSystem
   renderer: Renderer
   hud: Hud
   private identifyFollowedMeshSystem: IdentifyFollowedMeshSystem
-  private constructor(gameContainerRef: MutableRefObject<any>, port?: number) {
+  private constructor(gameContainerRef: MutableRefObject<any>, port?: number, websocketUrl?: string) {
     this.syncComponentSystem = new SyncComponentsSystem(this)
     this.syncPositionSystem = new SyncPositionSystem()
     this.syncRotationSystem = new SyncRotationSystem()
     this.syncColorSystem = new SyncColorSystem()
     this.syncSizeSystem = new SyncSizeSystem()
-    this.websocketManager = new WebSocketManager(this, port)
+    this.websocketManager = new WebSocketManager(this, port, websocketUrl)
     this.animationSystem = new AnimationSystem()
     this.sleepCheckSystem = new SleepCheckSystem()
     this.chatSystem = new ChatSystem()
@@ -69,27 +76,64 @@ export class Game {
     this.textComponentSystem = new TextComponentSystem()
     this.vehicleSystem = new VehicleSystem()
     this.invisibilitySystem = new InvisibilitySystem()
+    this.playerAvatarSystem = new PlayerAvatarSystem()
+    this.islandTerrainSystem = new IslandTerrainSystem()
 
     this.renderer = new Renderer(gameContainerRef)
     this.inputManager = new InputManager(this.websocketManager, this.renderer.camera.controlSystem)
     this.hud = new Hud()
   }
 
-  static getInstance(port?: number, gameContainerRef?: MutableRefObject<any>): Game {
+  static getInstance(
+    port?: number,
+    gameContainerRef?: MutableRefObject<any>,
+    websocketUrl?: string
+  ): Game {
     if (!Game.instance) {
       if (!gameContainerRef) {
         throw new Error('Game instance not initialized with gameContainerRef')
       }
-      Game.instance = new Game(gameContainerRef, port)
+      Game.instance = new Game(gameContainerRef, port, websocketUrl)
     }
     return Game.instance
+  }
+
+  /** Drop the singleton so lobby retry can open a fresh WebSocket. */
+  static resetInstance() {
+    if (!Game.instance) return
+    Game.instance.disposed = true
+    Game.instance.serverMeshSystem.dispose()
+    Game.instance.playerAvatarSystem.dispose()
+    Game.instance.inputManager.dispose()
+    try {
+      Game.instance.websocketManager.disconnect()
+      Game.instance.renderer.setAnimationLoop(null)
+      Game.instance.renderer.disposeSession()
+    } catch {
+      /* ignore */
+    }
+    resetClientSession()
+    Game.instance = undefined
   }
 
   async start() {
     // Wait for the WebSocket connection to be established
     await this.websocketManager.connect()
+    if (this.disposed) throw new Error('Game session closed')
     this.renderer.appendChild()
     this.renderer.setAnimationLoop(this.loopFunction)
+    this.joinLiveIsland()
+  }
+
+  /** Seat this client on a Super Terrain / Island Engine bake in the live room. */
+  joinLiveIsland() {
+    if (!this.worldMapId) return
+    const action = `island:${this.worldMapId}`.slice(0, 40)
+    const join: WorldActionMessage = {
+      t: ClientMessageType.WORLD_ACTION,
+      action,
+    }
+    this.websocketManager.send(join)
   }
 
   /**
@@ -98,30 +142,79 @@ export class Game {
    */
   setPlayerName(name: string) {
     if (!name || !name.trim()) return
-    
-    // Send the player name to the server using the correct message format
-    const message: SetPlayerNameMessage = {
-      t: ClientMessageType.SET_PLAYER_NAME,
-      name: name.trim()
-    }
-    this.websocketManager.send(message)
+    this.sendAppearance(name.trim())
   }
 
-  /** Fleet character id/race for avatar systems (client visual) */
-  fleetCharacter: { id: string; name: string; raceId?: string; classId?: string } | null = null
+  /** Fleet character id/race for avatar systems (replicated on PlayerComponent) */
+  fleetCharacter: {
+    id: string
+    name: string
+    raceId?: string
+    classId?: string
+    model3d?: string
+    gameEra?: string
+  } | null = null
+
+  avatarWorldSlug: string | undefined
+  worldMapId: string | undefined
+
+  setAvatarWorldSlug(worldSlug: string) {
+    this.avatarWorldSlug = worldSlug
+  }
+
+  setWorldMapId(mapId?: string) {
+    this.worldMapId = mapId
+  }
 
   setFleetCharacter(character: {
     id: string
     name: string
     raceId?: string
     classId?: string
+    model3d?: string
+    gameEra?: string
   }) {
     this.fleetCharacter = character
+    this.sendAppearance(character.name || 'Player')
+  }
+
+  sendAppearance(name?: string) {
+    const c = this.fleetCharacter
+    const message: SetPlayerNameMessage = {
+      t: ClientMessageType.SET_PLAYER_NAME,
+      name: (name || c?.name || 'Player').trim().slice(0, 20),
+      raceId: c?.raceId,
+      classId: c?.classId,
+      characterId: c?.id,
+      model3d: sanitizeModel3d(c?.model3d, c?.raceId) || kitModelKey(c?.raceId),
+      gameEra: c?.gameEra,
+      mapId: this.worldMapId,
+    }
+    this.websocketManager.send(message)
+    if (this.worldMapId) {
+      const action = `island:${this.worldMapId}`.slice(0, 40)
+      const join: WorldActionMessage = {
+        t: ClientMessageType.WORLD_ACTION,
+        action,
+      }
+      this.websocketManager.send(join)
+    }
+  }
+
+  sendPlayerFx(fxId: string) {
+    const id = (fxId || 'slash').toLowerCase().replace(/[^a-z0-9_-]/g, '').slice(0, 16)
+    const message: WorldActionMessage = {
+      t: ClientMessageType.WORLD_ACTION,
+      action: `fx:${id}`,
+    }
+    this.websocketManager.send(message)
   }
 
   private loadingPromise: Promise<void> | null = null
+  private disposed = false
 
   private async loop() {
+    if (this.disposed) return
     const entities = EntityManager.getInstance().getAllEntities()
     const now = Date.now()
     const deltaTime = now - this.lastRenderTime
@@ -136,11 +229,13 @@ export class Game {
 
     // Wait for the loading operation to finish
     await this.loadingPromise
+    if (this.disposed) return
     this.loadingPromise = null
 
     this.identifyFollowedMeshSystem.update(entities, this)
     this.inputManager.update(entities, now - this.lastRenderTime)
     this.inputManager.sendInput(entities)
+    this.islandTerrainSystem.update(entities, this.renderer)
     this.destroySystem.update(entities, this.renderer)
     this.meshSystem.update(entities, this.renderer)
     this.vehicleSystem.update(entities)
@@ -152,6 +247,7 @@ export class Game {
     this.chatSystem.update(entities, this.hud)
     this.textComponentSystem.update(entities, deltaTime)
     this.syncSizeSystem.update(entities)
+    this.playerAvatarSystem.update(entities, this.avatarWorldSlug)
     this.animationSystem.update(deltaTime, entities)
     this.destroySystem.afterUpdate(entities)
     this.eventSystem.afterUpdate(entities)
