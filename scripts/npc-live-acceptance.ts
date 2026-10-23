@@ -5,9 +5,10 @@ import { ensureLife } from '../shared/shire/life'
 import { height } from '../shared/shire/terrain'
 
 async function main(){
-const base='http://127.0.0.1:4100',output='D:/grudgegit/grudgeblox/shire/validation/npc-live'
+const base=process.env.SHIRE_BASE_URL||'http://127.0.0.1:4100',output=process.env.SHIRE_VALIDATION_OUTPUT
+if(!output)throw Error('Set SHIRE_VALIDATION_OUTPUT to a disposable folder for acceptance artifacts.')
 const bootstrap=await(await fetch(`${base}/api/shire`)).json()
-assert.equal(bootstrap.storage,'C:\\RuntimeData\\grudgegit\\grudgeblox\\TheMiddleEarth')
+if(process.env.SHIRE_EXPECTED_STORAGE)assert.equal(bootstrap.storage,process.env.SHIRE_EXPECTED_STORAGE)
 const post=async(body:unknown)=>{const r=await fetch(`${base}/api/shire`,{method:'POST',headers:{'content-type':'application/json','x-shire-session':bootstrap.session},body:JSON.stringify(body)});const data=await r.json();assert.equal(r.status,200,data.error);return data}
 await fs.mkdir(output,{recursive:true})
 if(process.argv.includes('--prepare')){
