@@ -8,12 +8,16 @@
   "scripts": {
     "debug": "node --import tsx/esm --inspect=7000 src/sandbox.ts",
     "dev": "tsx watch src/sandbox.ts",
-    "build": "tsc --noEmit",
+    "build": "powershell.exe -NoProfile -ExecutionPolicy Bypass -File \"C:\\grudgegit\\grudgeblox/Build-Workspace.ps1\" -PackageRelative \"back\" -Script \"build\" -NoLaunchPrompt",
     "start": "node --import tsx/esm src/sandbox.ts",
-    "test": "tsx --test src/ecs/system/network/serverPolicy.test.ts",
+    "test": "tsx --test src/gameSupervisor.test.ts src/physics/colliderBudget.test.ts src/ecs/system/network/serverPolicy.test.ts src/ecs/system/network/nodeWebSocketTransport.test.ts src/ecs/system/network/nodeSocketAccept.test.ts src/ecs/system/network/appearancePolicy.test.ts src/ecs/entity/Player.test.ts src/maps/islandBake.test.ts src/maps/superTerrainBake.test.ts src/maps/islandLive.test.ts src/maps/playScale.test.ts ../front/lib/avatarTransformContract.test.ts ../front/lib/characterEras.test.ts ../front/game/thirdPersonCamera.test.ts ../front/game/gamepad.test.ts ../front/game/playHud.test.ts ../front/game/pointerLock.test.ts ../front/game/renderLayers.test.ts ../front/game/avatarAnimator.test.ts ../front/game/hudLayers.test.ts ../front/game/InputTransmission.test.ts",
+    "bake:islands": "tsx scripts/bakeIslands.ts",
     "smoke:network": "node scripts/networkSmoke.mjs",
+    "smoke:dependencies": "node scripts/dependencySmoke.mjs",
     "lint": "eslint src/",
-    "format": "eslint src/ --fix"
+    "format": "eslint src/ --fix",
+    "workspace:build": "powershell.exe -NoProfile -ExecutionPolicy Bypass -File \"C:\\grudgegit\\grudgeblox/Build-Workspace.ps1\"",
+    "workspace:menu": "powershell.exe -NoProfile -ExecutionPolicy Bypass -File \"C:\\grudgegit\\grudgeblox/Project-Console.ps1\""
   },
   "author": "iercann",
   "license": "MIT",
@@ -27,27 +31,29 @@
   "dependencies": {
     "@dimforge/rapier3d-compat": "^0.14.0",
     "@notblox/shared": "workspace:*",
-    "dotenv": "^16.3.1",
-    "msgpackr": "^1.9.9",
+    "dotenv": "^16.6.1",
+    "msgpackr": "^1.11.8",
     "node-three-gltf": "^1.8.3",
     "pako": "^2.1.0",
-    "rate-limiter-flexible": "^5.0.3",
-    "three": "^0.183.0",
-    "tsx": "^4.0.0",
-    "uWebSockets.js": "github:uNetworking/uWebSockets.js#v20.57.0"
+    "rate-limiter-flexible": "^5.0.5",
+    "three": "^0.183.2",
+    "tsx": "^4.23.13",
+    "uWebSockets.js": "github:uNetworking/uWebSockets.js#v20.57.0",
+    "ws": "^8.21.3"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
-    "@types/node": "^24.0.0",
-    "@types/pako": "^2.0.3",
-    "@types/three": "^0.183.0",
+    "@types/node": "^24.13.3",
+    "@types/ws": "^8.18.1",
+    "@types/pako": "^2.0.4",
+    "@types/three": "^0.183.1",
     "@types/uws": "^0.13.6",
     "@typescript-eslint/eslint-plugin": "latest",
     "@typescript-eslint/parser": "latest",
     "eslint": "latest",
     "globals": "latest",
-    "jiti": "^2.6.1",
-    "typescript": "^5.7.3",
+    "jiti": "^2.7.0",
+    "typescript": "^5.9.3",
     "typescript-eslint": "latest"
   }
 }
