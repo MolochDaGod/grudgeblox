@@ -5,11 +5,10 @@ import { createHash } from 'node:crypto'
 import { registerHostiles } from './register-shire-hostiles.mjs'
 
 const repo=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'..')
-const root=process.env.GRUDGE_SHIRE_DATA_ROOT||'C:\\RuntimeData\\grudgegit\\grudgeblox\\TheMiddleEarth'
-if(!/^C:[\\/]/i.test(root))throw Error('Shire persistent save storage must be on C:.')
-await fs.access('C:\\')
-
-for(const folder of ['assets','saves','evidence'])await fs.mkdir(path.join(root,folder),{recursive:true})
+const root=process.env.GRUDGE_SHIRE_DATA_ROOT||'F:\\Data\\GrudgeBlox\\TheMiddleEarth'
+if(!/^F:[\\/]/i.test(root))throw Error('Shire persistent storage must be on F:.')
+await fs.access('F:\\')
+for(const folder of ['assets','saves','cache','builds','evidence'])await fs.mkdir(path.join(root,folder),{recursive:true})
 const sha=bytes=>createHash('sha256').update(bytes).digest('hex')
 const verify=async(file,expected)=>{const bytes=await fs.readFile(file);if(expected&&sha(bytes)!==expected.toLowerCase())throw Error(`Hash mismatch: ${file}`);return bytes}
 const put=async(file,bytes)=>{await fs.mkdir(path.dirname(file),{recursive:true});try{const old=await fs.readFile(file);if(sha(old)!==sha(bytes))throw Error(`Existing asset differs; preserved: ${file}`)}catch(e){if(e.code!=='ENOENT')throw e;await fs.writeFile(file,bytes,{flag:'wx'})}}

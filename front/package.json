@@ -15,8 +15,7 @@
     "lint": "next lint",
     "serve": "serve -s public/assets -l 4001 --cors",
     "workspace:build": "powershell.exe -NoProfile -ExecutionPolicy Bypass -File \"C:\\grudgegit\\grudgeblox/Build-Workspace.ps1\"",
-    "workspace:menu": "powershell.exe -NoProfile -ExecutionPolicy Bypass -File \"C:\\grudgegit\\grudgeblox/Project-Console.ps1\"",
-    "build:shire": "powershell.exe -NoProfile -File C:\\grudgegit\\grudgeblox\\Build-Workspace.ps1 -Component shire -NoLaunchPrompt"
+    "workspace:menu": "powershell.exe -NoProfile -ExecutionPolicy Bypass -File \"C:\\grudgegit\\grudgeblox/Project-Console.ps1\""
   },
   "overrides": {
     "minimatch": "^10.2.1"

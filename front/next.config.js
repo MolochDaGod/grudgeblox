@@ -8,7 +8,7 @@ const nextConfig = {
   reactStrictMode: false,
   experimental: {
     externalDir: true,
-    ...(process.env.GRUDGE_LOCAL_WORLD === 'shire' ? { cpus: 1 } : {}),
+    ...(process.env.GRUDGE_LOCAL_WORLD === 'shire' ? { cpus: 2 } : {}),
   },
   env: {
     NEXT_PUBLIC_SERVER_URL:

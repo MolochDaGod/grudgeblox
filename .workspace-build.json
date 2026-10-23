@@ -98,25 +98,6 @@
         "No production start script is defined; opens completed package."
       ],
       "launchOptionOnBuildCompletion": true
-    },
-    {
-      "id": "shire",
-      "label": "The Shire local world",
-      "relative": "front",
-      "output": "shire",
-      "kind": "next",
-      "buildScript": "build:shire",
-      "launchScript": "start",
-      "installer": false,
-      "lifecycleScript": "Workbench-Portal.ps1",
-      "requires": [
-        "Staged Next dependencies",
-        "Retained C: world assets"
-      ],
-      "notes": [
-        "Local-only server, C: saves and active Workbench library; D: runtime, build and logs."
-      ],
-      "launchOptionOnBuildCompletion": true
     }
   ],
   "packages": {
@@ -171,8 +152,7 @@
         "build": "next build",
         "start": "next start",
         "lint": "next lint",
-        "serve": "serve -s public/assets -l 4001 --cors",
-        "build:shire": "node ../scripts/build-shire.mjs"
+        "serve": "serve -s public/assets -l 4001 --cors"
       },
       "packageManager": null,
       "name": "@notblox/front"
@@ -198,12 +178,5 @@
   "preexistingTrackedChanges": [],
   "releaseOnly": false,
   "storageProfile": ".storage/profile.json",
-  "storageDevice": ".storage/device.json",
-  "workspaceWorkflow": {
-    "script": "Workspace-Shire.ps1",
-    "label": "The Shire local world",
-    "launchComponents": [
-      "shire"
-    ]
-  }
+  "storageDevice": ".storage/device.json"
 }
