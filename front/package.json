@@ -10,7 +10,7 @@
   },
   "scripts": {
     "dev": "next dev -p 4000",
-    "build": "powershell.exe -NoProfile -ExecutionPolicy Bypass -File \"C:\\grudgegit\\grudgeblox/Build-Workspace.ps1\" -PackageRelative \"front\" -Script \"build\" -NoLaunchPrompt",
+    "build": "next build",
     "start": "next start",
     "lint": "next lint",
     "serve": "serve -s public/assets -l 4001 --cors",
