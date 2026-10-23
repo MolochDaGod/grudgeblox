@@ -3,10 +3,27 @@ packages:
   - 'front'
   - 'back'
 
-# pnpm 11 blocks undeclared dependency lifecycle builds. These are the native
-# build steps used by the checked-in dependency graph in local, CI, and Docker installs.
+# pnpm 11 defaults to strictDepBuilds: true, so any dependency lifecycle build
+# script that is not explicitly approved fails the install with
+# ERR_PNPM_IGNORED_BUILDS. Approve the native builds the project relies on so
+# `pnpm install --frozen-lockfile` succeeds in CI, Docker, and local/dev.
 allowBuilds:
   esbuild: true
   msgpackr-extract: true
   sharp: true
   unrs-resolver: true
+
+# Transitive security floors (pnpm audit --prod). Direct deps are bumped in
+# each package.json; these only lift what next / tailwindcss / jsdom pin.
+overrides:
+  # Retain the local parent-specific repairs alongside the upstream security floors.
+  'next>postcss': '8.5.28'
+  'node-three-gltf>sharp': '0.35.4'
+  nanoid@<3.3.18: '>=3.3.18'
+  picomatch@<2.3.2: '>=2.3.2'
+  picomatch@>=4.0.0 <4.0.4: '>=4.0.4'
+  postcss@<8.5.26: '>=8.5.26'
+  postcss-selector-parser@>=6.1.0 <6.1.3: '>=6.1.3'
+  form-data@>=4.0.0 <4.0.6: '>=4.0.6'
+  ws@>=8.0.0 <8.21.3: '>=8.21.3'
+  '@tootallnate/once@<2.0.1': '>=2.0.1'

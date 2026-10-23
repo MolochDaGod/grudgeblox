@@ -1,5 +1,6 @@
 {
   "name": "notblox-mono",
+  "description": "GrudgeBlox: Modular WebSocket game-server kit for Grudge Studio multiplayer games",
   "private": true,
   "packageManager": "pnpm@11.19.0",
   "workspaces": [
@@ -8,20 +9,26 @@
     "back"
   ],
   "scripts": {
-    "build:shared": "pnpm --filter @notblox/shared run build",
+    "build:shared": "powershell.exe -NoProfile -ExecutionPolicy Bypass -File \"C:\\grudgegit\\grudgeblox/Build-Workspace.ps1\" -PackageRelative \".\" -Script \"build:shared\" -NoLaunchPrompt",
     "dev:shared": "pnpm --filter @notblox/shared run dev",
-    "build:back": "pnpm --filter @notblox/back run build",
+    "build:back": "powershell.exe -NoProfile -ExecutionPolicy Bypass -File \"C:\\grudgegit\\grudgeblox/Build-Workspace.ps1\" -PackageRelative \".\" -Script \"build:back\" -NoLaunchPrompt",
     "dev:back": "pnpm --filter @notblox/back run dev",
-    "build:front": "pnpm --filter @notblox/front run build",
+    "build:front": "powershell.exe -NoProfile -ExecutionPolicy Bypass -File \"C:\\grudgegit\\grudgeblox/Build-Workspace.ps1\" -PackageRelative \".\" -Script \"build:front\" -NoLaunchPrompt",
     "dev:front": "pnpm --filter @notblox/front run dev",
     "test:back": "pnpm --filter @notblox/back run test",
-    "build-vercel": "pnpm run build:shared && pnpm run build:front",
-    "build": "pnpm run build:shared && pnpm run build:back && pnpm run build:front",
+    "test:client:reliability": "pnpm --filter @notblox/back exec tsx --tsconfig ../front/tsconfig.json --test ../front/lib/guidedReliability.test.ts",
+    "build-vercel": "powershell.exe -NoProfile -ExecutionPolicy Bypass -File \"C:\\grudgegit\\grudgeblox/Build-Workspace.ps1\" -PackageRelative \".\" -Script \"build-vercel\" -NoLaunchPrompt",
+    "build": "powershell.exe -NoProfile -ExecutionPolicy Bypass -File \"C:\\grudgegit\\grudgeblox/Build-Workspace.ps1\" -PackageRelative \".\" -Script \"build\" -NoLaunchPrompt",
+    "validate:avatars": "node front/scripts/validate-avatar-orientation.mjs",
+    "bake:islands": "pnpm --filter @notblox/back run bake:islands",
     "dev": "concurrently \"pnpm run dev:shared\" \"pnpm run dev:back\" \"pnpm run dev:front\"",
     "lag:up": "sudo tc qdisc add dev lo root netem delay 100ms",
-    "lag:down": "sudo tc qdisc del dev lo root netem"
+    "lag:down": "sudo tc qdisc del dev lo root netem",
+    "workspace:build": "powershell.exe -NoProfile -ExecutionPolicy Bypass -File \"C:\\grudgegit\\grudgeblox/Build-Workspace.ps1\"",
+    "workspace:menu": "powershell.exe -NoProfile -ExecutionPolicy Bypass -File \"C:\\grudgegit\\grudgeblox/Project-Console.ps1\""
   },
   "devDependencies": {
-    "concurrently": "^8.2.2"
+    "concurrently": "^8.2.2",
+    "next": "15.5.25"
   }
 }
