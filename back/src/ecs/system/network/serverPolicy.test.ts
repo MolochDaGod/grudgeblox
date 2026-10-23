@@ -6,9 +6,14 @@ import { decodeClientMessage, MAX_CLIENT_MESSAGE_BYTES } from './clientMessageVa
 import {
   buildHealthPayload,
   isAdminAuthorized,
+  isHealthHttpRequest,
+  isWebSocketHttpRequest,
   isWebSocketOriginAllowed,
+  onRailwayRuntime,
   readBoundedInteger,
   resolveAllowedOrigins,
+  resolveGameSocketPath,
+  resolveServerListenHost,
 } from './serverPolicy.js'
 
 describe('health and admin policy', () => {
@@ -25,6 +30,11 @@ describe('health and admin policy', () => {
     assert.equal(JSON.stringify(health).includes('chat'), false)
   })
 
+  it('includes the island map on health when provided', () => {
+    const health = buildHealthPayload(true, 'islandSandboxScript.ts', 20, 1, 'alpine-mesh')
+    assert.equal(health.game.map, 'alpine-mesh')
+  })
+
   it('requires an exact bearer token for the optional admin feed', () => {
     assert.equal(isAdminAuthorized('', undefined), false)
     assert.equal(isAdminAuthorized('Bearer correct', undefined), false)
@@ -33,11 +43,64 @@ describe('health and admin policy', () => {
     assert.equal(isAdminAuthorized('Bearer wrong', 'correct'), false)
     assert.equal(isAdminAuthorized('Bearer correct', 'correct'), true)
   })
+
+  it('detects health probes from the first HTTP line', () => {
+    assert.equal(isHealthHttpRequest('GET /health HTTP/1.1\r\nHost: x'), true)
+    assert.equal(isHealthHttpRequest('HEAD /health HTTP/1.1\r\n'), true)
+    assert.equal(isHealthHttpRequest('GET / HTTP/1.1\r\n'), false)
+    assert.equal(isHealthHttpRequest('GET /play HTTP/1.1\r\n'), false)
+    assert.equal(
+      isWebSocketHttpRequest(
+        'GET / HTTP/1.1\r\nConnection: Upgrade\r\nUpgrade: websocket\r\n'
+      ),
+      true
+    )
+    assert.equal(isWebSocketHttpRequest('GET /health HTTP/1.1\r\n'), false)
+  })
 })
 
 describe('origin policy', () => {
   it('fails closed when production has no configured origin', () => {
-    assert.throws(() => resolveAllowedOrigins(true, undefined, undefined), /requires/)
+    const railwayVars = ['RAILWAY_SERVICE_ID', 'RAILWAY_ENVIRONMENT_ID', 'RAILWAY_ENVIRONMENT_NAME']
+    const previous = Object.fromEntries(railwayVars.map((key) => [key, process.env[key]]))
+    for (const key of railwayVars) delete process.env[key]
+    try {
+      assert.throws(() => resolveAllowedOrigins(true, undefined, undefined), /requires/)
+    } finally {
+      for (const key of railwayVars) {
+        if (previous[key] === undefined) delete process.env[key]
+        else process.env[key] = previous[key]
+      }
+    }
+  })
+
+  it('defaults to the live blox origin on Railway when none are configured', () => {
+    const previous = process.env.RAILWAY_SERVICE_ID
+    process.env.RAILWAY_SERVICE_ID = 'test-service'
+    try {
+      const origins = resolveAllowedOrigins(true, undefined, undefined)
+      assert.equal(isWebSocketOriginAllowed('https://blox.grudge-studio.com', true, origins), true)
+    } finally {
+      if (previous === undefined) delete process.env.RAILWAY_SERVICE_ID
+      else process.env.RAILWAY_SERVICE_ID = previous
+    }
+  })
+
+  it('skips invalid configured origins and keeps Railway live defaults', () => {
+    const previous = process.env.RAILWAY_SERVICE_ID
+    process.env.RAILWAY_SERVICE_ID = 'test-service'
+    try {
+      const origins = resolveAllowedOrigins(true, 'not-a-url, https://blox.grudge-studio.com/play')
+      assert.equal(isWebSocketOriginAllowed('https://blox.grudge-studio.com', true, origins), true)
+    } finally {
+      if (previous === undefined) delete process.env.RAILWAY_SERVICE_ID
+      else process.env.RAILWAY_SERVICE_ID = previous
+    }
+  })
+
+  it('accepts a websocket FRONTEND_URL as the matching https origin', () => {
+    const origins = resolveAllowedOrigins(true, undefined, 'wss://blox.grudge-studio.com')
+    assert.equal(isWebSocketOriginAllowed('https://blox.grudge-studio.com', true, origins), true)
   })
 
   it('supports explicit comma-separated origins and the legacy frontend value', () => {
@@ -62,6 +125,20 @@ describe('origin policy', () => {
     assert.equal(isWebSocketOriginAllowed('http://localhost:4000', false, origins), true)
     assert.equal(isWebSocketOriginAllowed('', false, origins), true)
     assert.equal(isWebSocketOriginAllowed('https://unknown.example', false, origins), false)
+  })
+
+  it('binds 0.0.0.0 on Railway even when NODE_ENV is unset', () => {
+    assert.equal(resolveServerListenHost(undefined, undefined, true), '0.0.0.0')
+    assert.equal(resolveServerListenHost(undefined, 'production', false), '0.0.0.0')
+    assert.equal(resolveServerListenHost(undefined, undefined, false), '127.0.0.1')
+    assert.equal(resolveServerListenHost('127.0.0.1', 'production', true), '127.0.0.1')
+    assert.equal(onRailwayRuntime(), Boolean(process.env.RAILWAY_SERVICE_ID || process.env.RAILWAY_ENVIRONMENT_ID || process.env.RAILWAY_ENVIRONMENT_NAME))
+  })
+
+  it('binds the worker to a unix socket only when GAME_SOCKET is set', () => {
+    assert.equal(resolveGameSocketPath('/tmp/custom.sock'), '/tmp/custom.sock')
+    assert.equal(resolveGameSocketPath(undefined), undefined)
+    assert.equal(resolveGameSocketPath(''), undefined)
   })
 })
 

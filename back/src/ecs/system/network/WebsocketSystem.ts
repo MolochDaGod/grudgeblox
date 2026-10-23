@@ -1,9 +1,7 @@
-import {
-  App,
-  DEDICATED_COMPRESSOR_3KB,
+import { existsSync, unlinkSync } from 'node:fs'
+import type {
   HttpRequest,
   HttpResponse,
-  SSLApp,
   WebSocket,
   us_listen_socket,
   us_socket_context_t,
@@ -29,25 +27,35 @@ import {
 import { EventSystem } from '@shared/system/EventSystem.js'
 
 import { MessageEvent } from '../../component/events/MessageEvent.js'
-import { Player } from '../../entity/Player.js'
+import type { Player } from '../../entity/Player.js'
 import { InputProcessingSystem } from '../InputProcessingSystem.js'
 import { NetworkSystem } from './NetworkSystem.js'
 import { ProximityPromptInteractEvent } from '../../component/events/ProximityPromptInteractEvent.js'
 import { TextComponent } from '@shared/component/TextComponent.js'
 import { PlayerComponent } from '@shared/component/PlayerComponent.js'
+import { ServerMeshComponent } from '@shared/component/ServerMeshComponent.js'
 import { EntityManager } from '@shared/system/EntityManager.js'
 import { MessageListComponent } from '@shared/component/MessageComponent.js'
 import { ChatComponent } from '../../component/tag/TagChatComponent.js'
 import { WebSocketComponent } from '../../component/WebsocketComponent.js'
 import { WorldActionEvent } from '../../component/events/WorldActionEvent.js'
 import { decodeClientMessage, MAX_CLIENT_MESSAGE_BYTES } from './clientMessageValidation.js'
+import { sanitizeAppearance } from '@shared/avatar/appearancePolicy.js'
+import { parseIslandMapId } from '@shared/maps/islandLive.js'
 import {
   buildHealthPayload,
   isAdminAuthorized,
   isWebSocketOriginAllowed,
   readBoundedInteger,
   resolveAllowedOrigins,
+  resolveGameSocketPath,
+  resolveServerListenHost,
+  onRailwayRuntime,
 } from './serverPolicy.js'
+import { toArrayBuffer, wrapNodeWebSocket } from './nodeWebSocketTransport.js'
+import { setNodeSocketAcceptor } from './nodeSocketAccept.js'
+import type { IncomingMessage } from 'node:http'
+import type { WebSocket as NodeWebSocket } from 'ws'
 
 type PlayerData = { player?: Player; rateKey: string }
 type MessageHandler = (ws: WebSocket<PlayerData>, message: ClientMessage) => void
@@ -81,6 +89,18 @@ export class WebsocketSystem {
     this.initializeServer()
   }
 
+  acceptNodeWebSocket(socket: NodeWebSocket, req: IncomingMessage) {
+    const wrapped = wrapNodeWebSocket(socket, req)
+    socket.on('error', (error) => {
+      console.error('WebSocket error', error)
+    })
+    socket.on('message', (data) => {
+      void this.processMessage(wrapped, toArrayBuffer(data))
+    })
+    socket.on('close', () => this.onClose(wrapped))
+    void this.onConnect(wrapped)
+  }
+
   markReady() {
     this.applicationReady = true
   }
@@ -96,21 +116,76 @@ export class WebsocketSystem {
   }
 
   private initializeServer() {
-    const isProduction = process.env.NODE_ENV === 'production'
-    const listenHost = process.env.LISTEN_HOST || (isProduction ? '0.0.0.0' : '127.0.0.1')
+    const isRailway = onRailwayRuntime()
+    const isProduction = process.env.NODE_ENV === 'production' || isRailway
+    const listenHost = resolveServerListenHost()
     const allowedOrigins = resolveAllowedOrigins(isProduction)
-    const sslKeyFile: string = process.env.SSL_KEY_FILE || '/etc/letsencrypt/live/npm-3/privkey.pem'
-    const sslCertFile: string = process.env.SSL_CERT_FILE || '/etc/letsencrypt/live/npm-3/cert.pem'
+    const sslKeyFile = process.env.SSL_KEY_FILE || ''
+    const sslCertFile = process.env.SSL_CERT_FILE || ''
+    // Railway / Vercel terminate TLS. Only bind SSLApp when cert files exist and we are not on Railway.
+    const useTls =
+      !isRailway &&
+      Boolean(sslKeyFile && sslCertFile && existsSync(sslKeyFile) && existsSync(sslCertFile))
 
-    if (isProduction) {
-      console.log('NODE_ENV : Running in production mode')
+    if (isRailway) {
+      console.log('RAILWAY : plain HTTP behind proxy')
+    } else if (isProduction) {
+      console.log('NODE_ENV : production')
     } else {
-      console.log('NODE_ENV : Running in development mode')
+      console.log('NODE_ENV : development')
     }
-
+    const unixPath = resolveGameSocketPath()
+    console.log(`TLS in-process: ${useTls ? 'on' : 'off (edge proxy)'}`)
     console.log('WebSocket origins: only accepting', [...allowedOrigins].join(', '))
 
-    const app = isProduction
+    if (process.env.GAME_NO_LISTEN === '1') {
+      console.log('PORT : WebSocket upgrades accepted on the public Node net listener')
+      setNodeSocketAcceptor((socket, req) => this.acceptNodeWebSocket(socket, req))
+      this.resolveListening()
+      return
+    }
+
+    console.log(
+      unixPath
+        ? `PORT : Listening on unix ${unixPath}`
+        : `PORT : Listening on ${listenHost}:${this.port}`
+    )
+
+    void this.bindUws({
+      isProduction,
+      listenHost,
+      allowedOrigins,
+      useTls,
+      sslKeyFile,
+      sslCertFile,
+      unixPath,
+    }).catch((error: unknown) => {
+      const message = error instanceof Error ? error.message : String(error)
+      this.rejectListening(new Error(`uWS bind failed: ${message}`))
+    })
+  }
+
+  private async bindUws(options: {
+    isProduction: boolean
+    listenHost: string
+    allowedOrigins: ReadonlySet<string>
+    useTls: boolean
+    sslKeyFile: string
+    sslCertFile: string
+    unixPath: string | undefined
+  }) {
+    const { App, SSLApp, DEDICATED_COMPRESSOR_3KB } = await import('uWebSockets.js')
+    const {
+      isProduction,
+      listenHost,
+      allowedOrigins,
+      useTls,
+      sslKeyFile,
+      sslCertFile,
+      unixPath,
+    } = options
+
+    const app = useTls
       ? SSLApp({
           key_file_name: sslKeyFile,
           cert_file_name: sslCertFile,
@@ -118,16 +193,23 @@ export class WebsocketSystem {
       : App()
 
     // Health is deliberately operational-only: no player names, chat, notifications, or target IDs.
-    app.get('/health', (res) => {
+    const writeHealth = (res: HttpResponse, method: string) => {
       const healthData = buildHealthPayload(
         this.applicationReady,
         process.env.GAME_SCRIPT || 'Unknown',
-        config.SERVER_TICKRATE
+        config.SERVER_TICKRATE,
+        process.uptime(),
+        process.env.ISLAND_MAP
       )
-      res.writeStatus(this.applicationReady ? '200 OK' : '503 Service Unavailable')
+      // 200 as soon as the socket is bound. 503 here makes Railway mark the deploy failed.
+      res.writeStatus('200 OK')
       res.writeHeader('Content-Type', 'application/json')
       res.writeHeader('Cache-Control', 'no-store')
-      res.end(JSON.stringify(healthData))
+      if (method === 'head') res.end()
+      else res.end(JSON.stringify(healthData))
+    }
+    app.any('/health', (res, req) => {
+      writeHealth(res, req.getMethod())
     })
 
     // Optional in-memory moderation view. It is unavailable until an admin token is configured.
@@ -176,8 +258,18 @@ export class WebsocketSystem {
       upgrade: this.upgradeHandler.bind(this, isProduction, allowedOrigins),
     })
 
+    if (unixPath) {
+      try {
+        unlinkSync(unixPath)
+      } catch (error) {
+        if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error
+      }
+      app.listen_unix((listenSocket) => this.listenHandler(listenSocket, unixPath), unixPath)
+      return
+    }
+
     app.listen(listenHost, this.port, (listenSocket) =>
-      this.listenHandler(listenSocket, listenHost)
+      this.listenHandler(listenSocket, `${listenHost}:${this.port}`)
     )
   }
   private upgradeHandler(
@@ -202,12 +294,12 @@ export class WebsocketSystem {
     )
   }
 
-  private listenHandler(listenSocket: us_listen_socket, listenHost: string) {
+  private listenHandler(listenSocket: us_listen_socket, target: string) {
     if (listenSocket) {
-      console.log(`WebSocket server listening on ${listenHost}:${this.port}`)
+      console.log(`WebSocket server listening on ${target}`)
       this.resolveListening()
     } else {
-      const error = new Error(`Failed to listen on ${listenHost}:${this.port}`)
+      const error = new Error(`Failed to listen on ${target}`)
       console.error(error.message)
       this.rejectListening(error)
     }
@@ -288,6 +380,7 @@ export class WebsocketSystem {
       // Respond to the client indicating that the connection is rate limited
       return ws.end(1008, 'Connection rate limit exceeded')
     }
+    const { Player } = await import('../../entity/Player.js')
     const player = new Player(ws, Math.random() * 5, 5, Math.random() * 5)
     const connectionMessage: ConnectionMessage = {
       t: ServerMessageType.FIRST_CONNECTION,
@@ -399,11 +492,49 @@ export class WebsocketSystem {
     EventSystem.addEvent(new ProximityPromptInteractEvent(player.entity.id, eId))
   }
 
+  private applyPlayerAppearance(
+    playerComponent: PlayerComponent,
+    message: SetPlayerNameMessage,
+    serverMesh?: { filePath: string; updated: boolean }
+  ) {
+    const appearance = sanitizeAppearance({
+      raceId: message.raceId,
+      classId: message.classId,
+      characterId: message.characterId,
+      model3d: message.model3d,
+      gameEra: message.gameEra,
+    })
+
+    playerComponent.raceId = appearance.raceId
+    playerComponent.classId = appearance.classId
+    playerComponent.characterId = appearance.characterId
+    playerComponent.model3d = appearance.model3d
+    playerComponent.gameEra = appearance.gameEra
+    if (typeof message.mapId === 'string') {
+      const mapId = parseIslandMapId(message.mapId)
+      if (mapId) {
+        playerComponent.mapId = mapId
+      }
+    }
+    playerComponent.updated = true
+
+    if (serverMesh) {
+      serverMesh.filePath = appearance.serverMeshPath
+      serverMesh.updated = true
+    }
+  }
+
   private handleSetPlayerNameMessage(ws: WebSocket<PlayerData>, message: SetPlayerNameMessage) {
     const player = ws.getUserData().player
     if (!player) {
       console.error(`Player with WS ${ws} not found.`)
       return
+    }
+
+    const playerComponent = player.entity.getComponent(PlayerComponent)
+    const serverMesh = player.entity.getComponent(ServerMeshComponent)
+    if (playerComponent) {
+      this.applyPlayerAppearance(playerComponent, message, serverMesh)
     }
 
     const { name } = message
@@ -413,9 +544,7 @@ export class WebsocketSystem {
     }
 
     // Check if player already has a custom name (not the default "Player" name)
-    const playerComponent = player.entity.getComponent(PlayerComponent)
     if (playerComponent && !playerComponent.name.startsWith('Player')) {
-      console.log(`Player ${playerComponent.name} attempted to change name again. Not allowed.`)
       return
     }
 
@@ -446,6 +575,7 @@ export class WebsocketSystem {
     // Find the PlayerComponent on the player entity and update it
     if (playerComponent) {
       playerComponent.name = sanitizedName
+      playerComponent.updated = true
     } else {
       console.error(`PlayerComponent not found for player ${player.entity.id}`)
     }
@@ -475,6 +605,16 @@ export class WebsocketSystem {
     if (!/^[a-z0-9:_-]{1,40}$/.test(action)) {
       console.error(`Invalid world action from player ${player.entity.id}`)
       return
+    }
+
+    if (action.startsWith('fx:')) {
+      const playerComponent = player.entity.getComponent(PlayerComponent)
+      if (playerComponent) {
+        const fx = action.slice(3).substring(0, 16)
+        playerComponent.fx = fx
+        playerComponent.fxSeq = (playerComponent.fxSeq || 0) + 1
+        playerComponent.updated = true
+      }
     }
 
     EventSystem.addEvent(new WorldActionEvent(player.entity.id, action))

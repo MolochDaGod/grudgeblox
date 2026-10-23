@@ -1,6 +1,47 @@
 import { timingSafeEqual } from 'node:crypto'
 
+/** Explicit GAME_SOCKET only. Railway rejected Unix sockets even in-process. */
+export function resolveGameSocketPath(
+  socket = process.env.GAME_SOCKET
+): string | undefined {
+  const value = socket?.trim()
+  return value || undefined
+}
+
 const DEFAULT_LOCAL_ORIGINS = ['http://127.0.0.1:4000', 'http://localhost:4000']
+const DEFAULT_LIVE_ORIGINS = [
+  'https://blox.grudge-studio.com',
+  'https://grudgeblox.vercel.app',
+  'https://grudgeblox-grudgenexus.vercel.app',
+  'https://blox-grudge-studio.vercel.app',
+  'https://blox-grudge-studio-grudgenexus.vercel.app',
+]
+
+function coerceBrowserOrigin(raw: string): string {
+  const value = raw.trim()
+  if (value.startsWith('wss://')) return `https://${value.slice(6)}`
+  if (value.startsWith('ws://')) return `http://${value.slice(5)}`
+  return value
+}
+
+export function onRailwayRuntime(): boolean {
+  return Boolean(
+    process.env.RAILWAY_ENVIRONMENT_NAME ||
+      process.env.RAILWAY_ENVIRONMENT_ID ||
+      process.env.RAILWAY_SERVICE_ID
+  )
+}
+
+/** Railway's proxy cannot reach a 127.0.0.1 bind even when NODE_ENV is unset. */
+export function resolveServerListenHost(
+  listenHost = process.env.LISTEN_HOST,
+  nodeEnv = process.env.NODE_ENV,
+  railway = onRailwayRuntime()
+): string {
+  if (listenHost) return listenHost
+  if (railway || nodeEnv === 'production') return '0.0.0.0'
+  return '127.0.0.1'
+}
 
 export type HealthPayload = {
   status: 'starting' | 'ok'
@@ -9,6 +50,7 @@ export type HealthPayload = {
   game: {
     script: string
     tickrate: number
+    map?: string
   }
 }
 
@@ -38,12 +80,33 @@ export function resolveAllowedOrigins(
     .map((origin) => origin.trim())
     .filter(Boolean)
 
-  if (isProduction && configuredOrigins.length === 0) {
+  const onRailway = onRailwayRuntime()
+
+  if (isProduction && configuredOrigins.length === 0 && !onRailway) {
     throw new Error('Production requires ALLOWED_ORIGINS or FRONTEND_URL')
   }
 
-  const origins = configuredOrigins.length > 0 ? configuredOrigins : DEFAULT_LOCAL_ORIGINS
-  return new Set(origins.map(normalizeOrigin))
+  const origins =
+    configuredOrigins.length > 0
+      ? configuredOrigins
+      : onRailway
+        ? DEFAULT_LIVE_ORIGINS
+        : DEFAULT_LOCAL_ORIGINS
+  const normalized: string[] = []
+  for (const origin of origins) {
+    try {
+      normalized.push(normalizeOrigin(coerceBrowserOrigin(origin)))
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error)
+      console.error(`[origins] skipping invalid origin ${origin}: ${message}`)
+    }
+  }
+  if (normalized.length === 0) {
+    if (onRailway) return new Set(DEFAULT_LIVE_ORIGINS)
+    if (isProduction) throw new Error('Production requires ALLOWED_ORIGINS or FRONTEND_URL')
+    return new Set(DEFAULT_LOCAL_ORIGINS)
+  }
+  return new Set(normalized)
 }
 
 export function isWebSocketOriginAllowed(
@@ -64,7 +127,8 @@ export function buildHealthPayload(
   ready: boolean,
   script: string,
   tickrate: number,
-  uptime = process.uptime()
+  uptime = process.uptime(),
+  map?: string
 ): HealthPayload {
   return {
     status: ready ? 'ok' : 'starting',
@@ -73,6 +137,7 @@ export function buildHealthPayload(
     game: {
       script,
       tickrate,
+      ...(map ? { map } : {}),
     },
   }
 }
@@ -87,6 +152,15 @@ export function isAdminAuthorized(authorization: string, expectedToken: string |
   const supplied = Buffer.from(suppliedToken)
   const expected = Buffer.from(expectedToken)
   return supplied.length === expected.length && timingSafeEqual(supplied, expected)
+}
+
+export function isHealthHttpRequest(head: string): boolean {
+  const line = head.split(/\r?\n/, 1)[0] || ''
+  return /^(GET|HEAD) \/health(\?| HTTP\/|$)/i.test(line)
+}
+
+export function isWebSocketHttpRequest(head: string): boolean {
+  return /^\s*GET\s/i.test(head) && /upgrade:\s*websocket/i.test(head)
 }
 
 export function readBoundedInteger(

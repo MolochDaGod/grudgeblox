@@ -27,6 +27,7 @@ import { SphereColliderSystem } from './ecs/system/physics/SphereColliderSystem.
 import { SyncPositionSystem } from './ecs/system/physics/SyncPositionSystem.js'
 import { SyncRotationSystem } from './ecs/system/physics/SyncRotationSystem.js'
 import { TrimeshColliderSystem } from './ecs/system/physics/TrimeshColliderSystem.js'
+import { HeightfieldColliderSystem } from './ecs/system/physics/HeightfieldColliderSystem.js'
 import { PlayerComponent } from '@shared/component/PlayerComponent.js'
 import { ZombieSystem } from './ecs/system/ZombieSystem.js'
 import { ScriptableSystem } from './ecs/system/ScriptableSystem.js'
@@ -48,6 +49,7 @@ const boxColliderSystem = new BoxColliderSystem()
 const capsuleColliderSystem = new CapsuleColliderSystem()
 const sphereColliderSystem = new SphereColliderSystem()
 const convexHullColliderSystem = new ConvexHullColliderSystem()
+const heightfieldColliderSystem = new HeightfieldColliderSystem()
 
 const physicsSystem = PhysicsSystem.getInstance()
 const groundedCheckSystem = new GroundedCheckSystem()
@@ -107,6 +109,7 @@ async function updateGameState(dt: number) {
    */
   await trimeshColliderSystem.update(entities, physicsSystem.world)
   await convexHullColliderSystem.update(entities, physicsSystem.world)
+  heightfieldColliderSystem.update(entities, physicsSystem.world)
   boxColliderSystem.update(entities, physicsSystem.world)
   capsuleColliderSystem.update(entities, physicsSystem.world)
   sphereColliderSystem.update(entities, physicsSystem.world)
@@ -168,9 +171,15 @@ async function gameLoop() {
 
   checkLag(deltaTime)
 
-  while (accumulator >= fixedTimestep) {
-    await updateGameState(fixedTimestep)
-    accumulator -= fixedTimestep
+  try {
+    while (accumulator >= fixedTimestep) {
+      await updateGameState(fixedTimestep)
+      accumulator -= fixedTimestep
+    }
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : String(error)
+    console.error(`[gameLoop] tick failed; continuing: ${message}`)
+    accumulator = 0
   }
 
   // Schedule the next loop iteration
@@ -182,11 +191,13 @@ function startGameLoop() {
   gameLoop()
 }
 
-export async function startGameRuntime() {
+export async function startGameRuntime(existing?: NetworkSystem) {
   if (networkSystem) throw new Error('Game runtime has already been started')
 
-  networkSystem = new NetworkSystem()
-  await networkSystem.waitUntilListening()
-  networkSystem.markReady()
+  networkSystem = existing ?? new NetworkSystem()
+  if (!existing) {
+    await networkSystem.waitUntilListening()
+    networkSystem.markReady()
+  }
   startGameLoop()
 }
